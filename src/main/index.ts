@@ -1,5 +1,8 @@
 import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
+import { inicializarServicios, type Servicios } from './servicios'
+
+let servicios: Servicios | null = null
 
 function createWindow(): void {
   const ventana = new BrowserWindow({
@@ -38,6 +41,9 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  // Inicializa el núcleo (vault + índice) antes de mostrar la ventana.
+  servicios = inicializarServicios()
+
   createWindow()
 
   app.on('activate', () => {
@@ -50,4 +56,9 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+app.on('will-quit', () => {
+  // Cierra la conexión del índice de forma ordenada.
+  servicios?.repositorio.cerrar()
 })

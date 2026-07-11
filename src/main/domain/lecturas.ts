@@ -28,6 +28,7 @@ export interface ResumenAsignatura {
 export interface UsoDeConcepto {
   readonly asignaturaId: string
   readonly asignatura: string
+  readonly periodo: string
   readonly unidad: string
   readonly temaId: string
   readonly tema: string

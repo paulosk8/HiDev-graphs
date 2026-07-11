@@ -1,0 +1,302 @@
+import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, rmSync, copyFileSync } from 'node:fs'
+import { basename, extname, join } from 'node:path'
+import yaml from 'js-yaml'
+
+import { crearAsignatura, crearComponente, type Asignatura } from '../domain/Asignatura'
+import { crearConcepto, type Concepto } from '../domain/Concepto'
+import { crearRecurso } from '../domain/Recurso'
+import { crearRelacion } from '../domain/Relacion'
+import { crearSubtema } from '../domain/Subtema'
+import { crearTema, type Tema } from '../domain/Tema'
+import { crearUnidad, type Unidad } from '../domain/Unidad'
+import {
+  esTipoRelacion,
+  formatoDesdeNombreArchivo,
+  type FormatoRecurso,
+  type TipoRelacion
+} from '../domain/tipos'
+
+/**
+ * Fuente de verdad en el sistema de archivos: el "vault" con YAML.
+ *
+ * Estructura:
+ *   <vault>/conceptos/<slug>/concepto.yaml  (+ archivos de material)
+ *   <vault>/asignaturas/<slug>/pea.yaml
+ *   <vault>/.index/                          (índice SQLite, gestionado aparte)
+ *
+ * Esta clase es agnóstica de Electron: recibe la ruta del vault ya resuelta.
+ * El docente nunca ve estos archivos: la app los escribe y lee por él.
+ */
+export class VaultFileSystemService {
+  constructor(private readonly rutaVault: string) {}
+
+  get raiz(): string {
+    return this.rutaVault
+  }
+  get dirConceptos(): string {
+    return join(this.rutaVault, 'conceptos')
+  }
+  get dirAsignaturas(): string {
+    return join(this.rutaVault, 'asignaturas')
+  }
+  get dirIndice(): string {
+    return join(this.rutaVault, '.index')
+  }
+  get rutaBaseDatos(): string {
+    return join(this.dirIndice, 'index.db')
+  }
+
+  /** Crea la estructura de carpetas del vault si aún no existe (cero configuración). */
+  asegurarVault(): void {
+    mkdirSync(this.dirConceptos, { recursive: true })
+    mkdirSync(this.dirAsignaturas, { recursive: true })
+    mkdirSync(this.dirIndice, { recursive: true })
+  }
+
+  // ---------------------------------------------------------------------------
+  // Conceptos
+  // ---------------------------------------------------------------------------
+
+  carpetaConcepto(id: string): string {
+    return join(this.dirConceptos, id)
+  }
+
+  private rutaConcepto(id: string): string {
+    return join(this.carpetaConcepto(id), 'concepto.yaml')
+  }
+
+  existeConcepto(id: string): boolean {
+    return existsSync(this.rutaConcepto(id))
+  }
+
+  guardarConcepto(concepto: Concepto): void {
+    mkdirSync(this.carpetaConcepto(concepto.id), { recursive: true })
+    const plano = {
+      id: concepto.id,
+      nombre: concepto.nombre,
+      descripcion: concepto.descripcion,
+      relaciones: concepto.relaciones.map((r) => ({ destino: r.destino, tipo: r.tipo })),
+      recursos: concepto.recursos.map((r) => ({
+        id: r.id,
+        nombre: r.nombre,
+        archivo: r.archivo,
+        formato: r.formato
+      }))
+    }
+    writeFileSync(this.rutaConcepto(concepto.id), yaml.dump(plano, { lineWidth: 100 }), 'utf8')
+  }
+
+  leerConcepto(id: string): Concepto {
+    const datos = yaml.load(readFileSync(this.rutaConcepto(id), 'utf8')) as Record<string, unknown>
+    return conceptoDesdePlano(datos)
+  }
+
+  listarIdsConceptos(): string[] {
+    return this.subcarpetasCon(this.dirConceptos, 'concepto.yaml')
+  }
+
+  leerTodosConceptos(): Concepto[] {
+    return this.listarIdsConceptos()
+      .map((id) => this.leerToleranteConcepto(id))
+      .filter((c): c is Concepto => c !== null)
+  }
+
+  eliminarConcepto(id: string): void {
+    rmSync(this.carpetaConcepto(id), { recursive: true, force: true })
+  }
+
+  /**
+   * Copia un archivo de material dentro de la carpeta del concepto y devuelve
+   * el nombre de archivo final (resolviendo colisiones) y su formato.
+   */
+  copiarRecurso(conceptoId: string, rutaOrigen: string): { archivo: string; formato: FormatoRecurso } {
+    const formato = formatoDesdeNombreArchivo(rutaOrigen)
+    if (formato === null) {
+      throw new Error(`Formato de material no soportado: ${extname(rutaOrigen) || '(sin extensión)'}`)
+    }
+    mkdirSync(this.carpetaConcepto(conceptoId), { recursive: true })
+    const archivo = this.nombreArchivoLibre(conceptoId, basename(rutaOrigen))
+    copyFileSync(rutaOrigen, join(this.carpetaConcepto(conceptoId), archivo))
+    return { archivo, formato }
+  }
+
+  private leerToleranteConcepto(id: string): Concepto | null {
+    try {
+      return this.leerConcepto(id)
+    } catch (error) {
+      console.warn(`No se pudo leer el concepto "${id}":`, error)
+      return null
+    }
+  }
+
+  private nombreArchivoLibre(conceptoId: string, deseado: string): string {
+    const carpeta = this.carpetaConcepto(conceptoId)
+    if (!existsSync(join(carpeta, deseado))) return deseado
+
+    const ext = extname(deseado)
+    const base = deseado.slice(0, deseado.length - ext.length)
+    let n = 2
+    while (existsSync(join(carpeta, `${base}-${n}${ext}`))) n += 1
+    return `${base}-${n}${ext}`
+  }
+
+  // ---------------------------------------------------------------------------
+  // Asignaturas
+  // ---------------------------------------------------------------------------
+
+  carpetaAsignatura(id: string): string {
+    return join(this.dirAsignaturas, id)
+  }
+
+  private rutaAsignatura(id: string): string {
+    return join(this.carpetaAsignatura(id), 'pea.yaml')
+  }
+
+  existeAsignatura(id: string): boolean {
+    return existsSync(this.rutaAsignatura(id))
+  }
+
+  guardarAsignatura(asignatura: Asignatura): void {
+    mkdirSync(this.carpetaAsignatura(asignatura.id), { recursive: true })
+    const plano = {
+      id: asignatura.id,
+      nombre: asignatura.nombre,
+      periodo: asignatura.periodo,
+      componentes: asignatura.componentes.map((c) => ({ clave: c.clave, nombre: c.nombre })),
+      unidades: asignatura.unidades.map((u) => ({
+        id: u.id,
+        titulo: u.titulo,
+        orden: u.orden,
+        temas: u.temas.map((t) => ({
+          id: t.id,
+          titulo: t.titulo,
+          orden: t.orden,
+          semana: t.semana,
+          subtemas: t.subtemas.map((s) => ({ id: s.id, titulo: s.titulo, orden: s.orden })),
+          conceptos: [...t.conceptos]
+        }))
+      }))
+    }
+    writeFileSync(this.rutaAsignatura(asignatura.id), yaml.dump(plano, { lineWidth: 100 }), 'utf8')
+  }
+
+  leerAsignatura(id: string): Asignatura {
+    const datos = yaml.load(readFileSync(this.rutaAsignatura(id), 'utf8')) as Record<string, unknown>
+    return asignaturaDesdePlano(datos)
+  }
+
+  listarIdsAsignaturas(): string[] {
+    return this.subcarpetasCon(this.dirAsignaturas, 'pea.yaml')
+  }
+
+  leerTodasAsignaturas(): Asignatura[] {
+    return this.listarIdsAsignaturas()
+      .map((id) => this.leerToleranteAsignatura(id))
+      .filter((a): a is Asignatura => a !== null)
+  }
+
+  eliminarAsignatura(id: string): void {
+    rmSync(this.carpetaAsignatura(id), { recursive: true, force: true })
+  }
+
+  private leerToleranteAsignatura(id: string): Asignatura | null {
+    try {
+      return this.leerAsignatura(id)
+    } catch (error) {
+      console.warn(`No se pudo leer la asignatura "${id}":`, error)
+      return null
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Utilidades
+  // ---------------------------------------------------------------------------
+
+  /** Devuelve las subcarpetas de `dir` que contienen el archivo `marcador`. */
+  private subcarpetasCon(dir: string, marcador: string): string[] {
+    if (!existsSync(dir)) return []
+    return readdirSync(dir, { withFileTypes: true })
+      .filter((e) => e.isDirectory() && existsSync(join(dir, e.name, marcador)))
+      .map((e) => e.name)
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Reconstrucción de entidades desde datos planos de YAML (con validación)
+// -----------------------------------------------------------------------------
+
+function texto(valor: unknown, defecto = ''): string {
+  return typeof valor === 'string' ? valor : defecto
+}
+
+function lista(valor: unknown): unknown[] {
+  return Array.isArray(valor) ? valor : []
+}
+
+function numero(valor: unknown, defecto: number): number {
+  return typeof valor === 'number' && Number.isFinite(valor) ? valor : defecto
+}
+
+function conceptoDesdePlano(datos: Record<string, unknown>): Concepto {
+  const relaciones = lista(datos.relaciones)
+    .map((r) => r as Record<string, unknown>)
+    .filter((r) => esTipoRelacion(texto(r.tipo)))
+    .map((r) => crearRelacion({ destino: texto(r.destino), tipo: texto(r.tipo) as TipoRelacion }))
+
+  const recursos = lista(datos.recursos)
+    .map((r) => r as Record<string, unknown>)
+    .map((r) =>
+      crearRecurso({
+        id: texto(r.id),
+        nombre: texto(r.nombre),
+        archivo: texto(r.archivo),
+        formato: (formatoDesdeNombreArchivo(texto(r.archivo)) ?? texto(r.formato)) as FormatoRecurso
+      })
+    )
+
+  return crearConcepto({
+    id: texto(datos.id),
+    nombre: texto(datos.nombre),
+    descripcion: texto(datos.descripcion),
+    relaciones,
+    recursos
+  })
+}
+
+function asignaturaDesdePlano(datos: Record<string, unknown>): Asignatura {
+  const componentes = lista(datos.componentes)
+    .map((c) => c as Record<string, unknown>)
+    .map((c) => crearComponente({ clave: texto(c.clave), nombre: texto(c.nombre) }))
+
+  const unidades: Unidad[] = lista(datos.unidades)
+    .map((u) => u as Record<string, unknown>)
+    .map((u, i) => {
+      const temas: Tema[] = lista(u.temas)
+        .map((t) => t as Record<string, unknown>)
+        .map((t, j) => {
+          const subtemas = lista(t.subtemas)
+            .map((s) => s as Record<string, unknown>)
+            .map((s, k) =>
+              crearSubtema({ id: texto(s.id), titulo: texto(s.titulo), orden: numero(s.orden, k + 1) })
+            )
+          const conceptos = lista(t.conceptos).map((id) => texto(id)).filter((id) => id.length > 0)
+          return crearTema({
+            id: texto(t.id),
+            titulo: texto(t.titulo),
+            orden: numero(t.orden, j + 1),
+            semana: typeof t.semana === 'number' ? t.semana : null,
+            subtemas,
+            conceptos
+          })
+        })
+      return crearUnidad({ id: texto(u.id), titulo: texto(u.titulo), orden: numero(u.orden, i + 1), temas })
+    })
+
+  return crearAsignatura({
+    id: texto(datos.id),
+    nombre: texto(datos.nombre),
+    periodo: texto(datos.periodo),
+    componentes,
+    unidades
+  })
+}
