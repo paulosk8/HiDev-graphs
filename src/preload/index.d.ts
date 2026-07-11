@@ -1,9 +1,10 @@
-// Tipos de la API expuesta al renderer vía contextBridge.
-// Se ampliará con el contrato IPC en el bloque correspondiente.
-export interface PedagoGraphApi {}
+import type { PedagoGraphApi } from '../shared/api'
 
+// Tipos de la API expuesta al renderer vía contextBridge.
 declare global {
   interface Window {
     api: PedagoGraphApi
   }
 }
+
+export {}

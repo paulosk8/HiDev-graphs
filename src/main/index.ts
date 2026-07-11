@@ -1,6 +1,7 @@
 import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { inicializarServicios, type Servicios } from './servicios'
+import { registrarHandlersIpc } from './ipc/registrarHandlers'
 
 let servicios: Servicios | null = null
 
@@ -41,8 +42,9 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-  // Inicializa el núcleo (vault + índice) antes de mostrar la ventana.
+  // Inicializa el núcleo (vault + índice) y registra la API IPC antes de la ventana.
   servicios = inicializarServicios()
+  registrarHandlersIpc(servicios)
 
   createWindow()
 

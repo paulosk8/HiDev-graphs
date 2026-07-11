@@ -17,8 +17,8 @@ export interface Servicios {
  *  3. Abre el índice SQLite (crea el esquema si hace falta).
  *  4. Reconstruye el índice desde los YAML para dejarlo consistente.
  */
-export function inicializarServicios(): Servicios {
-  const rutaVault = join(app.getPath('documents'), 'PedagoGraph')
+export function inicializarServicios(rutaVaultForzada?: string): Servicios {
+  const rutaVault = rutaVaultForzada ?? join(app.getPath('documents'), 'PedagoGraph')
 
   const vault = new VaultFileSystemService(rutaVault)
   vault.asegurarVault()
