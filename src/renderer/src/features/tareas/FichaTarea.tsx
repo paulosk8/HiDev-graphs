@@ -73,12 +73,12 @@ export function FichaTarea({ tareaId, onCerrar, onCambiada }: Props): JSX.Elemen
 
   const crucesPorAsig = new Map<
     string,
-    { asignatura: string; periodo: string; temas: { temaId: string; tema: string; unidad: string }[] }
+    { asignatura: string; periodos: string[]; temas: { temaId: string; tema: string; unidad: string }[] }
   >()
   for (const c of cruces) {
     const g = crucesPorAsig.get(c.asignaturaId) ?? {
       asignatura: c.asignatura,
-      periodo: c.periodo,
+      periodos: c.periodos,
       temas: []
     }
     if (!g.temas.some((t) => t.temaId === c.temaId)) {
@@ -246,7 +246,7 @@ export function FichaTarea({ tareaId, onCerrar, onCambiada }: Props): JSX.Elemen
                   >
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-slate-700">
-                        {g.asignatura} {g.periodo}
+                        {g.asignatura} · {g.periodos.join(', ')}
                       </p>
                       <p className="mt-0.5 text-xs text-slate-500">
                         {g.temas.map((t) => `${t.unidad} › ${t.tema}`).join(' · ')}

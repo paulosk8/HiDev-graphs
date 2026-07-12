@@ -9,6 +9,11 @@ import type {
 } from '../domain/lecturas'
 import { ESQUEMA_SQL } from './esquema'
 
+/** Separa los períodos guardados unidos por comas en la columna del índice. */
+function dividirPeriodos(valor: string): string[] {
+  return valor ? valor.split(',').filter((p) => p.length > 0) : []
+}
+
 /**
  * Implementación del repositorio del grafo sobre SQLite (better-sqlite3).
  *
@@ -97,7 +102,7 @@ export class SqliteGraphRepository implements IGraphRepository {
         padre_tipo: null,
         padre_id: null,
         orden: null,
-        periodo: a.periodo
+        periodo: a.periodos.join(',') // los períodos se guardan unidos en la columna
       })
 
       for (const u of a.unidades) {
@@ -250,7 +255,7 @@ export class SqliteGraphRepository implements IGraphRepository {
   }
 
   listarAsignaturas(): ResumenAsignatura[] {
-    return this.db
+    const filas = this.db
       .prepare(
         `SELECT a.id AS id, a.nombre AS nombre, a.periodo AS periodo,
                 (SELECT COUNT(*) FROM nodes u
@@ -262,11 +267,24 @@ export class SqliteGraphRepository implements IGraphRepository {
          WHERE a.tipo = 'asignatura'
          ORDER BY a.nombre COLLATE NOCASE`
       )
-      .all() as ResumenAsignatura[]
+      .all() as Array<{
+      id: string
+      nombre: string
+      periodo: string
+      totalUnidades: number
+      totalTemas: number
+    }>
+    return filas.map((f) => ({
+      id: f.id,
+      nombre: f.nombre,
+      periodos: dividirPeriodos(f.periodo),
+      totalUnidades: f.totalUnidades,
+      totalTemas: f.totalTemas
+    }))
   }
 
   usosDeConcepto(conceptoId: string): UsoDeConcepto[] {
-    return this.db
+    const filas = this.db
       .prepare(
         `SELECT a.id AS asignaturaId, a.nombre AS asignatura, a.periodo AS periodo,
                 u.nombre AS unidad, t.id AS temaId, t.nombre AS tema
@@ -280,6 +298,21 @@ export class SqliteGraphRepository implements IGraphRepository {
            AND e.tipo_relacion = 'instancia'
          ORDER BY a.nombre COLLATE NOCASE, u.orden, t.orden`
       )
-      .all({ conceptoId }) as UsoDeConcepto[]
+      .all({ conceptoId }) as Array<{
+      asignaturaId: string
+      asignatura: string
+      periodo: string
+      unidad: string
+      temaId: string
+      tema: string
+    }>
+    return filas.map((f) => ({
+      asignaturaId: f.asignaturaId,
+      asignatura: f.asignatura,
+      periodos: dividirPeriodos(f.periodo),
+      unidad: f.unidad,
+      temaId: f.temaId,
+      tema: f.tema
+    }))
   }
 }

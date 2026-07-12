@@ -54,6 +54,8 @@ export interface PedagoGraphApi {
   obtenerAsignatura(id: string): Promise<Resultado<AsignaturaDTO>>
   crearAsignatura(datos: DatosAsignaturaDTO): Promise<Resultado<ResumenAsignaturaDTO>>
   eliminarAsignatura(id: string): Promise<Resultado<void>>
+  agregarPeriodoAsignatura(id: string, periodo: string): Promise<Resultado<AsignaturaDTO>>
+  quitarPeriodoAsignatura(id: string, periodo: string): Promise<Resultado<AsignaturaDTO>>
 
   // --- Vínculos tema <-> concepto ---
   vincularTemaConcepto(

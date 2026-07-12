@@ -22,8 +22,8 @@ El usuario objetivo **no es técnico**. Nunca ve archivos, YAML, rutas, ni jerga
   - Posee **Recursos** (el material). Los recursos pertenecen **al concepto, jamás a una asignatura**.
 - **Recurso**: archivo de material. Formatos: `pptx, pdf, md, html, docx, xml`. Se clasifica por extensión.
 
-### Capa curricular (por período académico)
-- **Asignatura** (ej. "Algoritmos 2026A") → contiene **Unidades**.
+### Capa curricular
+- **Asignatura** (materia, ej. "Algoritmos") → contiene **Unidades**. Se **oferta en uno o varios períodos** (`periodos`, ej. 2026A, 2026B) como referencia: la MISMA asignatura y su contenido se reutilizan entre períodos **sin duplicarse**. Se muestra como "Algoritmos · 2026A, 2026B".
 - **Unidad** → contiene **Temas**.
 - **Tema** → puede contener **Subtemas**.
 - Planificación por **Semana**.

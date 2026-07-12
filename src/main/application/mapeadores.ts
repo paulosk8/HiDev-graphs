@@ -40,7 +40,7 @@ export function aAsignaturaDTO(asignatura: Asignatura): AsignaturaDTO {
   return {
     id: asignatura.id,
     nombre: asignatura.nombre,
-    periodo: asignatura.periodo,
+    periodos: [...asignatura.periodos],
     componentes: asignatura.componentes.map((c) => ({ clave: c.clave, nombre: c.nombre })),
     unidades: asignatura.unidades.map((u) => ({
       id: u.id,
@@ -95,7 +95,7 @@ export function aResumenAsignaturaDTO(asignatura: Asignatura): ResumenAsignatura
   return {
     id: asignatura.id,
     nombre: asignatura.nombre,
-    periodo: asignatura.periodo,
+    periodos: [...asignatura.periodos],
     totalUnidades: asignatura.unidades.length,
     totalTemas
   }

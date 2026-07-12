@@ -14,7 +14,7 @@ export interface ResumenConcepto {
 export interface ResumenAsignatura {
   readonly id: string
   readonly nombre: string
-  readonly periodo: string
+  readonly periodos: string[]
   readonly totalUnidades: number
   readonly totalTemas: number
 }
@@ -28,7 +28,7 @@ export interface ResumenAsignatura {
 export interface UsoDeConcepto {
   readonly asignaturaId: string
   readonly asignatura: string
-  readonly periodo: string
+  readonly periodos: string[]
   readonly unidad: string
   readonly temaId: string
   readonly tema: string

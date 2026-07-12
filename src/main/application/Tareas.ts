@@ -170,7 +170,7 @@ export function crucesDeTarea(servicios: Servicios, tareaId: string): CruceDTO[]
         conceptoId,
         asignaturaId: uso.asignaturaId,
         asignatura: uso.asignatura,
-        periodo: uso.periodo,
+        periodos: uso.periodos,
         unidad: uso.unidad,
         temaId: uso.temaId,
         tema: uso.tema

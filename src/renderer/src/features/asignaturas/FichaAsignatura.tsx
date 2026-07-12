@@ -19,6 +19,7 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
   const [cargando, setCargando] = useState(true)
   const [confirmando, setConfirmando] = useState(false)
   const [temaBuscador, setTemaBuscador] = useState<string | null>(null)
+  const [periodoNuevo, setPeriodoNuevo] = useState('')
   const [tareas, setTareas] = useState<ResumenTareaDTO[]>([])
   const [creandoTarea, setCreandoTarea] = useState(false)
   const [tareaAbierta, setTareaAbierta] = useState<string | null>(null)
@@ -59,6 +60,25 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
   const desvincular = async (temaId: string, conceptoId: string): Promise<void> => {
     try {
       setAsignatura(await api.desvincularTemaConcepto(asignaturaId, temaId, conceptoId))
+    } catch (error) {
+      notificarError(error)
+    }
+  }
+
+  const agregarPeriodo = async (): Promise<void> => {
+    const p = periodoNuevo.trim()
+    if (!p) return
+    try {
+      setAsignatura(await api.agregarPeriodoAsignatura(asignaturaId, p))
+      setPeriodoNuevo('')
+    } catch (error) {
+      notificarError(error)
+    }
+  }
+
+  const quitarPeriodo = async (periodo: string): Promise<void> => {
+    try {
+      setAsignatura(await api.quitarPeriodoAsignatura(asignaturaId, periodo))
     } catch (error) {
       notificarError(error)
     }
@@ -108,17 +128,52 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
         ← Mis asignaturas
       </button>
 
-      <header className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">
-            {asignatura.nombre}{' '}
-            <span className="text-lg font-medium text-marca-600">{asignatura.periodo}</span>
-          </h1>
-        </div>
+      <header className="mb-4 flex items-start justify-between gap-4">
+        <h1 className="text-2xl font-semibold text-slate-900">{asignatura.nombre}</h1>
         <Boton variante="fantasma" onClick={() => setConfirmando(true)}>
           Eliminar
         </Boton>
       </header>
+
+      {/* Períodos en que se dicta */}
+      <section className="mb-8">
+        <div className="flex flex-wrap items-center gap-2">
+          {asignatura.periodos.map((p) => (
+            <span
+              key={p}
+              className="flex items-center gap-1 rounded-full bg-marca-50 py-1 pl-3 pr-2 text-sm font-medium text-marca-700"
+            >
+              {p}
+              {asignatura.periodos.length > 1 && (
+                <button
+                  onClick={() => void quitarPeriodo(p)}
+                  className="text-marca-400 hover:text-red-600"
+                  aria-label={`Quitar período ${p}`}
+                >
+                  ✕
+                </button>
+              )}
+            </span>
+          ))}
+          <span className="inline-flex items-center gap-1">
+            <input
+              value={periodoNuevo}
+              onChange={(e) => setPeriodoNuevo(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  void agregarPeriodo()
+                }
+              }}
+              placeholder="Añadir período"
+              className="w-32 rounded-full border border-dashed border-slate-300 px-3 py-1 text-sm outline-none focus:border-marca-400"
+            />
+          </span>
+        </div>
+        <p className="mt-1.5 text-xs text-slate-400">
+          La misma asignatura se dicta en estos períodos, sin duplicar su contenido.
+        </p>
+      </section>
 
       {/* Componentes */}
       {asignatura.componentes.length > 0 && (
@@ -275,7 +330,7 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
 
       {confirmando && (
         <DialogoConfirmacion
-          titulo={`¿Eliminar «${asignatura.nombre} ${asignatura.periodo}»?`}
+          titulo={`¿Eliminar «${asignatura.nombre}»?`}
           mensaje="Se eliminará la asignatura y su planificación. Tus conceptos y su material NO se borran."
           onConfirmar={confirmarEliminar}
           onCancelar={() => setConfirmando(false)}

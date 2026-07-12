@@ -56,6 +56,10 @@ export const api = {
   obtenerAsignatura: (id: string) => desenvolver(window.api.obtenerAsignatura(id)),
   crearAsignatura: (datos: DatosAsignaturaDTO) => desenvolver(window.api.crearAsignatura(datos)),
   eliminarAsignatura: (id: string) => desenvolver(window.api.eliminarAsignatura(id)),
+  agregarPeriodoAsignatura: (id: string, periodo: string) =>
+    desenvolver(window.api.agregarPeriodoAsignatura(id, periodo)),
+  quitarPeriodoAsignatura: (id: string, periodo: string) =>
+    desenvolver(window.api.quitarPeriodoAsignatura(id, periodo)),
   vincularTemaConcepto: (asignaturaId: string, temaId: string, conceptoId: string) =>
     desenvolver(window.api.vincularTemaConcepto(asignaturaId, temaId, conceptoId)),
   desvincularTemaConcepto: (asignaturaId: string, temaId: string, conceptoId: string) =>

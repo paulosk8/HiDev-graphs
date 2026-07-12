@@ -197,7 +197,7 @@ export class VaultFileSystemService {
     const plano = {
       id: asignatura.id,
       nombre: asignatura.nombre,
-      periodo: asignatura.periodo,
+      periodos: [...asignatura.periodos],
       componentes: asignatura.componentes.map((c) => ({ clave: c.clave, nombre: c.nombre })),
       unidades: asignatura.unidades.map((u) => ({
         id: u.id,
@@ -419,10 +419,17 @@ function asignaturaDesdePlano(datos: Record<string, unknown>): Asignatura {
       return crearUnidad({ id: texto(u.id), titulo: texto(u.titulo), orden: numero(u.orden, i + 1), temas })
     })
 
+  // Compatibilidad: acepta `periodos` (lista) o el antiguo `periodo` (texto).
+  const periodos = Array.isArray(datos.periodos)
+    ? lista(datos.periodos).map((p) => texto(p)).filter((p) => p.length > 0)
+    : texto(datos.periodo)
+      ? [texto(datos.periodo)]
+      : []
+
   return crearAsignatura({
     id: texto(datos.id),
     nombre: texto(datos.nombre),
-    periodo: texto(datos.periodo),
+    periodos,
     componentes,
     unidades
   })

@@ -6,11 +6,7 @@ import { useUiStore } from './uiStore'
 const ui = () => useUiStore.getState()
 
 function ordenar(lista: ResumenAsignaturaDTO[]): ResumenAsignaturaDTO[] {
-  return [...lista].sort(
-    (a, b) =>
-      b.periodo.localeCompare(a.periodo, 'es') ||
-      a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' })
-  )
+  return [...lista].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }))
 }
 
 interface AsignaturasState {

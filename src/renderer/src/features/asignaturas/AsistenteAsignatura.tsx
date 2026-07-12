@@ -33,7 +33,8 @@ export function AsistenteAsignatura({ onCerrar, onCreada }: Props): JSX.Element 
   const [ocupado, setOcupado] = useState(false)
 
   const [nombre, setNombre] = useState('')
-  const [periodo, setPeriodo] = useState('')
+  const [periodos, setPeriodos] = useState<string[]>([])
+  const [periodoNuevo, setPeriodoNuevo] = useState('')
   const [componentes, setComponentes] = useState<ComponenteDTO[]>([...COMPONENTES_SUGERIDOS])
   const [claveNueva, setClaveNueva] = useState('')
   const [nombreNuevo, setNombreNuevo] = useState('')
@@ -75,13 +76,20 @@ export function AsistenteAsignatura({ onCerrar, onCreada }: Props): JSX.Element 
   }
 
   // --- Validación / envío ---
-  const datosCompletos = nombre.trim().length > 0 && periodo.trim().length > 0
+  const agregarPeriodo = (): void => {
+    const p = periodoNuevo.trim()
+    if (p && !periodos.includes(p)) setPeriodos((prev) => [...prev, p])
+    setPeriodoNuevo('')
+  }
+  const quitarPeriodo = (p: string): void => setPeriodos((prev) => prev.filter((x) => x !== p))
+
+  const datosCompletos = nombre.trim().length > 0 && periodos.length > 0
   const hayContenido = unidades.some((u) => u.titulo.trim().length > 0)
 
   const finalizar = async (): Promise<void> => {
     const datos: DatosAsignaturaDTO = {
       nombre: nombre.trim(),
-      periodo: periodo.trim(),
+      periodos,
       componentes,
       unidades: unidades
         .filter((u) => u.titulo.trim().length > 0)
@@ -144,13 +152,48 @@ export function AsistenteAsignatura({ onCerrar, onCreada }: Props): JSX.Element 
             onChange={(e) => setNombre(e.target.value)}
             autoFocus
           />
-          <CampoTexto
-            etiqueta="Período"
-            placeholder="Ej. 2026A"
-            value={periodo}
-            onChange={(e) => setPeriodo(e.target.value)}
-            ayuda="El período académico en el que impartes esta asignatura."
-          />
+          <div>
+            <span className="mb-1.5 block text-sm font-medium text-slate-700">Períodos</span>
+            <div className="flex gap-2">
+              <input
+                value={periodoNuevo}
+                onChange={(e) => setPeriodoNuevo(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    agregarPeriodo()
+                  }
+                }}
+                placeholder="Ej. 2026A"
+                className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-marca-500 focus:ring-2 focus:ring-marca-100"
+              />
+              <Boton variante="secundario" onClick={agregarPeriodo} disabled={!periodoNuevo.trim()}>
+                Añadir
+              </Boton>
+            </div>
+            {periodos.length > 0 && (
+              <ul className="mt-2 flex flex-wrap gap-2">
+                {periodos.map((p) => (
+                  <li
+                    key={p}
+                    className="flex items-center gap-1 rounded-full bg-marca-50 py-0.5 pl-3 pr-2 text-sm text-marca-700"
+                  >
+                    {p}
+                    <button
+                      onClick={() => quitarPeriodo(p)}
+                      className="text-marca-400 hover:text-red-600"
+                      aria-label={`Quitar ${p}`}
+                    >
+                      ✕
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <span className="mt-1 block text-xs text-slate-400">
+              Puedes añadir varios períodos: la misma asignatura se dicta en todos ellos.
+            </span>
+          </div>
         </div>
       )}
 

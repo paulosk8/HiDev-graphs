@@ -124,7 +124,7 @@ export function FichaConcepto({ conceptoId }: Props): JSX.Element {
                 className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm text-slate-700"
               >
                 <span className="font-medium">
-                  {uso.asignatura} {uso.periodo}
+                  {uso.asignatura} · {uso.periodos.join(', ')}
                 </span>
                 <span className="text-slate-400"> › {uso.unidad} › </span>
                 <span>{uso.tema}</span>
@@ -152,7 +152,7 @@ export function FichaConcepto({ conceptoId }: Props): JSX.Element {
                     <span className="flex-1 truncate font-medium text-slate-700">{t.titulo}</span>
                     {asig && (
                       <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-                        {asig.nombre} {asig.periodo}
+                        {asig.nombre} · {asig.periodos.join(', ')}
                       </span>
                     )}
                   </button>

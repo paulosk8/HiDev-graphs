@@ -23,6 +23,8 @@ export const CANALES = {
   asignaturaObtener: 'asignatura:obtener',
   asignaturaCrear: 'asignatura:crear',
   asignaturaEliminar: 'asignatura:eliminar',
+  asignaturaAgregarPeriodo: 'asignatura:agregar-periodo',
+  asignaturaQuitarPeriodo: 'asignatura:quitar-periodo',
 
   // Vínculos tema <-> concepto
   temaVincularConcepto: 'tema:vincular-concepto',

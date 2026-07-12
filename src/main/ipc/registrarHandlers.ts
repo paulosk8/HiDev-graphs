@@ -20,6 +20,10 @@ import { crearAsignatura } from '../application/CrearAsignatura'
 import { obtenerAsignatura } from '../application/ObtenerAsignatura'
 import { eliminarAsignatura } from '../application/EliminarAsignatura'
 import {
+  agregarPeriodoAsignatura,
+  quitarPeriodoAsignatura
+} from '../application/PeriodosAsignatura'
+import {
   desvincularTemaConcepto,
   vincularTemaConcepto
 } from '../application/VincularTemaConcepto'
@@ -142,6 +146,13 @@ export function registrarHandlersIpc(servicios: Servicios): void {
 
   ipcMain.handle(CANALES.asignaturaEliminar, (_evento, id: string) =>
     envolver(() => eliminarAsignatura(servicios, id))
+  )
+
+  ipcMain.handle(CANALES.asignaturaAgregarPeriodo, (_e, id: string, periodo: string) =>
+    envolver(() => agregarPeriodoAsignatura(servicios, id, periodo))
+  )
+  ipcMain.handle(CANALES.asignaturaQuitarPeriodo, (_e, id: string, periodo: string) =>
+    envolver(() => quitarPeriodoAsignatura(servicios, id, periodo))
   )
 
   ipcMain.handle(

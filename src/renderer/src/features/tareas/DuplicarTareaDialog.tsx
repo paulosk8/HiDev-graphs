@@ -96,7 +96,7 @@ export function DuplicarTareaDialog({
             <option value="">Elige una asignatura…</option>
             {asignaturas.map((a) => (
               <option key={a.id} value={a.id}>
-                {a.nombre} {a.periodo}
+                {a.nombre} · {a.periodos.join(', ')}
               </option>
             ))}
           </select>

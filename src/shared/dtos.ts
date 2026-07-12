@@ -62,7 +62,7 @@ export interface ResultadoMaterialDTO {
 export interface ResumenAsignaturaDTO {
   id: string
   nombre: string
-  periodo: string
+  periodos: string[]
   totalUnidades: number
   totalTemas: number
 }
@@ -99,7 +99,7 @@ export interface UnidadDTO {
 export interface AsignaturaDTO {
   id: string
   nombre: string
-  periodo: string
+  periodos: string[]
   componentes: ComponenteDTO[]
   unidades: UnidadDTO[]
 }
@@ -119,7 +119,7 @@ export interface DatosUnidadDTO {
 
 export interface DatosAsignaturaDTO {
   nombre: string
-  periodo: string
+  periodos: string[]
   componentes: ComponenteDTO[]
   unidades: DatosUnidadDTO[]
 }
@@ -172,7 +172,7 @@ export interface CruceDTO {
   conceptoId: string
   asignaturaId: string
   asignatura: string
-  periodo: string
+  periodos: string[]
   unidad: string
   temaId: string
   tema: string
@@ -185,11 +185,11 @@ export interface DuplicarTareaDTO {
   titulo: string
 }
 
-/** Un lugar donde se usa un concepto: "Algoritmos 2026A › Unidad 1 › Tema 1". */
+/** Un lugar donde se usa un concepto: "Algoritmos · 2026A, 2026B › Unidad 1 › Tema 1". */
 export interface UsoDeConceptoDTO {
   asignaturaId: string
   asignatura: string
-  periodo: string
+  periodos: string[]
   unidad: string
   temaId: string
   tema: string

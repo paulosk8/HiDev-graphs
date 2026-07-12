@@ -25,7 +25,7 @@ export function crearAsignatura(
   const { vault, repositorio } = servicios
 
   const existentes = new Set(vault.listarIdsAsignaturas())
-  const id = slugUnico(`${datos.nombre} ${datos.periodo}`, existentes, 'asignatura')
+  const id = slugUnico(datos.nombre, existentes, 'asignatura')
 
   const componentes: ComponenteAprendizaje[] = datos.componentes.map((c) => crearComponente(c))
 
@@ -49,7 +49,7 @@ export function crearAsignatura(
   const asignatura = nuevaAsignatura({
     id,
     nombre: datos.nombre,
-    periodo: datos.periodo,
+    periodos: datos.periodos,
     componentes,
     unidades
   })

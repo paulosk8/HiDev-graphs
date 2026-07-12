@@ -45,7 +45,9 @@ export function ListaAsignaturas(): JSX.Element {
               >
                 <span className="flex items-baseline gap-2">
                   <span className="font-medium text-slate-800">{asig.nombre}</span>
-                  <span className="text-xs font-medium text-marca-600">{asig.periodo}</span>
+                  <span className="text-xs font-medium text-marca-600">
+                    {asig.periodos.join(', ')}
+                  </span>
                 </span>
                 <span className="mt-1 text-xs text-slate-400">
                   {asig.totalUnidades} {asig.totalUnidades === 1 ? 'unidad' : 'unidades'} ·{' '}
