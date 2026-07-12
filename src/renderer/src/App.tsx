@@ -8,6 +8,7 @@ import { FichaAsignatura } from './features/asignaturas/FichaAsignatura'
 import { ListaAsignaturas } from './features/asignaturas/ListaAsignaturas'
 import { GrafoPage } from './features/grafo/GrafoPage'
 import { AsistentePage } from './features/asistente/AsistentePage'
+import { TerminalPage } from './features/terminal/TerminalPage'
 import { useAsignaturasStore } from './stores/asignaturasStore'
 import { useConceptosStore } from './stores/conceptosStore'
 import { useUiStore } from './stores/uiStore'
@@ -23,6 +24,10 @@ function Contenido(): JSX.Element {
 
   if (seccion === 'asistente') {
     return <AsistentePage />
+  }
+
+  if (seccion === 'terminal') {
+    return <TerminalPage />
   }
 
   if (seccion === 'asignaturas') {

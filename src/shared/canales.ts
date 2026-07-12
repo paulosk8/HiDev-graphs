@@ -53,8 +53,16 @@ export const CANALES = {
   reindexar: 'sistema:reindexar',
   respaldar: 'sistema:respaldar',
 
+  // Terminal embebida
+  terminalCrear: 'terminal:crear',
+  terminalEscribir: 'terminal:escribir',
+  terminalRedimensionar: 'terminal:redimensionar',
+  terminalCerrar: 'terminal:cerrar',
+
   // Eventos push (main -> renderer)
-  vaultCambiado: 'vault:cambiado'
+  vaultCambiado: 'vault:cambiado',
+  terminalDatos: 'terminal:datos',
+  terminalSalida: 'terminal:salida'
 } as const
 
 export type Canal = (typeof CANALES)[keyof typeof CANALES]

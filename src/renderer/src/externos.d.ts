@@ -7,4 +7,6 @@ declare module 'cytoscape-fcose' {
 interface Window {
   /** Handle de depuración de la instancia de Cytoscape del mapa de conceptos. */
   __cy?: import('cytoscape').Core
+  /** Handle de depuración de la terminal (xterm). */
+  __term?: import('@xterm/xterm').Terminal
 }

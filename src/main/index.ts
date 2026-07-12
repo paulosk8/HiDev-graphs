@@ -2,6 +2,7 @@ import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { inicializarServicios, type Servicios } from './servicios'
 import { registrarHandlersIpc } from './ipc/registrarHandlers'
+import { registrarHandlersTerminal, cerrarTerminal } from './ipc/terminal'
 import { IndexSyncService } from './infrastructure/IndexSyncService'
 import {
   habilitarProtocoloRecurso,
@@ -61,6 +62,7 @@ app.whenReady().then(() => {
   // Inicializa el núcleo (vault + índice) y registra la API IPC antes de la ventana.
   servicios = inicializarServicios()
   registrarHandlersIpc(servicios)
+  registrarHandlersTerminal()
   habilitarProtocoloRecurso(servicios.vault)
 
   createWindow()
@@ -86,7 +88,8 @@ app.on('window-all-closed', () => {
 })
 
 app.on('will-quit', () => {
-  // Detiene el observador y cierra la conexión del índice de forma ordenada.
+  // Detiene el observador, el terminal y cierra la conexión del índice.
   void sincronizador?.detener()
+  cerrarTerminal()
   servicios?.repositorio.cerrar()
 })

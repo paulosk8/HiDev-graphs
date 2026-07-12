@@ -99,4 +99,14 @@ export interface PedagoGraphApi {
    * Devuelve una función para cancelar la suscripción.
    */
   onVaultCambiado(callback: () => void): () => void
+
+  // --- Terminal embebida ---
+  terminal: {
+    crear(cols: number, rows: number): Promise<void>
+    escribir(datos: string): void
+    redimensionar(cols: number, rows: number): void
+    cerrar(): void
+    onDatos(callback: (datos: string) => void): () => void
+    onSalida(callback: (codigo: number) => void): () => void
+  }
 }

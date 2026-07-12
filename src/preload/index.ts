@@ -58,6 +58,22 @@ const api: PedagoGraphApi = {
     const oyente = (): void => callback()
     ipcRenderer.on(CANALES.vaultCambiado, oyente)
     return () => ipcRenderer.removeListener(CANALES.vaultCambiado, oyente)
+  },
+  terminal: {
+    crear: (cols, rows) => ipcRenderer.invoke(CANALES.terminalCrear, cols, rows),
+    escribir: (datos) => ipcRenderer.send(CANALES.terminalEscribir, datos),
+    redimensionar: (cols, rows) => ipcRenderer.send(CANALES.terminalRedimensionar, cols, rows),
+    cerrar: () => ipcRenderer.send(CANALES.terminalCerrar),
+    onDatos: (callback) => {
+      const oyente = (_e: unknown, datos: string): void => callback(datos)
+      ipcRenderer.on(CANALES.terminalDatos, oyente)
+      return () => ipcRenderer.removeListener(CANALES.terminalDatos, oyente)
+    },
+    onSalida: (callback) => {
+      const oyente = (_e: unknown, codigo: number): void => callback(codigo)
+      ipcRenderer.on(CANALES.terminalSalida, oyente)
+      return () => ipcRenderer.removeListener(CANALES.terminalSalida, oyente)
+    }
   }
 }
 
