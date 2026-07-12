@@ -16,12 +16,9 @@ interface UiState {
   seccion: Seccion
   conceptoSeleccionadoId: string | null
   asignaturaSeleccionadaId: string | null
-  /** Visibilidad del menú lateral (se puede ocultar para ampliar el área de trabajo). */
-  sidebarVisible: boolean
   avisos: Aviso[]
 
   irASeccion: (seccion: Seccion) => void
-  alternarSidebar: () => void
   seleccionarConcepto: (id: string | null) => void
   seleccionarAsignatura: (id: string | null) => void
 
@@ -37,12 +34,10 @@ export const useUiStore = create<UiState>((set) => ({
   seccion: 'conceptos',
   conceptoSeleccionadoId: null,
   asignaturaSeleccionadaId: null,
-  sidebarVisible: true,
   avisos: [],
 
   irASeccion: (seccion) =>
     set({ seccion, conceptoSeleccionadoId: null, asignaturaSeleccionadaId: null }),
-  alternarSidebar: () => set((estado) => ({ sidebarVisible: !estado.sidebarVisible })),
   seleccionarConcepto: (id) => set({ conceptoSeleccionadoId: id }),
   seleccionarAsignatura: (id) => set({ asignaturaSeleccionadaId: id }),
 

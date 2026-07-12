@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { api } from '../lib/api'
 import { useAsignaturasStore } from '../stores/asignaturasStore'
 import { useConceptosStore } from '../stores/conceptosStore'
+import { useLayoutStore } from '../stores/layoutStore'
 import { useUiStore, type Seccion } from '../stores/uiStore'
 
 interface ItemProps {
@@ -9,25 +10,31 @@ interface ItemProps {
   etiqueta: string
   cuenta?: number
   icono: string
+  colapsada: boolean
 }
 
-function Item({ seccion, etiqueta, cuenta, icono }: ItemProps): JSX.Element {
+function Item({ seccion, etiqueta, cuenta, icono, colapsada }: ItemProps): JSX.Element {
   const activo = useUiStore((s) => s.seccion === seccion)
   const irASeccion = useUiStore((s) => s.irASeccion)
 
   return (
     <button
       onClick={() => irASeccion(seccion)}
-      className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition ${
-        activo ? 'bg-marca-50 text-marca-700' : 'text-slate-600 hover:bg-slate-100'
-      }`}
+      title={colapsada ? etiqueta : undefined}
+      className={`flex w-full items-center rounded-md text-sm font-medium transition ${
+        colapsada ? 'justify-center px-0 py-2.5' : 'gap-2.5 px-3 py-2'
+      } ${activo ? 'bg-marca-50 text-marca-700' : 'text-slate-600 hover:bg-slate-100'}`}
     >
       <span aria-hidden className="text-base">
         {icono}
       </span>
-      <span className="flex-1 text-left">{etiqueta}</span>
-      {cuenta !== undefined && (
-        <span className={`text-xs ${activo ? 'text-marca-500' : 'text-slate-400'}`}>{cuenta}</span>
+      {!colapsada && (
+        <>
+          <span className="flex-1 text-left">{etiqueta}</span>
+          {cuenta !== undefined && (
+            <span className={`text-xs ${activo ? 'text-marca-500' : 'text-slate-400'}`}>{cuenta}</span>
+          )}
+        </>
       )}
     </button>
   )
@@ -40,8 +47,8 @@ export function Sidebar(): JSX.Element {
   const cargarAsignaturas = useAsignaturasStore((s) => s.cargar)
   const notificar = useUiStore((s) => s.notificar)
   const notificarError = useUiStore((s) => s.notificarError)
-  const sidebarVisible = useUiStore((s) => s.sidebarVisible)
-  const alternarSidebar = useUiStore((s) => s.alternarSidebar)
+  const colapsada = useLayoutStore((s) => s.sidebarColapsada)
+  const alternar = useLayoutStore((s) => s.alternarSidebar)
   const [actualizando, setActualizando] = useState(false)
   const [respaldando, setRespaldando] = useState(false)
 
@@ -75,66 +82,73 @@ export function Sidebar(): JSX.Element {
     }
   }
 
-  // Colapsado: solo un botón flotante para volver a mostrar el menú (disponible
-  // en cualquier sección, así nunca se pierde la navegación).
-  if (!sidebarVisible) {
-    return (
-      <button
-        onClick={alternarSidebar}
-        title="Mostrar el menú"
-        className="fixed left-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50"
-      >
-        ☰
-      </button>
-    )
-  }
-
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r border-slate-200 bg-slate-50 p-4">
-      <div className="mb-8 flex items-center gap-2 px-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-marca-600 text-sm font-bold text-white">
+    <aside
+      className={`flex shrink-0 flex-col border-r border-slate-200 bg-slate-50 p-3 transition-all ${
+        colapsada ? 'w-16 items-center' : 'w-64 p-4'
+      }`}
+    >
+      <div className={`mb-8 flex items-center ${colapsada ? 'justify-center' : 'gap-2 px-2'}`}>
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-marca-600 text-sm font-bold text-white">
           P
         </div>
-        <span className="text-lg font-semibold text-slate-800">PedagoGraph</span>
-        <button
-          onClick={alternarSidebar}
-          title="Ocultar el menú"
-          className="ml-auto flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-200 hover:text-slate-600"
-        >
-          «
-        </button>
+        {!colapsada && (
+          <>
+            <span className="text-lg font-semibold text-slate-800">PedagoGraph</span>
+            <button
+              onClick={alternar}
+              title="Contraer el menú"
+              className="ml-auto flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-200 hover:text-slate-600"
+            >
+              «
+            </button>
+          </>
+        )}
       </div>
 
-      <nav className="space-y-1">
-        <Item seccion="asignaturas" etiqueta="Mis asignaturas" cuenta={totalAsignaturas} icono="🎓" />
-        <Item seccion="conceptos" etiqueta="Conceptos" cuenta={totalConceptos} icono="💡" />
-        <Item seccion="grafo" etiqueta="Mapa de conceptos" icono="🕸️" />
-        <Item seccion="asistente" etiqueta="Asistente IA" icono="🤖" />
-        <Item seccion="terminal" etiqueta="Terminal" icono="⌨️" />
+      {colapsada && (
+        <button
+          onClick={alternar}
+          title="Expandir el menú"
+          className="mb-3 flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-200 hover:text-slate-600"
+        >
+          »
+        </button>
+      )}
+
+      <nav className="w-full space-y-1">
+        <Item seccion="asignaturas" etiqueta="Mis asignaturas" cuenta={colapsada ? undefined : totalAsignaturas} icono="🎓" colapsada={colapsada} />
+        <Item seccion="conceptos" etiqueta="Conceptos" cuenta={colapsada ? undefined : totalConceptos} icono="💡" colapsada={colapsada} />
+        <Item seccion="grafo" etiqueta="Mapa de conceptos" icono="🕸️" colapsada={colapsada} />
+        <Item seccion="asistente" etiqueta="Asistente IA" icono="🤖" colapsada={colapsada} />
       </nav>
 
-      <div className="mt-auto space-y-2">
+      <div className="mt-auto w-full space-y-2">
         <button
           onClick={() => void actualizar()}
           disabled={actualizando}
           title="Vuelve a leer tu material y asignaturas desde el disco"
-          className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-slate-500 transition hover:bg-slate-100 disabled:opacity-50"
+          className={`flex w-full items-center rounded-md text-sm text-slate-500 transition hover:bg-slate-100 disabled:opacity-50 ${
+            colapsada ? 'justify-center px-0 py-2.5' : 'gap-2 px-3 py-2'
+          }`}
         >
           <span aria-hidden className={actualizando ? 'animate-spin' : ''}>
             ↻
           </span>
-          {actualizando ? 'Actualizando…' : 'Actualizar'}
+          {!colapsada && (actualizando ? 'Actualizando…' : 'Actualizar')}
         </button>
         <button
           onClick={() => void respaldar()}
           disabled={respaldando}
           title="Guarda todo tu material y asignaturas en un solo archivo, por seguridad"
-          className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-slate-500 transition hover:bg-slate-100 disabled:opacity-50"
+          className={`flex w-full items-center rounded-md text-sm text-slate-500 transition hover:bg-slate-100 disabled:opacity-50 ${
+            colapsada ? 'justify-center px-0 py-2.5' : 'gap-2 px-3 py-2'
+          }`}
         >
           <span aria-hidden>💾</span>
-          {respaldando ? 'Guardando…' : 'Copia de seguridad'}
+          {!colapsada && (respaldando ? 'Guardando…' : 'Copia de seguridad')}
         </button>
-        <div className="px-2 text-xs text-slate-400">PedagoGraph · versión 0.1.0</div>
+        {!colapsada && <div className="px-2 text-xs text-slate-400">PedagoGraph · versión 0.1.0</div>}
       </div>
     </aside>
   )

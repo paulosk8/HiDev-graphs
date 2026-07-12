@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import cytoscape from 'cytoscape'
 import fcose from 'cytoscape-fcose'
 import {
@@ -15,6 +15,7 @@ import { TerminalEmbebida } from '../terminal/TerminalEmbebida'
 import { api } from '../../lib/api'
 import { useConceptosStore } from '../../stores/conceptosStore'
 import { useUiStore } from '../../stores/uiStore'
+import { useLayoutStore } from '../../stores/layoutStore'
 
 cytoscape.use(fcose)
 
@@ -31,12 +32,6 @@ const ETIQUETA_ARISTA: Record<string, string> = Object.fromEntries(TIPOS_ARISTA.
 const PALETA = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#0ea5e9', '#a855f7']
 
 const truncar = (s: string, n = 22): string => (s.length > n ? `${s.slice(0, n - 1)}…` : s)
-
-/** Clases de un botón de toggle: resaltado cuando el estado difiere del habitual. */
-const clsToggle = (activo: boolean): string =>
-  activo
-    ? 'border-marca-300 bg-marca-50 text-marca-700'
-    : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
 
 const ESTILO: cytoscape.StylesheetStyle[] = [
   {
@@ -111,16 +106,55 @@ function relacionadosDe(grafo: GrafoDTO, conceptoId: string): { id: string; etiq
   return [...vistos.values()]
 }
 
-/** Redacta una instrucción lista para pegar en el CLI de IA (usa las tools MCP). */
-function construirInstruccion(concepto: string, relacionados: string[], temas: string[]): string {
-  const lista = [concepto, ...relacionados].map((c) => `"${c}"`).join(', ')
-  const sobreTemas = temas.length > 0 ? ` Céntrate en estos temas: ${temas.join('; ')}.` : ''
-  return (
-    `Usando las herramientas de PedagoGraph (MCP), prepara una tarea que integre los conceptos ${lista}. ` +
-    `Primero consulta dónde se usan (usos_de_concepto) y su material (leer_material), ` +
-    `y luego redacta las instrucciones de la tarea para los temas relacionados.${sobreTemas}`
-  )
+/** Plantillas de prompt para el CLI de IA, rellenadas con la selección actual. */
+interface Plantilla {
+  clave: string
+  titulo: string
+  resumen: string
+  construir: (conceptos: string[], temas: string[]) => string
 }
+
+function listaConceptos(conceptos: string[]): string {
+  return conceptos.length === 0 ? 'los conceptos seleccionados' : conceptos.map((c) => `"${c}"`).join(', ')
+}
+function fraseTemas(temas: string[]): string {
+  return temas.length > 0 ? ` Céntrate en estos temas: ${temas.join('; ')}.` : ''
+}
+
+const PLANTILLAS: Plantilla[] = [
+  {
+    clave: 'tarea',
+    titulo: 'Tarea integradora',
+    resumen: 'Una tarea que integre los conceptos relacionados y su material.',
+    construir: (c, t) =>
+      `Usando las herramientas de PedagoGraph (MCP), crea una tarea que integre ${listaConceptos(c)}. ` +
+      `Consulta dónde se usan (usos_de_concepto) y su material (leer_material) y redacta las instrucciones.${fraseTemas(t)}`
+  },
+  {
+    clave: 'recurso',
+    titulo: 'Recurso didáctico',
+    resumen: 'Una guía, resumen o ejercicios que conecte los temas relacionados.',
+    construir: (c, t) =>
+      `Con el material de ${listaConceptos(c)} (usa leer_material), propón un recurso didáctico ` +
+      `(guía, resumen o ejercicios) que conecte los temas relacionados y devuélvelo en Markdown.${fraseTemas(t)}`
+  },
+  {
+    clave: 'multi',
+    titulo: 'Actividad multi-asignatura',
+    resumen: 'Una actividad reutilizable entre las asignaturas que comparten estos conceptos.',
+    construir: (c) =>
+      `Revisa dónde se usan ${listaConceptos(c)} (usos_de_concepto y cruces_entre_asignaturas) y diseña ` +
+      `una actividad que pueda reutilizarse en las distintas asignaturas y períodos que los comparten.`
+  },
+  {
+    clave: 'evaluacion',
+    titulo: 'Preguntas de evaluación',
+    resumen: 'Preguntas con sus respuestas a partir del material.',
+    construir: (c, t) =>
+      `A partir del material de ${listaConceptos(c)} (usa leer_material), genera preguntas de evaluación ` +
+      `con sus respuestas.${fraseTemas(t)}`
+  }
+]
 
 export function GrafoPage(): JSX.Element {
   const [grafo, setGrafo] = useState<GrafoDTO | null>(null)
@@ -130,19 +164,24 @@ export function GrafoPage(): JSX.Element {
   const [modalId, setModalId] = useState<string | null>(null)
   const [detalle, setDetalle] = useState<FichaConceptoDTO | null>(null)
   const [tooltip, setTooltip] = useState<{ x: number; y: number; texto: string } | null>(null)
-  const [mostrarTerminal, setMostrarTerminal] = useState(false)
-  const [panelVisible, setPanelVisible] = useState(true)
   const [usosSel, setUsosSel] = useState<UsoDeConceptoDTO[]>([])
+  const [modalPrompt, setModalPrompt] = useState(false)
+  const [comando, setComando] = useState('')
   const [copiado, setCopiado] = useState(false)
+  const [alturaDrag, setAlturaDrag] = useState<number | null>(null)
   const contenedor = useRef<HTMLDivElement>(null)
   const cyRef = useRef<cytoscape.Core | null>(null)
+  const columnaRef = useRef<HTMLDivElement>(null)
 
   const notificarError = useUiStore((s) => s.notificarError)
   const irASeccion = useUiStore((s) => s.irASeccion)
   const seleccionarConcepto = useUiStore((s) => s.seleccionarConcepto)
-  const sidebarVisible = useUiStore((s) => s.sidebarVisible)
-  const alternarSidebar = useUiStore((s) => s.alternarSidebar)
   const cargarConceptos = useConceptosStore((s) => s.cargar)
+  const panelColapsado = useLayoutStore((s) => s.panelGrafoColapsado)
+  const alternarPanel = useLayoutStore((s) => s.alternarPanelGrafo)
+  const terminalAltura = useLayoutStore((s) => s.terminalAltura)
+  const setTerminalAltura = useLayoutStore((s) => s.setTerminalAltura)
+  const alternarTerminal = useLayoutStore((s) => s.alternarTerminal)
 
   useEffect(() => {
     api.obtenerGrafo().then(setGrafo).catch((e) => notificarError(e))
@@ -234,9 +273,9 @@ export function GrafoPage(): JSX.Element {
     api.obtenerFichaConcepto(modalId).then(setDetalle).catch((e) => notificarError(e))
   }, [modalId, notificarError])
 
-  // Temas donde se usa el concepto seleccionado (contexto para la instrucción de IA).
+  // Temas donde se usa el concepto seleccionado (contexto para los prompts de IA).
   useEffect(() => {
-    if (!mostrarTerminal || !seleccionado) {
+    if (!seleccionado) {
       setUsosSel([])
       return
     }
@@ -244,7 +283,7 @@ export function GrafoPage(): JSX.Element {
       .obtenerFichaConcepto(seleccionado)
       .then((f) => setUsosSel(f.usos))
       .catch(() => setUsosSel([]))
-  }, [mostrarTerminal, seleccionado])
+  }, [seleccionado])
 
   const alternarTipo = (t: TipoAristaGrafo): void =>
     setTipos((prev) => {
@@ -275,49 +314,62 @@ export function GrafoPage(): JSX.Element {
   const vacio = grafo !== null && grafo.nodos.length === 0
 
   const temasSel = useMemo(() => [...new Set(usosSel.map((u) => u.tema))], [usosSel])
-  const instruccion = useMemo(
-    () => (nombreSel ? construirInstruccion(nombreSel, relacionados.map((r) => r.etiqueta), temasSel) : ''),
-    [nombreSel, relacionados, temasSel]
+  const conceptosSel = useMemo(
+    () => (nombreSel ? [nombreSel, ...relacionados.map((r) => r.etiqueta)] : []),
+    [nombreSel, relacionados]
   )
 
-  const copiarInstruccion = (): void => {
-    if (!instruccion) return
-    void navigator.clipboard.writeText(instruccion)
+  const alturaTerminal = alturaDrag ?? terminalAltura
+  const terminalAbierta = alturaTerminal > 0
+
+  const abrirPrompt = (): void => {
+    if (!comando.trim()) setComando(PLANTILLAS[0].construir(conceptosSel, temasSel))
+    setModalPrompt(true)
+  }
+  const copiarComando = (): void => {
+    if (!comando.trim()) return
+    void navigator.clipboard.writeText(comando)
     setCopiado(true)
     setTimeout(() => setCopiado(false), 1500)
   }
-  const insertarEnTerminal = (): void => {
-    if (instruccion) window.api.terminal.escribir(instruccion)
+  const insertarComando = (): void => {
+    const txt = comando.trim()
+    if (!txt) return
+    const cerrada = terminalAltura === 0
+    if (cerrada) alternarTerminal() // abre la terminal si estaba cerrada
+    // Ctrl-U (\x15) limpia la línea actual del CLI antes de escribir, para que al
+    // cambiar de nodos el nuevo prompt reemplace al anterior en vez de acumularse.
+    const enviar = (): void => window.api.terminal.escribir('\x15' + txt)
+    if (cerrada) setTimeout(enviar, 700)
+    else enviar()
+    setModalPrompt(false)
+  }
+
+  const iniciarResize = (e: ReactMouseEvent): void => {
+    e.preventDefault()
+    const startY = e.clientY
+    const startH = terminalAltura
+    const colH = columnaRef.current?.clientHeight ?? 600
+    const maxH = Math.max(120, colH - 140)
+    let ultima = startH
+    const onMove = (ev: MouseEvent): void => {
+      ultima = Math.min(Math.max(startH + (startY - ev.clientY), 0), maxH)
+      setAlturaDrag(ultima)
+    }
+    const onUp = (): void => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+      setAlturaDrag(null)
+      setTerminalAltura(ultima)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
   }
 
   return (
     <div className="flex h-full flex-col">
       <header className="border-b border-slate-200 px-8 py-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-slate-900">Mapa de conceptos</h1>
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={alternarSidebar}
-              title={sidebarVisible ? 'Ocultar el menú lateral' : 'Mostrar el menú lateral'}
-              className={`rounded-lg border px-3 py-1.5 text-sm transition ${clsToggle(!sidebarVisible)}`}
-            >
-              ☰ Menú
-            </button>
-            <button
-              onClick={() => setPanelVisible((v) => !v)}
-              title={panelVisible ? 'Ocultar el panel de conceptos' : 'Mostrar el panel de conceptos'}
-              className={`rounded-lg border px-3 py-1.5 text-sm transition ${clsToggle(!panelVisible)}`}
-            >
-              ▤ Panel
-            </button>
-            <button
-              onClick={() => setMostrarTerminal((v) => !v)}
-              className={`rounded-lg border px-3 py-1.5 text-sm transition ${clsToggle(mostrarTerminal)}`}
-            >
-              ⌨ Terminal IA
-            </button>
-          </div>
-        </div>
+        <h1 className="text-2xl font-semibold text-slate-900">Mapa de conceptos</h1>
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
           {TIPOS_ARISTA.map((t) => (
             <button
@@ -335,8 +387,8 @@ export function GrafoPage(): JSX.Element {
       </header>
 
       <div className="flex min-h-0 flex-1">
-        {/* Columna izquierda: grafo arriba + terminal opcional abajo */}
-        <div className="flex min-h-0 flex-1 flex-col">
+        {/* Columna izquierda: grafo arriba + terminal redimensionable abajo */}
+        <div ref={columnaRef} className="flex min-h-0 flex-1 flex-col">
         {/* Grafo */}
         <div className="relative min-h-0 flex-1">
           {vacio ? (
@@ -363,63 +415,92 @@ export function GrafoPage(): JSX.Element {
           )}
         </div>
 
-        {/* Terminal embebida debajo del grafo (para lanzar el CLI de IA) */}
-        {mostrarTerminal && (
-          <div className="flex h-72 shrink-0 flex-col border-t border-slate-800 bg-slate-900">
-            <div className="flex items-center justify-between gap-3 border-b border-slate-800 px-4 py-2">
-              <div className="min-w-0">
-                {nombreSel ? (
-                  <>
-                    <p className="truncate text-xs text-slate-300">
-                      Tarea sobre <span className="font-semibold text-white">«{nombreSel}»</span>
-                      {relacionados.length > 0 && (
-                        <span className="text-slate-400"> + {relacionados.length} relacionados</span>
-                      )}
-                    </p>
-                    {temasSel.length > 0 && (
-                      <p className="mt-0.5 truncate text-[11px] text-slate-500">
-                        Temas: {temasSel.join(' · ')}
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-xs text-slate-400">
-                    Selecciona un concepto en el mapa para preparar una instrucción para la IA.
-                  </p>
-                )}
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <button
-                  onClick={copiarInstruccion}
-                  disabled={!instruccion}
-                  className="rounded-md border border-slate-600 px-2.5 py-1 text-xs text-slate-200 transition hover:bg-slate-800 disabled:opacity-40"
-                >
-                  {copiado ? '✓ Copiado' : 'Copiar instrucción'}
-                </button>
-                <button
-                  onClick={insertarEnTerminal}
-                  disabled={!instruccion}
-                  className="rounded-md bg-marca-600 px-2.5 py-1 text-xs font-medium text-white transition hover:bg-marca-500 disabled:opacity-40"
-                >
-                  Insertar en la terminal ↵
-                </button>
-              </div>
-            </div>
-            <TerminalEmbebida className="min-h-0 flex-1 p-2" />
+        {/* Asa/cabecera de la terminal: siempre visible; se arrastra para
+            redimensionar y su chevron abre/cierra. */}
+        <div
+          onMouseDown={iniciarResize}
+          title="Arrastra para cambiar el alto de la terminal"
+          className="flex shrink-0 cursor-ns-resize select-none items-center gap-2 border-t border-slate-700 bg-slate-800 px-3 py-1.5"
+        >
+          <span className="text-slate-500">⋯</span>
+          <button
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={alternarTerminal}
+            className="flex items-center gap-1 text-xs font-medium text-slate-200 transition hover:text-white"
+          >
+            <span>{terminalAbierta ? '⌄' : '⌃'}</span>⌨ Terminal IA
+          </button>
+          {nombreSel && (
+            <span className="truncate text-[11px] text-slate-400">
+              · {nombreSel}
+              {relacionados.length > 0 && ` +${relacionados.length}`}
+            </span>
+          )}
+          <button
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={abrirPrompt}
+            className="ml-auto rounded bg-marca-600 px-2 py-0.5 text-xs font-medium text-white transition hover:bg-marca-500"
+          >
+            💡 Prompts
+          </button>
+        </div>
+
+        {/* Contenido de la terminal (xterm), con la altura elegida */}
+        {terminalAbierta && (
+          <div style={{ height: alturaTerminal }} className="shrink-0 overflow-hidden bg-slate-900">
+            <TerminalEmbebida className="h-full w-full p-2" />
           </div>
         )}
         </div>
 
-        {/* Panel derecho: lista de nodos + relacionados */}
-        {panelVisible && (
+        {/* Panel derecho: colapsado (franja de puntos de color) o expandido (lista) */}
+        {panelColapsado ? (
+          <aside className="flex w-12 shrink-0 flex-col items-center border-l border-slate-200 bg-white py-3">
+            <button
+              onClick={alternarPanel}
+              title="Expandir el panel de conceptos"
+              className="mb-3 flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+            >
+              «
+            </button>
+            <div className="flex min-h-0 flex-1 flex-col items-center gap-2 overflow-y-auto">
+              {conceptos.map((c) => {
+                const id = c.id.slice(2)
+                const activo = id === seleccionado
+                const color = colorPorId.get(id)
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => setSeleccionado(id)}
+                    onDoubleClick={() => setModalId(id)}
+                    title={c.etiqueta}
+                    className="h-3.5 w-3.5 shrink-0 rounded-full transition"
+                    style={{
+                      backgroundColor: activo ? '#4338ca' : (color ?? '#cbd5e1'),
+                      outline: activo ? '2px solid #4338ca' : undefined,
+                      outlineOffset: 2
+                    }}
+                  />
+                )
+              })}
+            </div>
+          </aside>
+        ) : (
         <aside className="flex w-80 shrink-0 flex-col border-l border-slate-200 bg-white">
-          <div className="border-b border-slate-100 p-4">
+          <div className="flex items-center gap-2 border-b border-slate-100 p-4">
             <input
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
               placeholder="Buscar concepto…"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-marca-500 focus:ring-2 focus:ring-marca-100"
+              className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-marca-500 focus:ring-2 focus:ring-marca-100"
             />
+            <button
+              onClick={alternarPanel}
+              title="Contraer el panel"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+            >
+              »
+            </button>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto p-3">
@@ -544,6 +625,68 @@ export function GrafoPage(): JSX.Element {
           ) : (
             <p className="text-sm text-slate-400">Cargando…</p>
           )}
+        </Modal>
+      )}
+
+      {/* Modal para componer el prompt de la IA a partir de la selección */}
+      {modalPrompt && (
+        <Modal titulo="Prompts para la IA" ancho="lg" onCerrar={() => setModalPrompt(false)}>
+          <div className="space-y-4 text-sm">
+            <p className="text-xs text-slate-500">
+              {conceptosSel.length > 0 ? (
+                <>
+                  Contexto: <span className="font-medium text-slate-700">{conceptosSel.join(', ')}</span>
+                  {temasSel.length > 0 && <> · Temas: {temasSel.join(', ')}</>}
+                </>
+              ) : (
+                'Selecciona un concepto en el mapa para enlazar sus temas relacionados, o escribe tu propio prompt.'
+              )}
+            </p>
+
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Ejemplos (haz clic para usar)
+              </p>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {PLANTILLAS.map((p) => (
+                  <button
+                    key={p.clave}
+                    onClick={() => setComando(p.construir(conceptosSel, temasSel))}
+                    className="rounded-lg border border-slate-200 p-3 text-left transition hover:border-marca-300 hover:bg-marca-50"
+                  >
+                    <p className="font-medium text-slate-800">{p.titulo}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">{p.resumen}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <textarea
+              value={comando}
+              onChange={(e) => setComando(e.target.value)}
+              rows={5}
+              placeholder="Escribe tu prompt o elige un ejemplo…"
+              className="w-full rounded-lg border border-slate-300 p-3 text-sm outline-none focus:border-marca-500 focus:ring-2 focus:ring-marca-100"
+            />
+
+            <div className="flex items-center justify-between">
+              <button onClick={() => setComando('')} className="text-xs text-slate-500 hover:underline">
+                Limpiar
+              </button>
+              <div className="flex gap-2">
+                <Boton variante="secundario" onClick={copiarComando}>
+                  {copiado ? '✓ Copiado' : 'Copiar'}
+                </Boton>
+                <Boton variante="primario" onClick={insertarComando} disabled={!comando.trim()}>
+                  Insertar en la terminal
+                </Boton>
+              </div>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              «Insertar» limpia la línea actual y pega el prompt en la terminal; revísalo y pulsa Enter.
+              También puedes escribir directamente en la terminal.
+            </p>
+          </div>
         </Modal>
       )}
     </div>
