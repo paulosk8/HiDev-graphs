@@ -44,6 +44,18 @@ export interface PedagoGraphApi {
   crearAsignatura(datos: DatosAsignaturaDTO): Promise<Resultado<ResumenAsignaturaDTO>>
   eliminarAsignatura(id: string): Promise<Resultado<void>>
 
+  // --- Vínculos tema <-> concepto ---
+  vincularTemaConcepto(
+    asignaturaId: string,
+    temaId: string,
+    conceptoId: string
+  ): Promise<Resultado<AsignaturaDTO>>
+  desvincularTemaConcepto(
+    asignaturaId: string,
+    temaId: string,
+    conceptoId: string
+  ): Promise<Resultado<AsignaturaDTO>>
+
   // --- Sistema ---
   reindexar(): Promise<Resultado<ResultadoReindexadoDTO>>
 }

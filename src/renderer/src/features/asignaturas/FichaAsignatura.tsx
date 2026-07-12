@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { AsignaturaDTO } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
 import { DialogoConfirmacion } from '../../components/DialogoConfirmacion'
 import { api } from '../../lib/api'
 import { useAsignaturasStore } from '../../stores/asignaturasStore'
+import { useConceptosStore } from '../../stores/conceptosStore'
 import { useUiStore } from '../../stores/uiStore'
+import { BuscadorConceptos } from '../vinculos/BuscadorConceptos'
 
 interface Props {
   asignaturaId: string
@@ -14,10 +16,36 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
   const [asignatura, setAsignatura] = useState<AsignaturaDTO | null>(null)
   const [cargando, setCargando] = useState(true)
   const [confirmando, setConfirmando] = useState(false)
+  const [temaBuscador, setTemaBuscador] = useState<string | null>(null)
 
   const volver = useUiStore((s) => s.seleccionarAsignatura)
   const notificarError = useUiStore((s) => s.notificarError)
+  const notificar = useUiStore((s) => s.notificar)
   const eliminar = useAsignaturasStore((s) => s.eliminar)
+
+  const conceptos = useConceptosStore((s) => s.lista)
+  const nombrePorId = useMemo(
+    () => new Map(conceptos.map((c) => [c.id, c.nombre])),
+    [conceptos]
+  )
+
+  const vincular = async (temaId: string, conceptoId: string): Promise<void> => {
+    try {
+      setAsignatura(await api.vincularTemaConcepto(asignaturaId, temaId, conceptoId))
+      setTemaBuscador(null)
+      notificar({ tipo: 'exito', mensaje: 'Concepto vinculado al tema.' })
+    } catch (error) {
+      notificarError(error)
+    }
+  }
+
+  const desvincular = async (temaId: string, conceptoId: string): Promise<void> => {
+    try {
+      setAsignatura(await api.desvincularTemaConcepto(asignaturaId, temaId, conceptoId))
+    } catch (error) {
+      notificarError(error)
+    }
+  }
 
   const cargar = useCallback(async () => {
     setCargando(true)
@@ -102,25 +130,55 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
               {unidad.temas.length === 0 ? (
                 <p className="text-sm text-slate-400">Sin temas.</p>
               ) : (
-                <ul className="space-y-1.5">
+                <ul className="space-y-3">
                   {unidad.temas.map((tema) => (
-                    <li
-                      key={tema.id}
-                      className="flex items-center gap-2 text-sm text-slate-700"
-                    >
-                      <span className="text-slate-400">{tema.orden}.</span>
-                      <span>{tema.titulo}</span>
-                      {tema.semana !== null && (
-                        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500">
-                          Semana {tema.semana}
+                    <li key={tema.id} className="text-sm">
+                      <div className="flex items-center gap-2 text-slate-700">
+                        <span className="text-slate-400">{tema.orden}.</span>
+                        <span className="font-medium">{tema.titulo}</span>
+                        {tema.semana !== null && (
+                          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500">
+                            Semana {tema.semana}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Conceptos vinculados (puente) */}
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5 pl-5">
+                        {tema.conceptos.map((conceptoId) => (
+                          <span
+                            key={conceptoId}
+                            className="flex items-center gap-1 rounded-full bg-marca-50 py-0.5 pl-2.5 pr-1 text-xs text-marca-700"
+                          >
+                            {nombrePorId.get(conceptoId) ?? conceptoId}
+                            <button
+                              onClick={() => void desvincular(tema.id, conceptoId)}
+                              className="text-marca-400 hover:text-red-600"
+                              aria-label="Quitar concepto"
+                            >
+                              ✕
+                            </button>
+                          </span>
+                        ))}
+
+                        <span className="relative">
+                          <button
+                            onClick={() =>
+                              setTemaBuscador((actual) => (actual === tema.id ? null : tema.id))
+                            }
+                            className="rounded-full border border-dashed border-slate-300 px-2.5 py-0.5 text-xs text-slate-500 hover:border-marca-300 hover:text-marca-700"
+                          >
+                            + Vincular concepto
+                          </button>
+                          {temaBuscador === tema.id && (
+                            <BuscadorConceptos
+                              excluir={tema.conceptos}
+                              onSeleccionar={(conceptoId) => vincular(tema.id, conceptoId)}
+                              onCerrar={() => setTemaBuscador(null)}
+                            />
+                          )}
                         </span>
-                      )}
-                      {tema.conceptos.length > 0 && (
-                        <span className="rounded bg-marca-50 px-1.5 py-0.5 text-xs text-marca-700">
-                          {tema.conceptos.length}{' '}
-                          {tema.conceptos.length === 1 ? 'concepto' : 'conceptos'}
-                        </span>
-                      )}
+                      </div>
                     </li>
                   ))}
                 </ul>

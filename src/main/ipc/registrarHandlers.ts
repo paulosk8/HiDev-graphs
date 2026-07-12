@@ -13,6 +13,10 @@ import { eliminarMaterial } from '../application/EliminarMaterial'
 import { crearAsignatura } from '../application/CrearAsignatura'
 import { obtenerAsignatura } from '../application/ObtenerAsignatura'
 import { eliminarAsignatura } from '../application/EliminarAsignatura'
+import {
+  desvincularTemaConcepto,
+  vincularTemaConcepto
+} from '../application/VincularTemaConcepto'
 import { reindexarVault } from '../application/ReindexarVault'
 import type { Servicios } from '../servicios'
 
@@ -94,6 +98,18 @@ export function registrarHandlersIpc(servicios: Servicios): void {
 
   ipcMain.handle(CANALES.asignaturaEliminar, (_evento, id: string) =>
     envolver(() => eliminarAsignatura(servicios, id))
+  )
+
+  ipcMain.handle(
+    CANALES.temaVincularConcepto,
+    (_evento, asignaturaId: string, temaId: string, conceptoId: string) =>
+      envolver(() => vincularTemaConcepto(servicios, asignaturaId, temaId, conceptoId))
+  )
+
+  ipcMain.handle(
+    CANALES.temaDesvincularConcepto,
+    (_evento, asignaturaId: string, temaId: string, conceptoId: string) =>
+      envolver(() => desvincularTemaConcepto(servicios, asignaturaId, temaId, conceptoId))
   )
 
   ipcMain.handle(CANALES.reindexar, () => envolver(() => reindexarVault(vault, repositorio)))

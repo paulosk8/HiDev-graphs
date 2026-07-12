@@ -50,6 +50,14 @@ export class SqliteGraphRepository implements IGraphRepository {
     )
 
     const tx = this.db.transaction((c: Concepto) => {
+      // Idempotente: limpia lo que posee el concepto antes de reinsertar. No
+      // toca las aristas 'instancia' entrantes (tema -> concepto), que pertenecen
+      // a las asignaturas.
+      this.db.prepare('DELETE FROM resources WHERE concepto_id = ?').run(c.id)
+      this.db
+        .prepare("DELETE FROM edges WHERE origen_tipo = 'concepto' AND origen_id = ?")
+        .run(c.id)
+
       insertarNodo.run({ id: c.id, nombre: c.nombre })
       for (const r of c.recursos) {
         insertarRecurso.run({
@@ -78,6 +86,10 @@ export class SqliteGraphRepository implements IGraphRepository {
     )
 
     const tx = this.db.transaction((a: Asignatura) => {
+      // Idempotente: borra la jerarquía previa (incluidas aristas 'instancia'
+      // obsoletas al desvincular) antes de reinsertar la estructura actual.
+      this.borrarSubarbolAsignatura(a.id)
+
       insertarNodo.run({
         tipo: 'asignatura',
         id: a.id,
@@ -176,6 +188,16 @@ export class SqliteGraphRepository implements IGraphRepository {
   }
 
   eliminarAsignatura(asignaturaId: string): void {
+    const tx = this.db.transaction((aid: string) => this.borrarSubarbolAsignatura(aid))
+    tx(asignaturaId)
+  }
+
+  /**
+   * Borra del índice una asignatura y toda su jerarquía (unidades/temas/subtemas)
+   * con sus aristas ('contiene' e 'instancia' salientes de sus temas). No abre
+   * transacción propia: se invoca dentro de una.
+   */
+  private borrarSubarbolAsignatura(asignaturaId: string): void {
     const hijosDe = this.db.prepare('SELECT id FROM nodes WHERE padre_id = ? AND tipo = ?')
     const borrarAristas = this.db.prepare(
       'DELETE FROM edges WHERE origen_id = @id OR destino_id = @id'
@@ -184,28 +206,18 @@ export class SqliteGraphRepository implements IGraphRepository {
     const idsHijos = (padreId: string, tipo: string): string[] =>
       hijosDe.all(padreId, tipo).map((f) => (f as { id: string }).id)
 
-    const tx = this.db.transaction((aid: string) => {
-      const unidades = idsHijos(aid, 'unidad')
-      const temas = unidades.flatMap((u) => idsHijos(u, 'tema'))
-      const subtemas = temas.flatMap((t) => idsHijos(t, 'subtema'))
+    const unidades = idsHijos(asignaturaId, 'unidad')
+    const temas = unidades.flatMap((u) => idsHijos(u, 'tema'))
+    const subtemas = temas.flatMap((t) => idsHijos(t, 'subtema'))
 
-      for (const id of subtemas) {
-        borrarAristas.run({ id })
-        borrarNodo.run({ tipo: 'subtema', id })
-      }
-      for (const id of temas) {
-        // Incluye las aristas 'instancia' (tema -> concepto).
-        borrarAristas.run({ id })
-        borrarNodo.run({ tipo: 'tema', id })
-      }
-      for (const id of unidades) {
-        borrarAristas.run({ id })
-        borrarNodo.run({ tipo: 'unidad', id })
-      }
-      borrarAristas.run({ id: aid })
-      borrarNodo.run({ tipo: 'asignatura', id: aid })
-    })
-    tx(asignaturaId)
+    for (const id of [...subtemas, ...temas, ...unidades]) {
+      borrarAristas.run({ id })
+    }
+    for (const id of subtemas) borrarNodo.run({ tipo: 'subtema', id })
+    for (const id of temas) borrarNodo.run({ tipo: 'tema', id })
+    for (const id of unidades) borrarNodo.run({ tipo: 'unidad', id })
+    borrarAristas.run({ id: asignaturaId })
+    borrarNodo.run({ tipo: 'asignatura', id: asignaturaId })
   }
 
   // --- Consultas ---

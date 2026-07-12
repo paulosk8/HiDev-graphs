@@ -44,5 +44,9 @@ export const api = {
   obtenerAsignatura: (id: string) => desenvolver(window.api.obtenerAsignatura(id)),
   crearAsignatura: (datos: DatosAsignaturaDTO) => desenvolver(window.api.crearAsignatura(datos)),
   eliminarAsignatura: (id: string) => desenvolver(window.api.eliminarAsignatura(id)),
+  vincularTemaConcepto: (asignaturaId: string, temaId: string, conceptoId: string) =>
+    desenvolver(window.api.vincularTemaConcepto(asignaturaId, temaId, conceptoId)),
+  desvincularTemaConcepto: (asignaturaId: string, temaId: string, conceptoId: string) =>
+    desenvolver(window.api.desvincularTemaConcepto(asignaturaId, temaId, conceptoId)),
   reindexar: () => desenvolver(window.api.reindexar())
 }

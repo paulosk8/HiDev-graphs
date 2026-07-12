@@ -22,6 +22,10 @@ export const CANALES = {
   asignaturaCrear: 'asignatura:crear',
   asignaturaEliminar: 'asignatura:eliminar',
 
+  // Vínculos tema <-> concepto
+  temaVincularConcepto: 'tema:vincular-concepto',
+  temaDesvincularConcepto: 'tema:desvincular-concepto',
+
   // Sistema
   reindexar: 'sistema:reindexar'
 } as const
