@@ -210,6 +210,20 @@ export interface RespaldoDTO {
 }
 
 /** Datos para configurar el servidor MCP (asistente IA) en un CLI externo. */
+export type ClienteMcpId = 'gemini' | 'claude'
+
+/** Estado de un CLI de IA respecto al servidor MCP de PedagoGraph. */
+export interface ClienteMcpDTO {
+  id: ClienteMcpId
+  nombre: string
+  /** El CLI parece instalado/usado en este equipo. */
+  instalado: boolean
+  /** Ya tiene configurado el servidor «pedagograph». */
+  conectado: boolean
+  /** Archivo de configuración (informativo), cuando aplica. */
+  rutaConfig?: string
+}
+
 export interface McpInfoDTO {
   rutaServidor: string
   rutaVault: string
@@ -221,6 +235,8 @@ export interface McpInfoDTO {
   ejecutable: string
   /** true si el bundle del servidor ya está compilado (npm run build:mcp). */
   compilado: boolean
+  /** Estado de auto-conexión por cada CLI de IA soportado. */
+  clientes: ClienteMcpDTO[]
 }
 
 // --- Grafo (Fase 2) ---

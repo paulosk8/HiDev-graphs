@@ -48,6 +48,7 @@ export const CANALES = {
 
   // Asistente IA (MCP)
   mcpInfo: 'mcp:info',
+  mcpConectar: 'mcp:conectar',
 
   // Sistema
   reindexar: 'sistema:reindexar',

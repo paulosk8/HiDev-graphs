@@ -1,4 +1,5 @@
 import type {
+  ClienteMcpId,
   DatosAsignaturaDTO,
   DatosConceptoDTO,
   DatosTareaDTO,
@@ -83,6 +84,7 @@ export const api = {
     desenvolver(window.api.duplicarTarea(tareaId, destino)),
   obtenerGrafo: () => desenvolver(window.api.obtenerGrafo()),
   obtenerInfoMcp: () => desenvolver(window.api.obtenerInfoMcp()),
+  conectarMcp: (cli: ClienteMcpId) => desenvolver(window.api.conectarMcp(cli)),
   reindexar: () => desenvolver(window.api.reindexar()),
   respaldar: () => desenvolver(window.api.respaldar()),
   onVaultCambiado: (callback: () => void): (() => void) => window.api.onVaultCambiado(callback)

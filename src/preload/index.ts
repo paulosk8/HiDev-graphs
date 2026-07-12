@@ -52,6 +52,7 @@ const api: PedagoGraphApi = {
   duplicarTarea: (tareaId, destino) => ipcRenderer.invoke(CANALES.tareaDuplicar, tareaId, destino),
   obtenerGrafo: () => ipcRenderer.invoke(CANALES.grafoObtener),
   obtenerInfoMcp: () => ipcRenderer.invoke(CANALES.mcpInfo),
+  conectarMcp: (cli) => ipcRenderer.invoke(CANALES.mcpConectar, cli),
   reindexar: () => ipcRenderer.invoke(CANALES.reindexar),
   respaldar: () => ipcRenderer.invoke(CANALES.respaldar),
   onVaultCambiado: (callback) => {

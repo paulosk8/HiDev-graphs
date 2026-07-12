@@ -1,4 +1,5 @@
 import type {
+  ClienteMcpId,
   AsignaturaDTO,
   ConceptoDTO,
   CruceDTO,
@@ -89,6 +90,7 @@ export interface PedagoGraphApi {
 
   // --- Asistente IA (MCP) ---
   obtenerInfoMcp(): Promise<Resultado<McpInfoDTO>>
+  conectarMcp(cli: ClienteMcpId): Promise<Resultado<McpInfoDTO>>
 
   // --- Sistema ---
   reindexar(): Promise<Resultado<ResultadoReindexadoDTO>>

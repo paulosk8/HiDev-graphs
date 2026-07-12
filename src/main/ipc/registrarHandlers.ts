@@ -4,11 +4,14 @@ import { existsSync } from 'node:fs'
 
 import { CANALES } from '../../shared/canales'
 import type {
+  ClienteMcpId,
   DatosAsignaturaDTO,
   DatosConceptoDTO,
   DatosTareaDTO,
-  DuplicarTareaDTO
+  DuplicarTareaDTO,
+  McpInfoDTO
 } from '../../shared/dtos'
+import { conectarClienteMcp, detectarClientesMcp } from '../infrastructure/clientesMcp'
 import type { Resultado } from '../../shared/resultado'
 import { ErrorDeDominio } from '../domain/errores'
 import { crearConcepto } from '../application/CrearConcepto'
@@ -213,15 +216,26 @@ export function registrarHandlersIpc(servicios: Servicios): void {
 
   ipcMain.handle(CANALES.grafoObtener, () => envolver(() => obtenerGrafo(servicios)))
 
-  ipcMain.handle(CANALES.mcpInfo, () =>
+  const configMcp = (): { rutaServidor: string; rutaVault: string; ejecutable: string } => ({
+    rutaServidor: join(app.getAppPath(), 'out', 'mcp', 'pedagograph-mcp.mjs'),
+    rutaVault: vault.raiz,
+    ejecutable: process.execPath
+  })
+  const infoMcp = (): McpInfoDTO => {
+    const cfg = configMcp()
+    return {
+      ...cfg,
+      compilado: existsSync(cfg.rutaServidor),
+      clientes: detectarClientesMcp()
+    }
+  }
+
+  ipcMain.handle(CANALES.mcpInfo, () => envolver(() => infoMcp()))
+
+  ipcMain.handle(CANALES.mcpConectar, (_e, cli: ClienteMcpId) =>
     envolver(() => {
-      const rutaServidor = join(app.getAppPath(), 'out', 'mcp', 'pedagograph-mcp.mjs')
-      return {
-        rutaServidor,
-        rutaVault: vault.raiz,
-        ejecutable: process.execPath,
-        compilado: existsSync(rutaServidor)
-      }
+      conectarClienteMcp(cli, configMcp())
+      return infoMcp()
     })
   )
 
