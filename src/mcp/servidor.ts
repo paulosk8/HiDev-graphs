@@ -12,6 +12,7 @@ import { z } from 'zod'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
+import { VaultFileSystemService } from '../main/infrastructure/VaultFileSystemService'
 import {
   buscarConceptos,
   cargarVault,
@@ -21,6 +22,9 @@ import {
   resumenGrafo,
   usosDeConcepto
 } from './consultas'
+import { extraerTexto } from './extraerTexto'
+
+const MAX_TEXTO = 8000
 
 const rutaVault = process.env.PEDAGOGRAPH_VAULT ?? join(homedir(), 'Documents', 'PedagoGraph')
 
@@ -86,6 +90,46 @@ server.registerTool(
   },
   async ({ asignaturaA, asignaturaB }) =>
     texto(crucesEntreAsignaturas(cargarVault(rutaVault), asignaturaA, asignaturaB))
+)
+
+server.registerTool(
+  'leer_material',
+  {
+    description:
+      'Extrae el TEXTO del material de un concepto (PDF, Word, PowerPoint, Markdown, HTML, XML) para razonar sobre su contenido y, p. ej., generar tareas. Si se indica `archivo`, solo ese; si no, todo el material del concepto.',
+    inputSchema: {
+      conceptoId: z.string().describe('Id (slug) del concepto'),
+      archivo: z.string().optional().describe('Nombre de archivo concreto (opcional)')
+    }
+  },
+  async ({ conceptoId, archivo }) => {
+    const datos = cargarVault(rutaVault)
+    const concepto = datos.conceptos.find((c) => c.id === conceptoId)
+    if (!concepto) return texto({ error: `No encontré el concepto "${conceptoId}".` })
+
+    const vault = new VaultFileSystemService(rutaVault)
+    const recursos = archivo
+      ? concepto.recursos.filter((r) => r.archivo === archivo)
+      : concepto.recursos
+
+    const materiales = []
+    for (const r of recursos) {
+      const ruta = vault.rutaRecurso(conceptoId, r.archivo)
+      if (ruta === null) continue
+      try {
+        const completo = await extraerTexto(ruta, r.formato)
+        materiales.push({
+          nombre: r.nombre,
+          formato: r.formato,
+          texto: completo.slice(0, MAX_TEXTO),
+          truncado: completo.length > MAX_TEXTO
+        })
+      } catch (error) {
+        materiales.push({ nombre: r.nombre, formato: r.formato, error: String(error) })
+      }
+    }
+    return texto({ concepto: concepto.nombre, materiales })
+  }
 )
 
 const transport = new StdioServerTransport()
