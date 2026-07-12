@@ -101,6 +101,8 @@ export function aResumenAsignaturaDTO(asignatura: Asignatura): ResumenAsignatura
     nombre: asignatura.nombre,
     periodos: [...asignatura.periodos],
     totalUnidades: asignatura.unidades.length,
-    totalTemas
+    totalTemas,
+    // Una asignatura recién creada aún no tiene tareas; el listado recalcula al recargar.
+    totalTareas: 0
   }
 }

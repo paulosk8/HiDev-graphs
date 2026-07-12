@@ -139,7 +139,19 @@ export function registrarHandlersIpc(servicios: Servicios): void {
     envolver(() => vault.leerTextoRecurso(conceptoId, archivo))
   )
 
-  ipcMain.handle(CANALES.asignaturasListar, () => envolver(() => repositorio.listarAsignaturas()))
+  ipcMain.handle(CANALES.asignaturasListar, () =>
+    envolver(() => {
+      // Las tareas no están en el índice (son por escaneo del vault): se cuentan aquí.
+      const tareasPorAsignatura = new Map<string, number>()
+      for (const t of vault.leerTodasTareas()) {
+        tareasPorAsignatura.set(t.asignaturaId, (tareasPorAsignatura.get(t.asignaturaId) ?? 0) + 1)
+      }
+      return repositorio.listarAsignaturas().map((a) => ({
+        ...a,
+        totalTareas: tareasPorAsignatura.get(a.id) ?? 0
+      }))
+    })
+  )
 
   ipcMain.handle(CANALES.asignaturaObtener, (_evento, id: string) =>
     envolver(() => obtenerAsignatura(servicios, id))

@@ -68,6 +68,7 @@ export interface ResumenAsignaturaDTO {
   periodos: string[]
   totalUnidades: number
   totalTemas: number
+  totalTareas: number
 }
 
 export interface ComponenteDTO {

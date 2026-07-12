@@ -94,7 +94,8 @@ export function ListaAsignaturas(): JSX.Element {
                     </span>
                     <span className="mt-1 text-xs text-slate-400">
                       {asig.totalUnidades} {asig.totalUnidades === 1 ? 'unidad' : 'unidades'} ·{' '}
-                      {asig.totalTemas} {asig.totalTemas === 1 ? 'tema' : 'temas'}
+                      {asig.totalTemas} {asig.totalTemas === 1 ? 'tema' : 'temas'} ·{' '}
+                      {asig.totalTareas} {asig.totalTareas === 1 ? 'tarea' : 'tareas'}
                     </span>
                   </button>
                 </li>
