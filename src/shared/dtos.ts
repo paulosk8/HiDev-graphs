@@ -164,6 +164,27 @@ export interface ResultadoAdjuntoDTO {
   ignorados: string[]
 }
 
+/**
+ * Cruce: un tema de OTRA asignatura que comparte un concepto con la tarea.
+ * Es la conexión por grafo que permite reutilizar el contenido entre periodos.
+ */
+export interface CruceDTO {
+  conceptoId: string
+  asignaturaId: string
+  asignatura: string
+  periodo: string
+  unidad: string
+  temaId: string
+  tema: string
+}
+
+/** Datos para duplicar una tarea en otra asignatura (reutilización). */
+export interface DuplicarTareaDTO {
+  asignaturaId: string
+  temas: string[]
+  titulo: string
+}
+
 /** Un lugar donde se usa un concepto: "Algoritmos 2026A › Unidad 1 › Tema 1". */
 export interface UsoDeConceptoDTO {
   asignaturaId: string

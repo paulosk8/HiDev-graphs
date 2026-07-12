@@ -2,7 +2,12 @@ import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { join } from 'node:path'
 
 import { CANALES } from '../../shared/canales'
-import type { DatosAsignaturaDTO, DatosConceptoDTO, DatosTareaDTO } from '../../shared/dtos'
+import type {
+  DatosAsignaturaDTO,
+  DatosConceptoDTO,
+  DatosTareaDTO,
+  DuplicarTareaDTO
+} from '../../shared/dtos'
 import type { Resultado } from '../../shared/resultado'
 import { ErrorDeDominio } from '../domain/errores'
 import { crearConcepto } from '../application/CrearConcepto'
@@ -21,6 +26,8 @@ import {
 import {
   agregarAdjuntoTarea,
   crearTarea,
+  crucesDeTarea,
+  duplicarTarea,
   editarTarea,
   eliminarAdjuntoTarea,
   eliminarTarea,
@@ -173,6 +180,12 @@ export function registrarHandlersIpc(servicios: Servicios): void {
   )
   ipcMain.handle(CANALES.tareaAdjuntoEliminar, (_e, tareaId: string, recursoId: string) =>
     envolver(() => eliminarAdjuntoTarea(servicios, tareaId, recursoId))
+  )
+  ipcMain.handle(CANALES.tareaCruces, (_e, tareaId: string) =>
+    envolver(() => crucesDeTarea(servicios, tareaId))
+  )
+  ipcMain.handle(CANALES.tareaDuplicar, (_e, tareaId: string, destino: DuplicarTareaDTO) =>
+    envolver(() => duplicarTarea(servicios, tareaId, destino))
   )
   ipcMain.handle(CANALES.tareaAdjuntoAbrir, (_e, tareaId: string, archivo: string) =>
     envolver(async () => {

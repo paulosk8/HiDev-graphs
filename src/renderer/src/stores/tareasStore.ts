@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { DatosTareaDTO, TareaDTO } from '@shared/dtos'
+import type { DatosTareaDTO, DuplicarTareaDTO, TareaDTO } from '@shared/dtos'
 import { api } from '../lib/api'
 import { useUiStore } from './uiStore'
 
@@ -11,6 +11,7 @@ interface TareasState {
   eliminar: (id: string, titulo: string) => Promise<boolean>
   agregarAdjunto: (id: string, rutas: string[]) => Promise<TareaDTO | null>
   eliminarAdjunto: (id: string, recursoId: string) => Promise<TareaDTO | null>
+  duplicar: (id: string, destino: DuplicarTareaDTO) => Promise<TareaDTO | null>
 }
 
 export const useTareasStore = create<TareasState>(() => ({
@@ -74,6 +75,17 @@ export const useTareasStore = create<TareasState>(() => ({
     try {
       const t = await api.eliminarAdjuntoTarea(id, recursoId)
       ui().notificar({ tipo: 'exito', mensaje: 'Adjunto eliminado.' })
+      return t
+    } catch (error) {
+      ui().notificarError(error)
+      return null
+    }
+  },
+
+  duplicar: async (id, destino) => {
+    try {
+      const t = await api.duplicarTarea(id, destino)
+      ui().notificar({ tipo: 'exito', mensaje: `Tarea duplicada como «${t.titulo}».` })
       return t
     } catch (error) {
       ui().notificarError(error)

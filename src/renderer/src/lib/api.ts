@@ -1,4 +1,9 @@
-import type { DatosAsignaturaDTO, DatosConceptoDTO, DatosTareaDTO } from '@shared/dtos'
+import type {
+  DatosAsignaturaDTO,
+  DatosConceptoDTO,
+  DatosTareaDTO,
+  DuplicarTareaDTO
+} from '@shared/dtos'
 import type { ErrorAmigable, Resultado } from '@shared/resultado'
 
 /**
@@ -69,6 +74,9 @@ export const api = {
     desenvolver(window.api.eliminarAdjuntoTarea(tareaId, recursoId)),
   abrirAdjuntoTarea: (tareaId: string, archivo: string) =>
     desenvolver(window.api.abrirAdjuntoTarea(tareaId, archivo)),
+  crucesDeTarea: (tareaId: string) => desenvolver(window.api.crucesDeTarea(tareaId)),
+  duplicarTarea: (tareaId: string, destino: DuplicarTareaDTO) =>
+    desenvolver(window.api.duplicarTarea(tareaId, destino)),
   reindexar: () => desenvolver(window.api.reindexar()),
   respaldar: () => desenvolver(window.api.respaldar()),
   onVaultCambiado: (callback: () => void): (() => void) => window.api.onVaultCambiado(callback)

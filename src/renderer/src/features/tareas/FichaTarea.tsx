@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { marked } from 'marked'
-import type { AsignaturaDTO, RecursoDTO, TareaDTO } from '@shared/dtos'
+import type { AsignaturaDTO, CruceDTO, RecursoDTO, TareaDTO } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
 import { DialogoConfirmacion } from '../../components/DialogoConfirmacion'
 import { api } from '../../lib/api'
 import { useTareasStore } from '../../stores/tareasStore'
 import { useUiStore } from '../../stores/uiStore'
 import { FormularioTarea } from './FormularioTarea'
+import { DuplicarTareaDialog } from './DuplicarTareaDialog'
 
 interface Props {
   tareaId: string
@@ -21,6 +22,11 @@ export function FichaTarea({ tareaId, onCerrar, onCambiada }: Props): JSX.Elemen
   const [editando, setEditando] = useState(false)
   const [confirmando, setConfirmando] = useState(false)
   const [adjEliminar, setAdjEliminar] = useState<RecursoDTO | null>(null)
+  const [cruces, setCruces] = useState<CruceDTO[]>([])
+  const [duplicando, setDuplicando] = useState<{
+    asignaturaIdInicial?: string
+    temasSugeridos?: string[]
+  } | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const notificarError = useUiStore((s) => s.notificarError)
@@ -37,9 +43,18 @@ export function FichaTarea({ tareaId, onCerrar, onCambiada }: Props): JSX.Elemen
     }
   }, [tareaId, notificarError, onCerrar])
 
+  const cargarCruces = useCallback(async () => {
+    try {
+      setCruces(await api.crucesDeTarea(tareaId))
+    } catch {
+      setCruces([])
+    }
+  }, [tareaId])
+
   useEffect(() => {
     void cargar()
-  }, [cargar])
+    void cargarCruces()
+  }, [cargar, cargarCruces])
 
   useEffect(() => {
     const alPulsar = (e: KeyboardEvent): void => {
@@ -55,6 +70,22 @@ export function FichaTarea({ tareaId, onCerrar, onCambiada }: Props): JSX.Elemen
     asignatura.unidades.flatMap((u) => u.temas.map((t) => [t.id, t.titulo] as const))
   )
   const nombreComponente = asignatura.componentes.find((c) => c.clave === tarea.componente)?.nombre
+
+  const crucesPorAsig = new Map<
+    string,
+    { asignatura: string; periodo: string; temas: { temaId: string; tema: string; unidad: string }[] }
+  >()
+  for (const c of cruces) {
+    const g = crucesPorAsig.get(c.asignaturaId) ?? {
+      asignatura: c.asignatura,
+      periodo: c.periodo,
+      temas: []
+    }
+    if (!g.temas.some((t) => t.temaId === c.temaId)) {
+      g.temas.push({ temaId: c.temaId, tema: c.tema, unidad: c.unidad })
+    }
+    crucesPorAsig.set(c.asignaturaId, g)
+  }
 
   const descargar = (): void => {
     const blob = new Blob([tarea.instrucciones], { type: 'text/markdown;charset=utf-8' })
@@ -114,6 +145,9 @@ export function FichaTarea({ tareaId, onCerrar, onCambiada }: Props): JSX.Elemen
               ))}
             </div>
           </div>
+          <Boton variante="secundario" onClick={() => setDuplicando({})}>
+            Duplicar
+          </Boton>
           <Boton variante="secundario" onClick={() => setEditando(true)}>
             Editar
           </Boton>
@@ -197,6 +231,43 @@ export function FichaTarea({ tareaId, onCerrar, onCambiada }: Props): JSX.Elemen
               </ul>
             )}
           </div>
+
+          {/* Cruces con otras asignaturas (vía conceptos compartidos) */}
+          {crucesPorAsig.size > 0 && (
+            <div className="mt-8">
+              <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">
+                Este contenido también se usa en
+              </h3>
+              <div className="space-y-2">
+                {[...crucesPorAsig.entries()].map(([id, g]) => (
+                  <div
+                    key={id}
+                    className="flex items-start gap-3 rounded-lg border border-slate-200 px-4 py-3"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-slate-700">
+                        {g.asignatura} {g.periodo}
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        {g.temas.map((t) => `${t.unidad} › ${t.tema}`).join(' · ')}
+                      </p>
+                    </div>
+                    <Boton
+                      variante="secundario"
+                      onClick={() =>
+                        setDuplicando({
+                          asignaturaIdInicial: id,
+                          temasSugeridos: g.temas.map((t) => t.temaId)
+                        })
+                      }
+                    >
+                      Duplicar aquí
+                    </Boton>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -226,6 +297,15 @@ export function FichaTarea({ tareaId, onCerrar, onCambiada }: Props): JSX.Elemen
           textoConfirmar="Quitar"
           onConfirmar={quitarAdjunto}
           onCancelar={() => setAdjEliminar(null)}
+        />
+      )}
+      {duplicando && (
+        <DuplicarTareaDialog
+          tarea={tarea}
+          asignaturaIdInicial={duplicando.asignaturaIdInicial}
+          temasSugeridos={duplicando.temasSugeridos}
+          onCerrar={() => setDuplicando(null)}
+          onDuplicada={() => onCambiada()}
         />
       )}
     </div>,

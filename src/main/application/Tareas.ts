@@ -2,7 +2,9 @@ import { randomUUID } from 'node:crypto'
 import { basename, extname } from 'node:path'
 
 import type {
+  CruceDTO,
   DatosTareaDTO,
+  DuplicarTareaDTO,
   ResultadoAdjuntoDTO,
   ResumenTareaDTO,
   TareaDTO
@@ -143,6 +145,84 @@ export function agregarAdjuntoTarea(
 
   if (agregados > 0) vault.guardarTarea(tarea)
   return { tarea: aTareaDTO(tarea), agregados, ignorados }
+}
+
+/**
+ * Cruces de una tarea: temas de OTRAS asignaturas que comparten alguno de sus
+ * conceptos. Es la conexión por grafo que sugiere dónde reutilizarla.
+ */
+export function crucesDeTarea(servicios: Servicios, tareaId: string): CruceDTO[] {
+  const { vault, repositorio } = servicios
+  if (!vault.existeTarea(tareaId)) {
+    throw new ErrorDeDominio('No encontramos esa tarea.', 'Puede que ya se haya eliminado.')
+  }
+  const tarea = vault.leerTarea(tareaId)
+  const cruces: CruceDTO[] = []
+  const vistos = new Set<string>()
+
+  for (const conceptoId of tarea.conceptos) {
+    for (const uso of repositorio.usosDeConcepto(conceptoId)) {
+      if (uso.asignaturaId === tarea.asignaturaId) continue // excluye su propia asignatura
+      const clave = `${conceptoId}|${uso.temaId}`
+      if (vistos.has(clave)) continue
+      vistos.add(clave)
+      cruces.push({
+        conceptoId,
+        asignaturaId: uso.asignaturaId,
+        asignatura: uso.asignatura,
+        periodo: uso.periodo,
+        unidad: uso.unidad,
+        temaId: uso.temaId,
+        tema: uso.tema
+      })
+    }
+  }
+  return cruces
+}
+
+/**
+ * Duplica una tarea en otra asignatura para reutilizarla: copia instrucciones y
+ * adjuntos, re-deriva los conceptos según los temas destino y carga el
+ * componente original solo si la asignatura destino lo tiene.
+ */
+export function duplicarTarea(
+  servicios: Servicios,
+  tareaId: string,
+  destino: DuplicarTareaDTO
+): TareaDTO {
+  const { vault } = servicios
+  if (!vault.existeTarea(tareaId)) {
+    throw new ErrorDeDominio('No encontramos esa tarea.', 'Puede que ya se haya eliminado.')
+  }
+  const original = vault.leerTarea(tareaId)
+  const asignatura = exigirAsignatura(servicios, destino.asignaturaId)
+
+  const componente =
+    original.componente && asignatura.componentes.some((c) => c.clave === original.componente)
+      ? original.componente
+      : null
+
+  const id = slugUnico(destino.titulo, new Set(vault.listarIdsTareas()), 'tarea')
+  let copia = nuevaTarea({
+    id,
+    titulo: destino.titulo,
+    instrucciones: original.instrucciones,
+    asignaturaId: destino.asignaturaId,
+    temas: destino.temas,
+    componente,
+    conceptos: derivarConceptos(asignatura, destino.temas)
+  })
+
+  // Copia física de los adjuntos a la nueva tarea.
+  for (const recurso of original.recursos) {
+    const origen = vault.rutaAdjuntoTarea(original.id, recurso.archivo)
+    if (origen === null) continue
+    const { archivo, formato } = vault.copiarAdjuntoTarea(id, origen)
+    copia = agregarAdjunto(copia, crearRecurso({ id: randomUUID(), nombre: recurso.nombre, archivo, formato }))
+  }
+
+  vault.guardarTarea(copia)
+  return aTareaDTO(copia)
 }
 
 export function eliminarAdjuntoTarea(

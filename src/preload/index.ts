@@ -44,6 +44,8 @@ const api: PedagoGraphApi = {
     ipcRenderer.invoke(CANALES.tareaAdjuntoEliminar, tareaId, recursoId),
   abrirAdjuntoTarea: (tareaId, archivo) =>
     ipcRenderer.invoke(CANALES.tareaAdjuntoAbrir, tareaId, archivo),
+  crucesDeTarea: (tareaId) => ipcRenderer.invoke(CANALES.tareaCruces, tareaId),
+  duplicarTarea: (tareaId, destino) => ipcRenderer.invoke(CANALES.tareaDuplicar, tareaId, destino),
   reindexar: () => ipcRenderer.invoke(CANALES.reindexar),
   respaldar: () => ipcRenderer.invoke(CANALES.respaldar),
   onVaultCambiado: (callback) => {

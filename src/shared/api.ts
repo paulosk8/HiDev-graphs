@@ -1,9 +1,11 @@
 import type {
   AsignaturaDTO,
   ConceptoDTO,
+  CruceDTO,
   DatosAsignaturaDTO,
   DatosConceptoDTO,
   DatosTareaDTO,
+  DuplicarTareaDTO,
   FichaConceptoDTO,
   RespaldoDTO,
   ResultadoAdjuntoDTO,
@@ -75,6 +77,8 @@ export interface PedagoGraphApi {
   agregarAdjuntoTarea(tareaId: string, rutas: string[]): Promise<Resultado<ResultadoAdjuntoDTO>>
   eliminarAdjuntoTarea(tareaId: string, recursoId: string): Promise<Resultado<TareaDTO>>
   abrirAdjuntoTarea(tareaId: string, archivo: string): Promise<Resultado<void>>
+  crucesDeTarea(tareaId: string): Promise<Resultado<CruceDTO[]>>
+  duplicarTarea(tareaId: string, destino: DuplicarTareaDTO): Promise<Resultado<TareaDTO>>
 
   // --- Sistema ---
   reindexar(): Promise<Resultado<ResultadoReindexadoDTO>>

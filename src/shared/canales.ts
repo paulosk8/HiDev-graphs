@@ -38,6 +38,8 @@ export const CANALES = {
   tareaAdjuntoAgregar: 'tarea:adjunto-agregar',
   tareaAdjuntoEliminar: 'tarea:adjunto-eliminar',
   tareaAdjuntoAbrir: 'tarea:adjunto-abrir',
+  tareaCruces: 'tarea:cruces',
+  tareaDuplicar: 'tarea:duplicar',
 
   // Sistema
   reindexar: 'sistema:reindexar',
