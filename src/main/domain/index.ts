@@ -16,6 +16,7 @@ export * from './Subtema'
 export * from './Tema'
 export * from './Unidad'
 export * from './Asignatura'
+export * from './Tarea'
 
 export * from './lecturas'
 export * from './IGraphRepository'

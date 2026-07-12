@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { FichaConceptoDTO } from '@shared/dtos'
+import type { FichaConceptoDTO, ResumenTareaDTO } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
 import { DialogoConfirmacion } from '../../components/DialogoConfirmacion'
 import { api } from '../../lib/api'
+import { useAsignaturasStore } from '../../stores/asignaturasStore'
 import { useConceptosStore } from '../../stores/conceptosStore'
 import { useUiStore } from '../../stores/uiStore'
 import { FormularioConcepto } from './FormularioConcepto'
 import { ZonaMaterial } from './ZonaMaterial'
+import { FichaTarea } from '../tareas/FichaTarea'
 
 interface Props {
   conceptoId: string
@@ -17,10 +19,25 @@ export function FichaConcepto({ conceptoId }: Props): JSX.Element {
   const [cargando, setCargando] = useState(true)
   const [editando, setEditando] = useState(false)
   const [confirmando, setConfirmando] = useState(false)
+  const [tareas, setTareas] = useState<ResumenTareaDTO[]>([])
+  const [tareaAbierta, setTareaAbierta] = useState<string | null>(null)
 
   const volver = useUiStore((s) => s.seleccionarConcepto)
   const notificarError = useUiStore((s) => s.notificarError)
   const eliminar = useConceptosStore((s) => s.eliminar)
+  const asignaturas = useAsignaturasStore((s) => s.lista)
+
+  const cargarTareas = useCallback(async () => {
+    try {
+      setTareas(await api.listarTareasDeConcepto(conceptoId))
+    } catch {
+      /* no bloquea la ficha */
+    }
+  }, [conceptoId])
+
+  useEffect(() => {
+    void cargarTareas()
+  }, [cargarTareas])
 
   const cargar = useCallback(async () => {
     setCargando(true)
@@ -116,6 +133,43 @@ export function FichaConcepto({ conceptoId }: Props): JSX.Element {
           </ul>
         )}
       </section>
+
+      {/* Tareas basadas en este concepto */}
+      {tareas.length > 0 && (
+        <section className="mt-8">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">
+            Tareas basadas en este concepto
+          </h2>
+          <ul className="space-y-2">
+            {tareas.map((t) => {
+              const asig = asignaturas.find((a) => a.id === t.asignaturaId)
+              return (
+                <li key={t.id}>
+                  <button
+                    onClick={() => setTareaAbierta(t.id)}
+                    className="flex w-full items-center gap-2 rounded-lg border border-slate-200 px-4 py-2.5 text-left text-sm transition hover:border-marca-300 hover:shadow-sm"
+                  >
+                    <span className="flex-1 truncate font-medium text-slate-700">{t.titulo}</span>
+                    {asig && (
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+                        {asig.nombre} {asig.periodo}
+                      </span>
+                    )}
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      )}
+
+      {tareaAbierta && (
+        <FichaTarea
+          tareaId={tareaAbierta}
+          onCerrar={() => setTareaAbierta(null)}
+          onCambiada={() => void cargarTareas()}
+        />
+      )}
 
       {editando && (
         <FormularioConcepto

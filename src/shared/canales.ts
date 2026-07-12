@@ -28,6 +28,17 @@ export const CANALES = {
   temaVincularConcepto: 'tema:vincular-concepto',
   temaDesvincularConcepto: 'tema:desvincular-concepto',
 
+  // Tareas
+  tareasDeAsignatura: 'tareas:de-asignatura',
+  tareasDeConcepto: 'tareas:de-concepto',
+  tareaObtener: 'tarea:obtener',
+  tareaCrear: 'tarea:crear',
+  tareaEditar: 'tarea:editar',
+  tareaEliminar: 'tarea:eliminar',
+  tareaAdjuntoAgregar: 'tarea:adjunto-agregar',
+  tareaAdjuntoEliminar: 'tarea:adjunto-eliminar',
+  tareaAdjuntoAbrir: 'tarea:adjunto-abrir',
+
   // Sistema
   reindexar: 'sistema:reindexar',
   respaldar: 'sistema:respaldar',

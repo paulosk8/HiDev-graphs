@@ -27,6 +27,7 @@ export async function respaldarVault(servicios: Servicios, rutaDestino: string):
     zip.pipe(salida)
     if (existsSync(vault.dirConceptos)) zip.directory(vault.dirConceptos, 'conceptos')
     if (existsSync(vault.dirAsignaturas)) zip.directory(vault.dirAsignaturas, 'asignaturas')
+    if (existsSync(vault.dirTareas)) zip.directory(vault.dirTareas, 'tareas')
     void zip.finalize()
   })
 }

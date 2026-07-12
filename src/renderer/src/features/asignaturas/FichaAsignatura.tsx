@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { AsignaturaDTO } from '@shared/dtos'
+import type { AsignaturaDTO, ResumenTareaDTO } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
 import { DialogoConfirmacion } from '../../components/DialogoConfirmacion'
 import { api } from '../../lib/api'
@@ -7,6 +7,8 @@ import { useAsignaturasStore } from '../../stores/asignaturasStore'
 import { useConceptosStore } from '../../stores/conceptosStore'
 import { useUiStore } from '../../stores/uiStore'
 import { BuscadorConceptos } from '../vinculos/BuscadorConceptos'
+import { FormularioTarea } from '../tareas/FormularioTarea'
+import { FichaTarea } from '../tareas/FichaTarea'
 
 interface Props {
   asignaturaId: string
@@ -17,6 +19,21 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
   const [cargando, setCargando] = useState(true)
   const [confirmando, setConfirmando] = useState(false)
   const [temaBuscador, setTemaBuscador] = useState<string | null>(null)
+  const [tareas, setTareas] = useState<ResumenTareaDTO[]>([])
+  const [creandoTarea, setCreandoTarea] = useState(false)
+  const [tareaAbierta, setTareaAbierta] = useState<string | null>(null)
+
+  const cargarTareas = useCallback(async () => {
+    try {
+      setTareas(await api.listarTareasDeAsignatura(asignaturaId))
+    } catch {
+      /* los errores de carga de tareas no bloquean la ficha */
+    }
+  }, [asignaturaId])
+
+  useEffect(() => {
+    void cargarTareas()
+  }, [cargarTareas])
 
   const volver = useUiStore((s) => s.seleccionarAsignatura)
   const notificarError = useUiStore((s) => s.notificarError)
@@ -72,6 +89,15 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
   if (cargando || !asignatura) {
     return <p className="px-8 py-10 text-sm text-slate-400">Cargando…</p>
   }
+
+  const asig = asignatura
+  const gruposTareas = [
+    ...asig.componentes.map((c) => ({
+      etiqueta: `${c.clave} · ${c.nombre}`,
+      items: tareas.filter((t) => t.componente === c.clave)
+    })),
+    { etiqueta: 'General', items: tareas.filter((t) => !t.componente) }
+  ].filter((g) => g.items.length > 0)
 
   return (
     <div className="mx-auto max-w-3xl px-8 py-8">
@@ -187,6 +213,65 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
           ))}
         </div>
       </section>
+
+      {/* Tareas */}
+      <section className="mt-8">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Tareas</h2>
+          <Boton variante="secundario" onClick={() => setCreandoTarea(true)}>
+            + Nueva tarea
+          </Boton>
+        </div>
+
+        {tareas.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-400">
+            Aún no hay tareas. Crea una para un tema y, opcionalmente, un componente.
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {gruposTareas.map((grupo) => (
+              <div key={grupo.etiqueta}>
+                <p className="mb-1.5 text-xs font-semibold text-slate-400">{grupo.etiqueta}</p>
+                <ul className="space-y-1.5">
+                  {grupo.items.map((t) => (
+                    <li key={t.id}>
+                      <button
+                        onClick={() => setTareaAbierta(t.id)}
+                        className="flex w-full items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-left text-sm transition hover:border-marca-300 hover:shadow-sm"
+                      >
+                        <span className="flex-1 truncate font-medium text-slate-700">{t.titulo}</span>
+                        <span className="text-xs text-slate-400">
+                          {t.temas.length} {t.temas.length === 1 ? 'tema' : 'temas'}
+                          {t.totalAdjuntos > 0 ? ` · ${t.totalAdjuntos} adj.` : ''}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {creandoTarea && (
+        <FormularioTarea
+          asignatura={asig}
+          onCerrar={() => setCreandoTarea(false)}
+          onGuardada={(t) => {
+            void cargarTareas()
+            setTareaAbierta(t.id)
+          }}
+        />
+      )}
+
+      {tareaAbierta && (
+        <FichaTarea
+          tareaId={tareaAbierta}
+          onCerrar={() => setTareaAbierta(null)}
+          onCambiada={() => void cargarTareas()}
+        />
+      )}
 
       {confirmando && (
         <DialogoConfirmacion

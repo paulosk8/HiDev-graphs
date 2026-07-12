@@ -124,6 +124,46 @@ export interface DatosAsignaturaDTO {
   unidades: DatosUnidadDTO[]
 }
 
+// --- Tareas (capa transversal) ---
+
+export interface TareaDTO {
+  id: string
+  titulo: string
+  /** Instrucciones en Markdown. */
+  instrucciones: string
+  asignaturaId: string
+  temas: string[]
+  /** Clave del componente, o null si es una tarea general. */
+  componente: string | null
+  conceptos: string[]
+  recursos: RecursoDTO[]
+}
+
+export interface ResumenTareaDTO {
+  id: string
+  titulo: string
+  asignaturaId: string
+  temas: string[]
+  componente: string | null
+  totalAdjuntos: number
+}
+
+/** Datos para crear o editar una tarea. Los conceptos se derivan de sus temas. */
+export interface DatosTareaDTO {
+  titulo: string
+  instrucciones: string
+  asignaturaId: string
+  temas: string[]
+  componente: string | null
+}
+
+/** Resultado de adjuntar archivos a una tarea. */
+export interface ResultadoAdjuntoDTO {
+  tarea: TareaDTO
+  agregados: number
+  ignorados: string[]
+}
+
 /** Un lugar donde se usa un concepto: "Algoritmos 2026A › Unidad 1 › Tema 1". */
 export interface UsoDeConceptoDTO {
   asignaturaId: string

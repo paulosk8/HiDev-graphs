@@ -2,10 +2,13 @@ import type {
   AsignaturaDTO,
   ConceptoDTO,
   ResumenAsignaturaDTO,
-  ResumenConceptoDTO
+  ResumenConceptoDTO,
+  ResumenTareaDTO,
+  TareaDTO
 } from '../../shared/dtos'
 import type { Asignatura } from '../domain/Asignatura'
 import type { Concepto } from '../domain/Concepto'
+import type { Tarea } from '../domain/Tarea'
 
 /** Convierte un concepto del dominio en su DTO de detalle para la ficha. */
 export function aConceptoDTO(concepto: Concepto): ConceptoDTO {
@@ -52,6 +55,37 @@ export function aAsignaturaDTO(asignatura: Asignatura): AsignaturaDTO {
         conceptos: [...t.conceptos]
       }))
     }))
+  }
+}
+
+/** Detalle completo de una tarea. */
+export function aTareaDTO(tarea: Tarea): TareaDTO {
+  return {
+    id: tarea.id,
+    titulo: tarea.titulo,
+    instrucciones: tarea.instrucciones,
+    asignaturaId: tarea.asignaturaId,
+    temas: [...tarea.temas],
+    componente: tarea.componente,
+    conceptos: [...tarea.conceptos],
+    recursos: tarea.recursos.map((r) => ({
+      id: r.id,
+      nombre: r.nombre,
+      archivo: r.archivo,
+      formato: r.formato
+    }))
+  }
+}
+
+/** Resumen de una tarea para listados. */
+export function aResumenTareaDTO(tarea: Tarea): ResumenTareaDTO {
+  return {
+    id: tarea.id,
+    titulo: tarea.titulo,
+    asignaturaId: tarea.asignaturaId,
+    temas: [...tarea.temas],
+    componente: tarea.componente,
+    totalAdjuntos: tarea.recursos.length
   }
 }
 

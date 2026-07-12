@@ -1,4 +1,4 @@
-import type { DatosAsignaturaDTO, DatosConceptoDTO } from '@shared/dtos'
+import type { DatosAsignaturaDTO, DatosConceptoDTO, DatosTareaDTO } from '@shared/dtos'
 import type { ErrorAmigable, Resultado } from '@shared/resultado'
 
 /**
@@ -55,6 +55,20 @@ export const api = {
     desenvolver(window.api.vincularTemaConcepto(asignaturaId, temaId, conceptoId)),
   desvincularTemaConcepto: (asignaturaId: string, temaId: string, conceptoId: string) =>
     desenvolver(window.api.desvincularTemaConcepto(asignaturaId, temaId, conceptoId)),
+  listarTareasDeAsignatura: (asignaturaId: string) =>
+    desenvolver(window.api.listarTareasDeAsignatura(asignaturaId)),
+  listarTareasDeConcepto: (conceptoId: string) =>
+    desenvolver(window.api.listarTareasDeConcepto(conceptoId)),
+  obtenerTarea: (id: string) => desenvolver(window.api.obtenerTarea(id)),
+  crearTarea: (datos: DatosTareaDTO) => desenvolver(window.api.crearTarea(datos)),
+  editarTarea: (id: string, datos: DatosTareaDTO) => desenvolver(window.api.editarTarea(id, datos)),
+  eliminarTarea: (id: string) => desenvolver(window.api.eliminarTarea(id)),
+  agregarAdjuntoTarea: (tareaId: string, rutas: string[]) =>
+    desenvolver(window.api.agregarAdjuntoTarea(tareaId, rutas)),
+  eliminarAdjuntoTarea: (tareaId: string, recursoId: string) =>
+    desenvolver(window.api.eliminarAdjuntoTarea(tareaId, recursoId)),
+  abrirAdjuntoTarea: (tareaId: string, archivo: string) =>
+    desenvolver(window.api.abrirAdjuntoTarea(tareaId, archivo)),
   reindexar: () => desenvolver(window.api.reindexar()),
   respaldar: () => desenvolver(window.api.respaldar()),
   onVaultCambiado: (callback: () => void): (() => void) => window.api.onVaultCambiado(callback)

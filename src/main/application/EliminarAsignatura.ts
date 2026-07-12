@@ -13,6 +13,11 @@ export function eliminarAsignatura(servicios: Servicios, id: string): void {
     throw new ErrorDeDominio('No encontramos esa asignatura.', 'Puede que ya se haya eliminado.')
   }
 
+  // Borra también las tareas de esta asignatura (no dejan sentido sin ella).
+  for (const tarea of vault.leerTodasTareas()) {
+    if (tarea.asignaturaId === id) vault.eliminarTarea(tarea.id)
+  }
+
   vault.eliminarAsignatura(id)
   repositorio.eliminarAsignatura(id)
 }

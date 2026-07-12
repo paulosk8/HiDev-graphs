@@ -2,7 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { join } from 'node:path'
 
 import { CANALES } from '../../shared/canales'
-import type { DatosAsignaturaDTO, DatosConceptoDTO } from '../../shared/dtos'
+import type { DatosAsignaturaDTO, DatosConceptoDTO, DatosTareaDTO } from '../../shared/dtos'
 import type { Resultado } from '../../shared/resultado'
 import { ErrorDeDominio } from '../domain/errores'
 import { crearConcepto } from '../application/CrearConcepto'
@@ -18,6 +18,16 @@ import {
   desvincularTemaConcepto,
   vincularTemaConcepto
 } from '../application/VincularTemaConcepto'
+import {
+  agregarAdjuntoTarea,
+  crearTarea,
+  editarTarea,
+  eliminarAdjuntoTarea,
+  eliminarTarea,
+  listarTareasDeAsignatura,
+  listarTareasDeConcepto,
+  obtenerTarea
+} from '../application/Tareas'
 import { reindexarVault } from '../application/ReindexarVault'
 import { respaldarVault } from '../application/RespaldarVault'
 import type { RespaldoDTO } from '../../shared/dtos'
@@ -137,6 +147,42 @@ export function registrarHandlersIpc(servicios: Servicios): void {
     CANALES.temaDesvincularConcepto,
     (_evento, asignaturaId: string, temaId: string, conceptoId: string) =>
       envolver(() => desvincularTemaConcepto(servicios, asignaturaId, temaId, conceptoId))
+  )
+
+  // --- Tareas ---
+  ipcMain.handle(CANALES.tareasDeAsignatura, (_e, asignaturaId: string) =>
+    envolver(() => listarTareasDeAsignatura(servicios, asignaturaId))
+  )
+  ipcMain.handle(CANALES.tareasDeConcepto, (_e, conceptoId: string) =>
+    envolver(() => listarTareasDeConcepto(servicios, conceptoId))
+  )
+  ipcMain.handle(CANALES.tareaObtener, (_e, id: string) =>
+    envolver(() => obtenerTarea(servicios, id))
+  )
+  ipcMain.handle(CANALES.tareaCrear, (_e, datos: DatosTareaDTO) =>
+    envolver(() => crearTarea(servicios, datos))
+  )
+  ipcMain.handle(CANALES.tareaEditar, (_e, id: string, datos: DatosTareaDTO) =>
+    envolver(() => editarTarea(servicios, id, datos))
+  )
+  ipcMain.handle(CANALES.tareaEliminar, (_e, id: string) =>
+    envolver(() => eliminarTarea(servicios, id))
+  )
+  ipcMain.handle(CANALES.tareaAdjuntoAgregar, (_e, tareaId: string, rutas: string[]) =>
+    envolver(() => agregarAdjuntoTarea(servicios, tareaId, rutas))
+  )
+  ipcMain.handle(CANALES.tareaAdjuntoEliminar, (_e, tareaId: string, recursoId: string) =>
+    envolver(() => eliminarAdjuntoTarea(servicios, tareaId, recursoId))
+  )
+  ipcMain.handle(CANALES.tareaAdjuntoAbrir, (_e, tareaId: string, archivo: string) =>
+    envolver(async () => {
+      const ruta = vault.rutaAdjuntoTarea(tareaId, archivo)
+      if (ruta === null) {
+        throw new ErrorDeDominio('No encontramos ese adjunto.', 'Puede que se haya movido o eliminado.')
+      }
+      const error = await shell.openPath(ruta)
+      if (error) throw new ErrorDeDominio('No se pudo abrir el adjunto.', error)
+    })
   )
 
   ipcMain.handle(CANALES.reindexar, () => envolver(() => reindexarVault(vault, repositorio)))

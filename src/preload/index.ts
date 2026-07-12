@@ -31,6 +31,19 @@ const api: PedagoGraphApi = {
     ipcRenderer.invoke(CANALES.temaVincularConcepto, asignaturaId, temaId, conceptoId),
   desvincularTemaConcepto: (asignaturaId, temaId, conceptoId) =>
     ipcRenderer.invoke(CANALES.temaDesvincularConcepto, asignaturaId, temaId, conceptoId),
+  listarTareasDeAsignatura: (asignaturaId) =>
+    ipcRenderer.invoke(CANALES.tareasDeAsignatura, asignaturaId),
+  listarTareasDeConcepto: (conceptoId) => ipcRenderer.invoke(CANALES.tareasDeConcepto, conceptoId),
+  obtenerTarea: (id) => ipcRenderer.invoke(CANALES.tareaObtener, id),
+  crearTarea: (datos) => ipcRenderer.invoke(CANALES.tareaCrear, datos),
+  editarTarea: (id, datos) => ipcRenderer.invoke(CANALES.tareaEditar, id, datos),
+  eliminarTarea: (id) => ipcRenderer.invoke(CANALES.tareaEliminar, id),
+  agregarAdjuntoTarea: (tareaId, rutas) =>
+    ipcRenderer.invoke(CANALES.tareaAdjuntoAgregar, tareaId, rutas),
+  eliminarAdjuntoTarea: (tareaId, recursoId) =>
+    ipcRenderer.invoke(CANALES.tareaAdjuntoEliminar, tareaId, recursoId),
+  abrirAdjuntoTarea: (tareaId, archivo) =>
+    ipcRenderer.invoke(CANALES.tareaAdjuntoAbrir, tareaId, archivo),
   reindexar: () => ipcRenderer.invoke(CANALES.reindexar),
   respaldar: () => ipcRenderer.invoke(CANALES.respaldar),
   onVaultCambiado: (callback) => {

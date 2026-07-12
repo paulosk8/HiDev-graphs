@@ -7,6 +7,7 @@ import { crearConcepto, type Concepto } from '../domain/Concepto'
 import { crearRecurso } from '../domain/Recurso'
 import { crearRelacion } from '../domain/Relacion'
 import { crearSubtema } from '../domain/Subtema'
+import { crearTarea, type Tarea } from '../domain/Tarea'
 import { crearTema, type Tema } from '../domain/Tema'
 import { crearUnidad, type Unidad } from '../domain/Unidad'
 import {
@@ -39,6 +40,9 @@ export class VaultFileSystemService {
   get dirAsignaturas(): string {
     return join(this.rutaVault, 'asignaturas')
   }
+  get dirTareas(): string {
+    return join(this.rutaVault, 'tareas')
+  }
   get dirIndice(): string {
     return join(this.rutaVault, '.index')
   }
@@ -50,6 +54,7 @@ export class VaultFileSystemService {
   asegurarVault(): void {
     mkdirSync(this.dirConceptos, { recursive: true })
     mkdirSync(this.dirAsignaturas, { recursive: true })
+    mkdirSync(this.dirTareas, { recursive: true })
     mkdirSync(this.dirIndice, { recursive: true })
   }
 
@@ -115,7 +120,7 @@ export class VaultFileSystemService {
       throw new Error(`Formato de material no soportado: ${extname(rutaOrigen) || '(sin extensión)'}`)
     }
     mkdirSync(this.carpetaConcepto(conceptoId), { recursive: true })
-    const archivo = this.nombreArchivoLibre(conceptoId, basename(rutaOrigen))
+    const archivo = this.nombreLibreEn(this.carpetaConcepto(conceptoId), basename(rutaOrigen))
     copyFileSync(rutaOrigen, join(this.carpetaConcepto(conceptoId), archivo))
     return { archivo, formato }
   }
@@ -160,8 +165,8 @@ export class VaultFileSystemService {
     }
   }
 
-  private nombreArchivoLibre(conceptoId: string, deseado: string): string {
-    const carpeta = this.carpetaConcepto(conceptoId)
+  /** Nombre de archivo libre dentro de `carpeta` (añade -2, -3… si colisiona). */
+  private nombreLibreEn(carpeta: string, deseado: string): string {
     if (!existsSync(join(carpeta, deseado))) return deseado
 
     const ext = extname(deseado)
@@ -237,6 +242,97 @@ export class VaultFileSystemService {
       console.warn(`No se pudo leer la asignatura "${id}":`, error)
       return null
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Tareas (capa transversal)
+  // ---------------------------------------------------------------------------
+
+  carpetaTarea(id: string): string {
+    return join(this.dirTareas, id)
+  }
+  private rutaTarea(id: string): string {
+    return join(this.carpetaTarea(id), 'tarea.yaml')
+  }
+  private rutaInstrucciones(id: string): string {
+    return join(this.carpetaTarea(id), 'instrucciones.md')
+  }
+
+  existeTarea(id: string): boolean {
+    return existsSync(this.rutaTarea(id))
+  }
+
+  guardarTarea(tarea: Tarea): void {
+    mkdirSync(this.carpetaTarea(tarea.id), { recursive: true })
+    const plano = {
+      id: tarea.id,
+      titulo: tarea.titulo,
+      asignaturaId: tarea.asignaturaId,
+      temas: [...tarea.temas],
+      componente: tarea.componente,
+      conceptos: [...tarea.conceptos],
+      recursos: tarea.recursos.map((r) => ({
+        id: r.id,
+        nombre: r.nombre,
+        archivo: r.archivo,
+        formato: r.formato
+      }))
+    }
+    // Las instrucciones (Markdown) van en su propio archivo, legible y descargable.
+    writeFileSync(this.rutaTarea(tarea.id), yaml.dump(plano, { lineWidth: 100 }), 'utf8')
+    writeFileSync(this.rutaInstrucciones(tarea.id), tarea.instrucciones, 'utf8')
+  }
+
+  leerTarea(id: string): Tarea {
+    const datos = yaml.load(readFileSync(this.rutaTarea(id), 'utf8')) as Record<string, unknown>
+    const rutaMd = this.rutaInstrucciones(id)
+    const instrucciones = existsSync(rutaMd) ? readFileSync(rutaMd, 'utf8') : ''
+    return tareaDesdePlano(datos, instrucciones)
+  }
+
+  listarIdsTareas(): string[] {
+    return this.subcarpetasCon(this.dirTareas, 'tarea.yaml')
+  }
+
+  leerTodasTareas(): Tarea[] {
+    return this.listarIdsTareas()
+      .map((id) => {
+        try {
+          return this.leerTarea(id)
+        } catch (error) {
+          console.warn(`No se pudo leer la tarea "${id}":`, error)
+          return null
+        }
+      })
+      .filter((t): t is Tarea => t !== null)
+  }
+
+  eliminarTarea(id: string): void {
+    rmSync(this.carpetaTarea(id), { recursive: true, force: true })
+  }
+
+  /** Copia un adjunto dentro de la carpeta de la tarea. */
+  copiarAdjuntoTarea(tareaId: string, rutaOrigen: string): { archivo: string; formato: FormatoRecurso } {
+    const formato = formatoDesdeNombreArchivo(rutaOrigen)
+    if (formato === null) {
+      throw new Error(`Formato de adjunto no soportado: ${extname(rutaOrigen) || '(sin extensión)'}`)
+    }
+    mkdirSync(this.carpetaTarea(tareaId), { recursive: true })
+    const archivo = this.nombreLibreEn(this.carpetaTarea(tareaId), basename(rutaOrigen))
+    copyFileSync(rutaOrigen, join(this.carpetaTarea(tareaId), archivo))
+    return { archivo, formato }
+  }
+
+  eliminarArchivoAdjuntoTarea(tareaId: string, archivo: string): void {
+    const ruta = join(this.carpetaTarea(tareaId), archivo)
+    if (existsSync(ruta)) rmSync(ruta, { force: true })
+  }
+
+  /** Ruta absoluta validada de un adjunto de tarea (dentro del vault). */
+  rutaAdjuntoTarea(tareaId: string, archivo: string): string | null {
+    const abs = resolve(this.carpetaTarea(tareaId), archivo)
+    const base = resolve(this.dirTareas)
+    return abs === base || abs.startsWith(base + sep) ? abs : null
   }
 
   // ---------------------------------------------------------------------------
@@ -329,5 +425,33 @@ function asignaturaDesdePlano(datos: Record<string, unknown>): Asignatura {
     periodo: texto(datos.periodo),
     componentes,
     unidades
+  })
+}
+
+function tareaDesdePlano(datos: Record<string, unknown>, instrucciones: string): Tarea {
+  const listaTextos = (v: unknown): string[] =>
+    lista(v).map((x) => texto(x)).filter((x) => x.length > 0)
+
+  const recursos = lista(datos.recursos)
+    .map((r) => r as Record<string, unknown>)
+    .map((r) =>
+      crearRecurso({
+        id: texto(r.id),
+        nombre: texto(r.nombre),
+        archivo: texto(r.archivo),
+        formato: (formatoDesdeNombreArchivo(texto(r.archivo)) ?? texto(r.formato)) as FormatoRecurso
+      })
+    )
+
+  const componente = texto(datos.componente)
+  return crearTarea({
+    id: texto(datos.id),
+    titulo: texto(datos.titulo),
+    instrucciones,
+    asignaturaId: texto(datos.asignaturaId),
+    temas: listaTextos(datos.temas),
+    componente: componente.length > 0 ? componente : null,
+    conceptos: listaTextos(datos.conceptos),
+    recursos
   })
 }

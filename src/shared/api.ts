@@ -3,12 +3,16 @@ import type {
   ConceptoDTO,
   DatosAsignaturaDTO,
   DatosConceptoDTO,
+  DatosTareaDTO,
   FichaConceptoDTO,
   RespaldoDTO,
+  ResultadoAdjuntoDTO,
   ResultadoMaterialDTO,
   ResultadoReindexadoDTO,
   ResumenAsignaturaDTO,
   ResumenConceptoDTO,
+  ResumenTareaDTO,
+  TareaDTO,
   UsoDeConceptoDTO
 } from './dtos'
 import type { Resultado } from './resultado'
@@ -60,6 +64,17 @@ export interface PedagoGraphApi {
     temaId: string,
     conceptoId: string
   ): Promise<Resultado<AsignaturaDTO>>
+
+  // --- Tareas ---
+  listarTareasDeAsignatura(asignaturaId: string): Promise<Resultado<ResumenTareaDTO[]>>
+  listarTareasDeConcepto(conceptoId: string): Promise<Resultado<ResumenTareaDTO[]>>
+  obtenerTarea(id: string): Promise<Resultado<TareaDTO>>
+  crearTarea(datos: DatosTareaDTO): Promise<Resultado<TareaDTO>>
+  editarTarea(id: string, datos: DatosTareaDTO): Promise<Resultado<TareaDTO>>
+  eliminarTarea(id: string): Promise<Resultado<void>>
+  agregarAdjuntoTarea(tareaId: string, rutas: string[]): Promise<Resultado<ResultadoAdjuntoDTO>>
+  eliminarAdjuntoTarea(tareaId: string, recursoId: string): Promise<Resultado<TareaDTO>>
+  abrirAdjuntoTarea(tareaId: string, archivo: string): Promise<Resultado<void>>
 
   // --- Sistema ---
   reindexar(): Promise<Resultado<ResultadoReindexadoDTO>>
