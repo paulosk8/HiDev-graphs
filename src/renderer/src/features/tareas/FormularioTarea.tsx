@@ -1,10 +1,14 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type ClipboardEvent, type FormEvent } from 'react'
 import { marked } from 'marked'
 import type { AsignaturaDTO, TareaDTO } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
 import { CampoTexto } from '../../components/Campos'
 import { Modal } from '../../components/Modal'
+import { htmlAMarkdown } from '../../lib/markdown'
 import { useTareasStore } from '../../stores/tareasStore'
+
+/** Fragmentos que inserta la barra de formato. */
+const PLANTILLA_TABLA = '\n| Criterio | Puntos |\n| --- | --- |\n| … | … |\n| … | … |\n'
 
 interface Props {
   asignatura: AsignaturaDTO
@@ -33,6 +37,31 @@ export function FormularioTarea({
   const [instrucciones, setInstrucciones] = useState(tareaInicial?.instrucciones ?? '')
   const [previa, setPrevia] = useState(false)
   const [ocupado, setOcupado] = useState(false)
+  const areaRef = useRef<HTMLTextAreaElement>(null)
+
+  /** Inserta texto en la posición del cursor (o al final si no hay foco). */
+  const insertar = (texto: string): void => {
+    const el = areaRef.current
+    const inicio = el?.selectionStart ?? instrucciones.length
+    const fin = el?.selectionEnd ?? instrucciones.length
+    setInstrucciones(instrucciones.slice(0, inicio) + texto + instrucciones.slice(fin))
+    requestAnimationFrame(() => {
+      if (!el) return
+      el.focus()
+      const pos = inicio + texto.length
+      el.setSelectionRange(pos, pos)
+    })
+  }
+
+  /** Al pegar contenido con formato (Word/web), lo convierte a Markdown. */
+  const alPegar = (e: ClipboardEvent<HTMLTextAreaElement>): void => {
+    const html = e.clipboardData.getData('text/html')
+    if (html && html.trim()) {
+      e.preventDefault()
+      insertar(`${htmlAMarkdown(html)}\n`)
+    }
+    // Sin HTML (texto plano): se deja el pegado por defecto.
+  }
 
   const alternarTema = (id: string): void =>
     setTemas((prev) => {
@@ -133,13 +162,39 @@ export function FormularioTarea({
               dangerouslySetInnerHTML={{ __html: marked.parse(instrucciones || '_Sin contenido_') as string }}
             />
           ) : (
-            <textarea
-              value={instrucciones}
-              onChange={(e) => setInstrucciones(e.target.value)}
-              placeholder="Escribe las instrucciones (admite Markdown). La rúbrica puede ir aquí mismo."
-              rows={8}
-              className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm outline-none focus:border-marca-500 focus:ring-2 focus:ring-marca-100"
-            />
+            <>
+              <div className="mb-1.5 flex flex-wrap gap-1">
+                {[
+                  { etiqueta: 'Título', frag: '\n## Título\n' },
+                  { etiqueta: 'Subtítulo', frag: '\n### Subtítulo\n' },
+                  { etiqueta: 'Lista', frag: '\n- \n' },
+                  { etiqueta: 'Tabla / rúbrica', frag: PLANTILLA_TABLA },
+                  { etiqueta: 'Enlace', frag: '[texto](https://…)' },
+                  { etiqueta: 'Negrita', frag: '**texto**' }
+                ].map((b) => (
+                  <button
+                    key={b.etiqueta}
+                    type="button"
+                    onClick={() => insertar(b.frag)}
+                    className="rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 transition hover:bg-slate-50"
+                  >
+                    {b.etiqueta}
+                  </button>
+                ))}
+              </div>
+              <textarea
+                ref={areaRef}
+                value={instrucciones}
+                onChange={(e) => setInstrucciones(e.target.value)}
+                onPaste={alPegar}
+                placeholder="Escribe o PEGA desde Word/web: títulos, párrafos, listas, tablas y rúbrica se convierten a formato automáticamente. Los enlaces también."
+                rows={10}
+                className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm outline-none focus:border-marca-500 focus:ring-2 focus:ring-marca-100"
+              />
+              <p className="mt-1 text-xs text-slate-400">
+                Pega contenido con formato y se convierte solo. Usa «Vista previa» para verlo como quedará.
+              </p>
+            </>
           )}
         </div>
 
