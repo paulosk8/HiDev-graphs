@@ -175,6 +175,39 @@ export class SqliteGraphRepository implements IGraphRepository {
     tx(conceptoId)
   }
 
+  eliminarAsignatura(asignaturaId: string): void {
+    const hijosDe = this.db.prepare('SELECT id FROM nodes WHERE padre_id = ? AND tipo = ?')
+    const borrarAristas = this.db.prepare(
+      'DELETE FROM edges WHERE origen_id = @id OR destino_id = @id'
+    )
+    const borrarNodo = this.db.prepare('DELETE FROM nodes WHERE tipo = @tipo AND id = @id')
+    const idsHijos = (padreId: string, tipo: string): string[] =>
+      hijosDe.all(padreId, tipo).map((f) => (f as { id: string }).id)
+
+    const tx = this.db.transaction((aid: string) => {
+      const unidades = idsHijos(aid, 'unidad')
+      const temas = unidades.flatMap((u) => idsHijos(u, 'tema'))
+      const subtemas = temas.flatMap((t) => idsHijos(t, 'subtema'))
+
+      for (const id of subtemas) {
+        borrarAristas.run({ id })
+        borrarNodo.run({ tipo: 'subtema', id })
+      }
+      for (const id of temas) {
+        // Incluye las aristas 'instancia' (tema -> concepto).
+        borrarAristas.run({ id })
+        borrarNodo.run({ tipo: 'tema', id })
+      }
+      for (const id of unidades) {
+        borrarAristas.run({ id })
+        borrarNodo.run({ tipo: 'unidad', id })
+      }
+      borrarAristas.run({ id: aid })
+      borrarNodo.run({ tipo: 'asignatura', id: aid })
+    })
+    tx(asignaturaId)
+  }
+
   // --- Consultas ---
 
   listarConceptos(): ResumenConcepto[] {

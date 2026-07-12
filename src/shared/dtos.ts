@@ -67,6 +67,63 @@ export interface ResumenAsignaturaDTO {
   totalTemas: number
 }
 
+export interface ComponenteDTO {
+  clave: string
+  nombre: string
+}
+
+export interface SubtemaDTO {
+  id: string
+  titulo: string
+  orden: number
+}
+
+export interface TemaDTO {
+  id: string
+  titulo: string
+  orden: number
+  semana: number | null
+  subtemas: SubtemaDTO[]
+  /** Ids de conceptos vinculados (puente). Se rellenan en el bloque de vínculos. */
+  conceptos: string[]
+}
+
+export interface UnidadDTO {
+  id: string
+  titulo: string
+  orden: number
+  temas: TemaDTO[]
+}
+
+/** Detalle completo de una asignatura para su ficha. */
+export interface AsignaturaDTO {
+  id: string
+  nombre: string
+  periodo: string
+  componentes: ComponenteDTO[]
+  unidades: UnidadDTO[]
+}
+
+// --- Payload del asistente para crear una asignatura ---
+
+export interface DatosTemaDTO {
+  titulo: string
+  semana?: number | null
+  subtemas?: string[]
+}
+
+export interface DatosUnidadDTO {
+  titulo: string
+  temas: DatosTemaDTO[]
+}
+
+export interface DatosAsignaturaDTO {
+  nombre: string
+  periodo: string
+  componentes: ComponenteDTO[]
+  unidades: DatosUnidadDTO[]
+}
+
 /** Un lugar donde se usa un concepto: "Algoritmos 2026A › Unidad 1 › Tema 1". */
 export interface UsoDeConceptoDTO {
   asignaturaId: string

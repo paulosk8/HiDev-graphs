@@ -1,4 +1,10 @@
-import type { ConceptoDTO, ResumenConceptoDTO } from '../../shared/dtos'
+import type {
+  AsignaturaDTO,
+  ConceptoDTO,
+  ResumenAsignaturaDTO,
+  ResumenConceptoDTO
+} from '../../shared/dtos'
+import type { Asignatura } from '../domain/Asignatura'
 import type { Concepto } from '../domain/Concepto'
 
 /** Convierte un concepto del dominio en su DTO de detalle para la ficha. */
@@ -23,5 +29,40 @@ export function aResumenConceptoDTO(concepto: Concepto): ResumenConceptoDTO {
     id: concepto.id,
     nombre: concepto.nombre,
     totalRecursos: concepto.recursos.length
+  }
+}
+
+/** Detalle completo de una asignatura para su ficha. */
+export function aAsignaturaDTO(asignatura: Asignatura): AsignaturaDTO {
+  return {
+    id: asignatura.id,
+    nombre: asignatura.nombre,
+    periodo: asignatura.periodo,
+    componentes: asignatura.componentes.map((c) => ({ clave: c.clave, nombre: c.nombre })),
+    unidades: asignatura.unidades.map((u) => ({
+      id: u.id,
+      titulo: u.titulo,
+      orden: u.orden,
+      temas: u.temas.map((t) => ({
+        id: t.id,
+        titulo: t.titulo,
+        orden: t.orden,
+        semana: t.semana,
+        subtemas: t.subtemas.map((s) => ({ id: s.id, titulo: s.titulo, orden: s.orden })),
+        conceptos: [...t.conceptos]
+      }))
+    }))
+  }
+}
+
+/** Resumen de una asignatura para el listado. */
+export function aResumenAsignaturaDTO(asignatura: Asignatura): ResumenAsignaturaDTO {
+  const totalTemas = asignatura.unidades.reduce((n, u) => n + u.temas.length, 0)
+  return {
+    id: asignatura.id,
+    nombre: asignatura.nombre,
+    periodo: asignatura.periodo,
+    totalUnidades: asignatura.unidades.length,
+    totalTemas
   }
 }

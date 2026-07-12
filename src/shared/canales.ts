@@ -18,6 +18,9 @@ export const CANALES = {
 
   // Asignaturas
   asignaturasListar: 'asignaturas:listar',
+  asignaturaObtener: 'asignatura:obtener',
+  asignaturaCrear: 'asignatura:crear',
+  asignaturaEliminar: 'asignatura:eliminar',
 
   // Sistema
   reindexar: 'sistema:reindexar'

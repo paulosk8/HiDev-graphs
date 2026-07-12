@@ -1,9 +1,10 @@
 import { useEffect } from 'react'
 import { Avisos } from './components/Avisos'
-import { EstadoVacio } from './components/EstadoVacio'
 import { Sidebar } from './components/Sidebar'
 import { FichaConcepto } from './features/conceptos/FichaConcepto'
 import { ListaConceptos } from './features/conceptos/ListaConceptos'
+import { FichaAsignatura } from './features/asignaturas/FichaAsignatura'
+import { ListaAsignaturas } from './features/asignaturas/ListaAsignaturas'
 import { useAsignaturasStore } from './stores/asignaturasStore'
 import { useConceptosStore } from './stores/conceptosStore'
 import { useUiStore } from './stores/uiStore'
@@ -11,17 +12,13 @@ import { useUiStore } from './stores/uiStore'
 function Contenido(): JSX.Element {
   const seccion = useUiStore((s) => s.seccion)
   const conceptoSeleccionadoId = useUiStore((s) => s.conceptoSeleccionadoId)
+  const asignaturaSeleccionadaId = useUiStore((s) => s.asignaturaSeleccionadaId)
 
   if (seccion === 'asignaturas') {
-    return (
-      <div className="mx-auto max-w-4xl px-8 py-8">
-        <h1 className="mb-6 text-2xl font-semibold text-slate-900">Mis asignaturas</h1>
-        <EstadoVacio
-          icono="🎓"
-          titulo="Próximamente"
-          descripcion="Aquí podrás crear tus asignaturas paso a paso: unidades, temas y componentes de aprendizaje."
-        />
-      </div>
+    return asignaturaSeleccionadaId ? (
+      <FichaAsignatura asignaturaId={asignaturaSeleccionadaId} />
+    ) : (
+      <ListaAsignaturas />
     )
   }
 

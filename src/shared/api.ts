@@ -1,5 +1,7 @@
 import type {
+  AsignaturaDTO,
   ConceptoDTO,
+  DatosAsignaturaDTO,
   DatosConceptoDTO,
   FichaConceptoDTO,
   ResultadoMaterialDTO,
@@ -38,6 +40,9 @@ export interface PedagoGraphApi {
 
   // --- Asignaturas ---
   listarAsignaturas(): Promise<Resultado<ResumenAsignaturaDTO[]>>
+  obtenerAsignatura(id: string): Promise<Resultado<AsignaturaDTO>>
+  crearAsignatura(datos: DatosAsignaturaDTO): Promise<Resultado<ResumenAsignaturaDTO>>
+  eliminarAsignatura(id: string): Promise<Resultado<void>>
 
   // --- Sistema ---
   reindexar(): Promise<Resultado<ResultadoReindexadoDTO>>

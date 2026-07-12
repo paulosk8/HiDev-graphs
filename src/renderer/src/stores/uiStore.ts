@@ -15,10 +15,12 @@ export interface Aviso {
 interface UiState {
   seccion: Seccion
   conceptoSeleccionadoId: string | null
+  asignaturaSeleccionadaId: string | null
   avisos: Aviso[]
 
   irASeccion: (seccion: Seccion) => void
   seleccionarConcepto: (id: string | null) => void
+  seleccionarAsignatura: (id: string | null) => void
 
   notificar: (aviso: Omit<Aviso, 'id'>) => void
   /** Traduce un error capturado a un aviso humano (mensaje + sugerencia). */
@@ -31,10 +33,13 @@ let secuenciaAviso = 0
 export const useUiStore = create<UiState>((set) => ({
   seccion: 'conceptos',
   conceptoSeleccionadoId: null,
+  asignaturaSeleccionadaId: null,
   avisos: [],
 
-  irASeccion: (seccion) => set({ seccion, conceptoSeleccionadoId: null }),
+  irASeccion: (seccion) =>
+    set({ seccion, conceptoSeleccionadoId: null, asignaturaSeleccionadaId: null }),
   seleccionarConcepto: (id) => set({ conceptoSeleccionadoId: id }),
+  seleccionarAsignatura: (id) => set({ asignaturaSeleccionadaId: id }),
 
   notificar: (aviso) =>
     set((estado) => ({ avisos: [...estado.avisos, { ...aviso, id: ++secuenciaAviso }] })),

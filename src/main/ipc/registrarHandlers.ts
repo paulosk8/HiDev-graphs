@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron'
 
 import { CANALES } from '../../shared/canales'
-import type { DatosConceptoDTO } from '../../shared/dtos'
+import type { DatosAsignaturaDTO, DatosConceptoDTO } from '../../shared/dtos'
 import type { Resultado } from '../../shared/resultado'
 import { ErrorDeDominio } from '../domain/errores'
 import { crearConcepto } from '../application/CrearConcepto'
@@ -10,6 +10,9 @@ import { eliminarConcepto } from '../application/EliminarConcepto'
 import { obtenerFichaConcepto } from '../application/ObtenerFichaConcepto'
 import { agregarMaterial } from '../application/AgregarMaterial'
 import { eliminarMaterial } from '../application/EliminarMaterial'
+import { crearAsignatura } from '../application/CrearAsignatura'
+import { obtenerAsignatura } from '../application/ObtenerAsignatura'
+import { eliminarAsignatura } from '../application/EliminarAsignatura'
 import { reindexarVault } from '../application/ReindexarVault'
 import type { Servicios } from '../servicios'
 
@@ -80,6 +83,18 @@ export function registrarHandlersIpc(servicios: Servicios): void {
   )
 
   ipcMain.handle(CANALES.asignaturasListar, () => envolver(() => repositorio.listarAsignaturas()))
+
+  ipcMain.handle(CANALES.asignaturaObtener, (_evento, id: string) =>
+    envolver(() => obtenerAsignatura(servicios, id))
+  )
+
+  ipcMain.handle(CANALES.asignaturaCrear, (_evento, datos: DatosAsignaturaDTO) =>
+    envolver(() => crearAsignatura(servicios, datos))
+  )
+
+  ipcMain.handle(CANALES.asignaturaEliminar, (_evento, id: string) =>
+    envolver(() => eliminarAsignatura(servicios, id))
+  )
 
   ipcMain.handle(CANALES.reindexar, () => envolver(() => reindexarVault(vault, repositorio)))
 }

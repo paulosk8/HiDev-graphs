@@ -31,6 +31,9 @@ export interface IGraphRepository {
   /** Elimina del índice un concepto: su nodo, su material y sus aristas. */
   eliminarConcepto(conceptoId: string): void
 
+  /** Elimina del índice una asignatura y toda su jerarquía (unidades/temas/subtemas). */
+  eliminarAsignatura(asignaturaId: string): void
+
   // --- Consultas ---
 
   /** Todos los conceptos, resumidos, para el listado lateral. */

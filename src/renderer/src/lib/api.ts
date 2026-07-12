@@ -1,4 +1,4 @@
-import type { DatosConceptoDTO } from '@shared/dtos'
+import type { DatosAsignaturaDTO, DatosConceptoDTO } from '@shared/dtos'
 import type { ErrorAmigable, Resultado } from '@shared/resultado'
 
 /**
@@ -41,5 +41,8 @@ export const api = {
   eliminarMaterial: (conceptoId: string, recursoId: string) =>
     desenvolver(window.api.eliminarMaterial(conceptoId, recursoId)),
   listarAsignaturas: () => desenvolver(window.api.listarAsignaturas()),
+  obtenerAsignatura: (id: string) => desenvolver(window.api.obtenerAsignatura(id)),
+  crearAsignatura: (datos: DatosAsignaturaDTO) => desenvolver(window.api.crearAsignatura(datos)),
+  eliminarAsignatura: (id: string) => desenvolver(window.api.eliminarAsignatura(id)),
   reindexar: () => desenvolver(window.api.reindexar())
 }
