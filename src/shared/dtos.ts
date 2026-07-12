@@ -18,6 +18,39 @@ export interface ResumenConceptoDTO {
   totalRecursos: number
 }
 
+export interface RecursoDTO {
+  id: string
+  nombre: string
+  archivo: string
+  formato: FormatoRecurso
+}
+
+export interface RelacionDTO {
+  destino: string
+  tipo: TipoRelacion
+}
+
+/** Detalle completo de un concepto para su ficha. */
+export interface ConceptoDTO {
+  id: string
+  nombre: string
+  descripcion: string
+  recursos: RecursoDTO[]
+  relaciones: RelacionDTO[]
+}
+
+/** Ficha de un concepto: su detalle + dónde se usa. */
+export interface FichaConceptoDTO {
+  concepto: ConceptoDTO
+  usos: UsoDeConceptoDTO[]
+}
+
+/** Datos para crear o editar un concepto (formulario de 2 campos). */
+export interface DatosConceptoDTO {
+  nombre: string
+  descripcion?: string
+}
+
 export interface ResumenAsignaturaDTO {
   id: string
   nombre: string

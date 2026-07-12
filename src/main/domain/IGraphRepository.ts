@@ -28,6 +28,9 @@ export interface IGraphRepository {
   /** Vuelca una asignatura (jerarquía y vínculos tema→concepto) al índice. */
   indexarAsignatura(asignatura: Asignatura): void
 
+  /** Elimina del índice un concepto: su nodo, su material y sus aristas. */
+  eliminarConcepto(conceptoId: string): void
+
   // --- Consultas ---
 
   /** Todos los conceptos, resumidos, para el listado lateral. */

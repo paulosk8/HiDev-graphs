@@ -3,10 +3,16 @@
  * renderer: cambiar un canal aquí obliga a actualizar handler y API.
  */
 export const CANALES = {
-  // Consultas
+  // Conceptos
   conceptosListar: 'conceptos:listar',
   conceptosBuscar: 'conceptos:buscar',
   conceptoUsos: 'concepto:usos',
+  conceptoObtenerFicha: 'concepto:ficha',
+  conceptoCrear: 'concepto:crear',
+  conceptoEditar: 'concepto:editar',
+  conceptoEliminar: 'concepto:eliminar',
+
+  // Asignaturas
   asignaturasListar: 'asignaturas:listar',
 
   // Sistema

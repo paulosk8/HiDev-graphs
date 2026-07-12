@@ -159,6 +159,22 @@ export class SqliteGraphRepository implements IGraphRepository {
     tx(asignatura)
   }
 
+  eliminarConcepto(conceptoId: string): void {
+    const tx = this.db.transaction((id: string) => {
+      this.db.prepare('DELETE FROM resources WHERE concepto_id = ?').run(id)
+      // Aristas donde el concepto es origen o destino (relaciones y 'instancia').
+      this.db
+        .prepare(
+          `DELETE FROM edges
+           WHERE (origen_tipo = 'concepto' AND origen_id = @id)
+              OR (destino_tipo = 'concepto' AND destino_id = @id)`
+        )
+        .run({ id })
+      this.db.prepare("DELETE FROM nodes WHERE tipo = 'concepto' AND id = ?").run(id)
+    })
+    tx(conceptoId)
+  }
+
   // --- Consultas ---
 
   listarConceptos(): ResumenConcepto[] {

@@ -1,3 +1,4 @@
+import type { DatosConceptoDTO } from '@shared/dtos'
 import type { ErrorAmigable, Resultado } from '@shared/resultado'
 
 /**
@@ -28,6 +29,12 @@ export const api = {
   listarConceptos: () => desenvolver(window.api.listarConceptos()),
   buscarConceptos: (texto: string) => desenvolver(window.api.buscarConceptos(texto)),
   usosDeConcepto: (conceptoId: string) => desenvolver(window.api.usosDeConcepto(conceptoId)),
+  obtenerFichaConcepto: (conceptoId: string) =>
+    desenvolver(window.api.obtenerFichaConcepto(conceptoId)),
+  crearConcepto: (datos: DatosConceptoDTO) => desenvolver(window.api.crearConcepto(datos)),
+  editarConcepto: (id: string, datos: DatosConceptoDTO) =>
+    desenvolver(window.api.editarConcepto(id, datos)),
+  eliminarConcepto: (id: string) => desenvolver(window.api.eliminarConcepto(id)),
   listarAsignaturas: () => desenvolver(window.api.listarAsignaturas()),
   reindexar: () => desenvolver(window.api.reindexar())
 }

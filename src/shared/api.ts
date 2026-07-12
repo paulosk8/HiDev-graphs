@@ -1,4 +1,6 @@
 import type {
+  DatosConceptoDTO,
+  FichaConceptoDTO,
   ResultadoReindexadoDTO,
   ResumenAsignaturaDTO,
   ResumenConceptoDTO,
@@ -18,6 +20,10 @@ export interface PedagoGraphApi {
   listarConceptos(): Promise<Resultado<ResumenConceptoDTO[]>>
   buscarConceptos(texto: string): Promise<Resultado<ResumenConceptoDTO[]>>
   usosDeConcepto(conceptoId: string): Promise<Resultado<UsoDeConceptoDTO[]>>
+  obtenerFichaConcepto(conceptoId: string): Promise<Resultado<FichaConceptoDTO>>
+  crearConcepto(datos: DatosConceptoDTO): Promise<Resultado<ResumenConceptoDTO>>
+  editarConcepto(id: string, datos: DatosConceptoDTO): Promise<Resultado<ResumenConceptoDTO>>
+  eliminarConcepto(id: string): Promise<Resultado<void>>
 
   // --- Asignaturas ---
   listarAsignaturas(): Promise<Resultado<ResumenAsignaturaDTO[]>>

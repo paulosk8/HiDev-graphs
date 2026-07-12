@@ -1,8 +1,13 @@
 import { ipcMain } from 'electron'
 
 import { CANALES } from '../../shared/canales'
+import type { DatosConceptoDTO } from '../../shared/dtos'
 import type { Resultado } from '../../shared/resultado'
 import { ErrorDeDominio } from '../domain/errores'
+import { crearConcepto } from '../application/CrearConcepto'
+import { editarConcepto } from '../application/EditarConcepto'
+import { eliminarConcepto } from '../application/EliminarConcepto'
+import { obtenerFichaConcepto } from '../application/ObtenerFichaConcepto'
 import { reindexarVault } from '../application/ReindexarVault'
 import type { Servicios } from '../servicios'
 
@@ -46,6 +51,22 @@ export function registrarHandlersIpc(servicios: Servicios): void {
 
   ipcMain.handle(CANALES.conceptoUsos, (_evento, conceptoId: string) =>
     envolver(() => repositorio.usosDeConcepto(conceptoId))
+  )
+
+  ipcMain.handle(CANALES.conceptoObtenerFicha, (_evento, conceptoId: string) =>
+    envolver(() => obtenerFichaConcepto(servicios, conceptoId))
+  )
+
+  ipcMain.handle(CANALES.conceptoCrear, (_evento, datos: DatosConceptoDTO) =>
+    envolver(() => crearConcepto(servicios, datos))
+  )
+
+  ipcMain.handle(CANALES.conceptoEditar, (_evento, id: string, datos: DatosConceptoDTO) =>
+    envolver(() => editarConcepto(servicios, id, datos))
+  )
+
+  ipcMain.handle(CANALES.conceptoEliminar, (_evento, id: string) =>
+    envolver(() => eliminarConcepto(servicios, id))
   )
 
   ipcMain.handle(CANALES.asignaturasListar, () => envolver(() => repositorio.listarAsignaturas()))
