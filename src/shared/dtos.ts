@@ -242,16 +242,18 @@ export interface McpInfoDTO {
 
 // --- Grafo (Fase 2) ---
 
-export type TipoNodoGrafo = 'concepto' | 'asignatura'
-export type TipoAristaGrafo = 'usado_en' | 'coocurre' | TipoRelacion
+export type TipoNodoGrafo = 'concepto' | 'asignatura' | 'tarea'
+export type TipoAristaGrafo = 'usado_en' | 'coocurre' | 'tarea_concepto' | TipoRelacion
 
 export interface NodoGrafoDTO {
-  /** Id con prefijo ('c:' concepto, 'a:' asignatura) para unicidad en el grafo. */
+  /** Id con prefijo ('c:' concepto, 'a:' asignatura, 't:' tarea) para unicidad. */
   id: string
   etiqueta: string
   tipo: TipoNodoGrafo
   /** Para conceptos: en cuántas asignaturas se usa (mide su transversalidad). */
   peso: number
+  /** Para tareas: la asignatura a la que pertenece (para navegar a su ficha). */
+  asignaturaId?: string
 }
 
 export interface AristaGrafoDTO {

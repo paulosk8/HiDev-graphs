@@ -63,8 +63,22 @@ const ESTILO: cytoscape.StylesheetStyle[] = [
       height: 18
     }
   },
+  {
+    // Tareas: rombo ámbar, sin etiqueta (el título va en el tooltip).
+    selector: 'node[tipo="tarea"]',
+    style: {
+      label: '',
+      'background-color': '#f59e0b',
+      'border-color': '#b45309',
+      'border-width': 1.5,
+      shape: 'diamond',
+      width: 16,
+      height: 16
+    }
+  },
   { selector: 'edge', style: { 'curve-style': 'bezier', width: 1.5, 'line-color': '#cbd5e1' } },
   { selector: 'edge[tipo="coocurre"]', style: { 'line-color': '#818cf8', 'line-style': 'dashed' } },
+  { selector: 'edge[tipo="tarea_concepto"]', style: { 'line-color': '#f59e0b', 'line-style': 'dotted', width: 1 } },
   { selector: 'edge[tipo="prerequisito_de"]', style: { 'line-color': '#ef4444', 'target-arrow-shape': 'triangle', 'target-arrow-color': '#ef4444' } },
   { selector: 'edge[tipo="relacionado_con"]', style: { 'line-color': '#64748b' } },
   { selector: 'edge[tipo="profundiza"]', style: { 'line-color': '#10b981', 'target-arrow-shape': 'triangle', 'target-arrow-color': '#10b981' } },
@@ -72,16 +86,24 @@ const ESTILO: cytoscape.StylesheetStyle[] = [
   { selector: 'node.foco', style: { 'border-width': 3, 'border-color': '#4338ca' } }
 ]
 
-function elementosVisibles(grafo: GrafoDTO, tipos: Set<TipoAristaGrafo>): cytoscape.ElementDefinition[] {
-  const aristas = grafo.aristas.filter((a) => tipos.has(a.tipo))
+function elementosVisibles(
+  grafo: GrafoDTO,
+  tipos: Set<TipoAristaGrafo>,
+  mostrarTareas: boolean
+): cytoscape.ElementDefinition[] {
+  const nodos = grafo.nodos.filter((n) => n.tipo !== 'tarea' || mostrarTareas)
+  const aristas = grafo.aristas.filter((a) =>
+    a.tipo === 'tarea_concepto' ? mostrarTareas : tipos.has(a.tipo)
+  )
   return [
-    ...grafo.nodos.map((n) => ({
+    ...nodos.map((n) => ({
       data: {
         id: n.id,
         // El nombre completo se ve en el panel y el tooltip; en el grafo se trunca.
         etiqueta: n.tipo === 'concepto' ? truncar(n.etiqueta) : n.etiqueta,
         completa: n.etiqueta,
         tipo: n.tipo,
+        asignaturaId: n.asignaturaId,
         tam: n.tipo === 'concepto' ? Math.min(24 + n.peso * 8, 64) : 22
       }
     })),
@@ -176,6 +198,7 @@ const PLANTILLAS: Plantilla[] = [
 export function GrafoPage(): JSX.Element {
   const [grafo, setGrafo] = useState<GrafoDTO | null>(null)
   const [tipos, setTipos] = useState<Set<TipoAristaGrafo>>(() => new Set(TIPOS_ARISTA.map((t) => t.tipo)))
+  const [mostrarTareas, setMostrarTareas] = useState(true)
   const [busqueda, setBusqueda] = useState('')
   const [seleccionado, setSeleccionado] = useState<string | null>(null)
   const [modalId, setModalId] = useState<string | null>(null)
@@ -193,6 +216,7 @@ export function GrafoPage(): JSX.Element {
   const notificarError = useUiStore((s) => s.notificarError)
   const irASeccion = useUiStore((s) => s.irASeccion)
   const seleccionarConcepto = useUiStore((s) => s.seleccionarConcepto)
+  const seleccionarAsignatura = useUiStore((s) => s.seleccionarAsignatura)
   const cargarConceptos = useConceptosStore((s) => s.cargar)
   const panelColapsado = useLayoutStore((s) => s.panelGrafoColapsado)
   const alternarPanel = useLayoutStore((s) => s.alternarPanelGrafo)
@@ -205,7 +229,10 @@ export function GrafoPage(): JSX.Element {
     api.obtenerGrafo().then(setGrafo).catch((e) => notificarError(e))
   }, [notificarError])
 
-  const elementos = useMemo(() => (grafo ? elementosVisibles(grafo, tipos) : []), [grafo, tipos])
+  const elementos = useMemo(
+    () => (grafo ? elementosVisibles(grafo, tipos, mostrarTareas) : []),
+    [grafo, tipos, mostrarTareas]
+  )
 
   const relacionados = useMemo(
     () =>
@@ -232,6 +259,14 @@ export function GrafoPage(): JSX.Element {
 
     cy.on('tap', 'node[tipo="concepto"]', (evt) => setSeleccionado(evt.target.id().slice(2)))
     cy.on('dbltap', 'node[tipo="concepto"]', (evt) => setModalId(evt.target.id().slice(2)))
+    // Clic en una tarea: ir a su asignatura para ver la ficha de la tarea.
+    cy.on('tap', 'node[tipo="tarea"]', (evt) => {
+      const aid = evt.target.data('asignaturaId') as string | undefined
+      if (aid) {
+        irASeccion('asignaturas')
+        seleccionarAsignatura(aid)
+      }
+    })
     cy.on('mouseover', 'node', (evt) => {
       const p = evt.target.renderedPosition()
       setTooltip({ x: p.x, y: p.y, texto: String(evt.target.data('completa') ?? evt.target.data('etiqueta')) })
@@ -408,6 +443,15 @@ export function GrafoPage(): JSX.Element {
               {t.etiqueta}
             </button>
           ))}
+          <button
+            onClick={() => setMostrarTareas((v) => !v)}
+            className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition ${
+              mostrarTareas ? 'border-slate-300 bg-white text-slate-700' : 'border-slate-200 bg-slate-50 text-slate-300'
+            }`}
+          >
+            <span className="h-2 w-2 rotate-45" style={{ backgroundColor: '#f59e0b' }} />
+            Tareas
+          </button>
         </div>
       </header>
 

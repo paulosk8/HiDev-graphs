@@ -11,7 +11,7 @@ import type { Servicios } from '../servicios'
  * los "conceptos god"). El filtrado por asignatura/tipo se hace en el renderer.
  */
 export function obtenerGrafo(servicios: Servicios): GrafoDTO {
-  const { repositorio } = servicios
+  const { repositorio, vault } = servicios
 
   const usos = repositorio.usosConceptoAsignatura()
   const conteoPorConcepto = new Map<string, number>()
@@ -49,6 +49,22 @@ export function obtenerGrafo(servicios: Servicios): GrafoDTO {
   // Co-ocurrencia: conceptos que se enseñan en un mismo tema quedan conectados.
   for (const { a, b } of repositorio.coocurrenciasDeConceptos()) {
     aristas.push({ origen: `c:${a}`, destino: `c:${b}`, tipo: 'coocurre' })
+  }
+
+  // Tareas como nodos: se conectan a los conceptos que cubren (derivados de sus
+  // temas). Así dos tareas que tocan el mismo concepto quedan unidas por ese nodo.
+  // Las tareas no están en el índice: se leen del vault.
+  for (const tarea of vault.leerTodasTareas()) {
+    nodos.push({
+      id: `t:${tarea.id}`,
+      etiqueta: tarea.titulo,
+      tipo: 'tarea',
+      peso: tarea.conceptos.length,
+      asignaturaId: tarea.asignaturaId
+    })
+    for (const conceptoId of tarea.conceptos) {
+      aristas.push({ origen: `t:${tarea.id}`, destino: `c:${conceptoId}`, tipo: 'tarea_concepto' })
+    }
   }
 
   return { nodos, aristas }
