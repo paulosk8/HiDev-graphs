@@ -120,6 +120,19 @@ function listaConceptos(conceptos: string[]): string {
 function fraseTemas(temas: string[]): string {
   return temas.length > 0 ? ` Céntrate en estos temas: ${temas.join('; ')}.` : ''
 }
+/**
+ * Cierre común: obliga a la IA a REGISTRAR el resultado como tarea en el vault
+ * con `crear_tarea`, no a dejarlo como texto suelto o artefacto propio del CLI.
+ */
+function fraseGuardar(temas: string[]): string {
+  const dondeTemas =
+    temas.length > 0 ? ` para los temas ${temas.join('; ')}` : ' para los temas donde se usan estos conceptos'
+  return (
+    ` Al terminar, GUÁRDALO en PedagoGraph con la herramienta crear_tarea${dondeTemas} ` +
+    `(usa usos_de_concepto para elegir la asignatura correcta) y pon todo el contenido en el campo ` +
+    `de instrucciones en Markdown. No lo dejes solo como texto ni como artefacto del CLI.`
+  )
+}
 
 const PLANTILLAS: Plantilla[] = [
   {
@@ -128,15 +141,17 @@ const PLANTILLAS: Plantilla[] = [
     resumen: 'Una tarea que integre los conceptos relacionados y su material.',
     construir: (c, t) =>
       `Usando las herramientas de PedagoGraph (MCP), crea una tarea que integre ${listaConceptos(c)}. ` +
-      `Consulta dónde se usan (usos_de_concepto) y su material (leer_material) y redacta las instrucciones.${fraseTemas(t)}`
+      `Consulta dónde se usan (usos_de_concepto) y su material (leer_material) y redacta las instrucciones.` +
+      `${fraseTemas(t)}${fraseGuardar(t)}`
   },
   {
     clave: 'recurso',
     titulo: 'Recurso didáctico',
     resumen: 'Una guía, resumen o ejercicios que conecte los temas relacionados.',
     construir: (c, t) =>
-      `Con el material de ${listaConceptos(c)} (usa leer_material), propón un recurso didáctico ` +
-      `(guía, resumen o ejercicios) que conecte los temas relacionados y devuélvelo en Markdown.${fraseTemas(t)}`
+      `Con el material de ${listaConceptos(c)} (usa leer_material), elabora un recurso didáctico ` +
+      `(guía, resumen o ejercicios) en Markdown que conecte los temas relacionados.` +
+      `${fraseTemas(t)}${fraseGuardar(t)}`
   },
   {
     clave: 'multi',
@@ -144,15 +159,17 @@ const PLANTILLAS: Plantilla[] = [
     resumen: 'Una actividad reutilizable entre las asignaturas que comparten estos conceptos.',
     construir: (c) =>
       `Revisa dónde se usan ${listaConceptos(c)} (usos_de_concepto y cruces_entre_asignaturas) y diseña ` +
-      `una actividad que pueda reutilizarse en las distintas asignaturas y períodos que los comparten.`
+      `una actividad reutilizable entre las asignaturas y períodos que los comparten. ` +
+      `Guárdala con crear_tarea en una de esas asignaturas (poniendo el contenido en las instrucciones en ` +
+      `Markdown) y luego duplícala a las demás con duplicar_tarea. No la dejes solo como texto ni como artefacto del CLI.`
   },
   {
     clave: 'evaluacion',
     titulo: 'Preguntas de evaluación',
     resumen: 'Preguntas con sus respuestas a partir del material.',
     construir: (c, t) =>
-      `A partir del material de ${listaConceptos(c)} (usa leer_material), genera preguntas de evaluación ` +
-      `con sus respuestas.${fraseTemas(t)}`
+      `A partir del material de ${listaConceptos(c)} (usa leer_material), redacta preguntas de evaluación ` +
+      `con sus respuestas.${fraseTemas(t)}${fraseGuardar(t)}`
   }
 ]
 
@@ -692,8 +709,9 @@ export function GrafoPage(): JSX.Element {
               </div>
             </div>
             <p className="text-[11px] text-slate-400">
-              «Insertar» limpia la línea actual y pega el prompt en la terminal; revísalo y pulsa Enter.
-              También puedes escribir directamente en la terminal.
+              Cada plantilla le pide a la IA guardar el resultado como tarea en PedagoGraph
+              (herramienta «crear_tarea»), así aparece en la asignatura y puedes reutilizarla.
+              «Insertar» pega el prompt en la terminal; revísalo y pulsa Enter.
             </p>
           </div>
         </Modal>
