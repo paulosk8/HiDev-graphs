@@ -254,8 +254,8 @@ export class VaultFileSystemService {
   private rutaTarea(id: string): string {
     return join(this.carpetaTarea(id), 'tarea.yaml')
   }
-  private rutaInstrucciones(id: string): string {
-    return join(this.carpetaTarea(id), 'instrucciones.md')
+  private rutaInstrucciones(id: string, formato: 'markdown' | 'html'): string {
+    return join(this.carpetaTarea(id), formato === 'html' ? 'instrucciones.html' : 'instrucciones.md')
   }
 
   existeTarea(id: string): boolean {
@@ -267,6 +267,7 @@ export class VaultFileSystemService {
     const plano = {
       id: tarea.id,
       titulo: tarea.titulo,
+      formato: tarea.formato,
       asignaturaId: tarea.asignaturaId,
       temas: [...tarea.temas],
       componente: tarea.componente,
@@ -278,15 +279,22 @@ export class VaultFileSystemService {
         formato: r.formato
       }))
     }
-    // Las instrucciones (Markdown) van en su propio archivo, legible y descargable.
     writeFileSync(this.rutaTarea(tarea.id), escribirYaml(plano, { lineWidth: 100 }), 'utf8')
-    writeFileSync(this.rutaInstrucciones(tarea.id), tarea.instrucciones, 'utf8')
+    // Las instrucciones van en su propio archivo (.md o .html), legible y descargable.
+    writeFileSync(this.rutaInstrucciones(tarea.id, tarea.formato), tarea.instrucciones, 'utf8')
+    // Si cambió el formato, elimina el archivo del otro formato para no dejar residuos.
+    const otro = this.rutaInstrucciones(tarea.id, tarea.formato === 'html' ? 'markdown' : 'html')
+    if (existsSync(otro)) rmSync(otro, { force: true })
   }
 
   leerTarea(id: string): Tarea {
     const datos = leerYaml(readFileSync(this.rutaTarea(id), 'utf8')) as Record<string, unknown>
-    const rutaMd = this.rutaInstrucciones(id)
-    const instrucciones = existsSync(rutaMd) ? readFileSync(rutaMd, 'utf8') : ''
+    const formato = datos.formato === 'html' ? 'html' : 'markdown'
+    const ruta = this.rutaInstrucciones(id, formato)
+    // Compatibilidad: si no existe el del formato indicado, prueba el otro.
+    const rutaOtro = this.rutaInstrucciones(id, formato === 'html' ? 'markdown' : 'html')
+    const rutaLeer = existsSync(ruta) ? ruta : existsSync(rutaOtro) ? rutaOtro : null
+    const instrucciones = rutaLeer ? readFileSync(rutaLeer, 'utf8') : ''
     return tareaDesdePlano(datos, instrucciones)
   }
 
@@ -455,6 +463,7 @@ function tareaDesdePlano(datos: Record<string, unknown>, instrucciones: string):
     id: texto(datos.id),
     titulo: texto(datos.titulo),
     instrucciones,
+    formato: datos.formato === 'html' ? 'html' : 'markdown',
     asignaturaId: texto(datos.asignaturaId),
     temas: listaTextos(datos.temas),
     componente: componente.length > 0 ? componente : null,

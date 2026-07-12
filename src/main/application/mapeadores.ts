@@ -69,6 +69,7 @@ export function aTareaDTO(tarea: Tarea): TareaDTO {
     id: tarea.id,
     titulo: tarea.titulo,
     instrucciones: tarea.instrucciones,
+    formato: tarea.formato,
     asignaturaId: tarea.asignaturaId,
     temas: [...tarea.temas],
     componente: tarea.componente,

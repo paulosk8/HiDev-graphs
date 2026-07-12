@@ -146,11 +146,15 @@ export interface DatosAsignaturaDTO {
 
 // --- Tareas (capa transversal) ---
 
+/** Formato de las instrucciones de una tarea: Markdown o HTML (con CSS/JS). */
+export type FormatoInstrucciones = 'markdown' | 'html'
+
 export interface TareaDTO {
   id: string
   titulo: string
-  /** Instrucciones en Markdown. */
+  /** Instrucciones (Markdown o HTML, según `formato`). */
   instrucciones: string
+  formato: FormatoInstrucciones
   asignaturaId: string
   temas: string[]
   /** Clave del componente, o null si es una tarea general. */
@@ -172,6 +176,7 @@ export interface ResumenTareaDTO {
 export interface DatosTareaDTO {
   titulo: string
   instrucciones: string
+  formato: FormatoInstrucciones
   asignaturaId: string
   temas: string[]
   componente: string | null

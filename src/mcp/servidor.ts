@@ -186,6 +186,7 @@ server.registerTool(
     const tarea = crearTarea(servicios(), {
       titulo,
       instrucciones,
+      formato: 'markdown',
       asignaturaId,
       temas: ids,
       componente: componente ?? null

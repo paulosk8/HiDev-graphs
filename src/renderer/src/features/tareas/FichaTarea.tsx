@@ -88,11 +88,13 @@ export function FichaTarea({ tareaId, onCerrar, onCambiada }: Props): JSX.Elemen
   }
 
   const descargar = (): void => {
-    const blob = new Blob([tarea.instrucciones], { type: 'text/markdown;charset=utf-8' })
+    const esHtml = tarea.formato === 'html'
+    const tipo = esHtml ? 'text/html;charset=utf-8' : 'text/markdown;charset=utf-8'
+    const blob = new Blob([tarea.instrucciones], { type: tipo })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${tarea.titulo}.md`
+    a.download = `${tarea.titulo}.${esHtml ? 'html' : 'md'}`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -166,16 +168,23 @@ export function FichaTarea({ tareaId, onCerrar, onCambiada }: Props): JSX.Elemen
               Instrucciones
             </h3>
             <Boton variante="secundario" onClick={descargar}>
-              ⬇ Descargar .md
+              ⬇ Descargar {tarea.formato === 'html' ? '.html' : '.md'}
             </Boton>
           </div>
-          {tarea.instrucciones.trim() ? (
+          {!tarea.instrucciones.trim() ? (
+            <p className="text-sm text-slate-400">Esta tarea todavía no tiene instrucciones.</p>
+          ) : tarea.formato === 'html' ? (
+            <iframe
+              title="Instrucciones"
+              sandbox="allow-scripts"
+              srcDoc={tarea.instrucciones}
+              className="min-h-[24rem] w-full rounded-lg border border-slate-200 bg-white"
+            />
+          ) : (
             <div
               className="markdown-preview"
               dangerouslySetInnerHTML={{ __html: marked.parse(tarea.instrucciones) as string }}
             />
-          ) : (
-            <p className="text-sm text-slate-400">Esta tarea todavía no tiene instrucciones.</p>
           )}
 
           {/* Adjuntos */}

@@ -1,5 +1,6 @@
 import { exigir, ErrorDeDominio } from './errores'
 import type { Recurso } from './Recurso'
+import type { FormatoInstrucciones } from './tipos'
 
 /**
  * Tarea: actividad (evaluable o no) que el docente redacta para uno o varios
@@ -17,8 +18,10 @@ import type { Recurso } from './Recurso'
 export interface Tarea {
   readonly id: string
   readonly titulo: string
-  /** Instrucciones en Markdown (incluyen normalmente la rúbrica). */
+  /** Instrucciones (incluyen normalmente la rúbrica). El formato lo marca `formato`. */
   readonly instrucciones: string
+  /** Formato de las instrucciones: 'markdown' (por defecto) o 'html'. */
+  readonly formato: FormatoInstrucciones
   /** Asignatura "hogar" a la que pertenecen sus temas. */
   readonly asignaturaId: string
   readonly temas: readonly string[]
@@ -33,6 +36,7 @@ export interface DatosTarea {
   id: string
   titulo: string
   instrucciones?: string
+  formato?: FormatoInstrucciones
   asignaturaId: string
   temas?: readonly string[]
   componente?: string | null
@@ -60,6 +64,7 @@ export function crearTarea(datos: DatosTarea): Tarea {
     id: datos.id.trim(),
     titulo,
     instrucciones: datos.instrucciones ?? '',
+    formato: datos.formato ?? 'markdown',
     asignaturaId: datos.asignaturaId.trim(),
     temas: datos.temas ?? [],
     componente: componente ? componente : null,

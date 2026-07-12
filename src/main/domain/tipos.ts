@@ -21,6 +21,9 @@ export function esTipoRelacion(valor: string): valor is TipoRelacion {
 }
 
 /** Formatos de material soportados, según su extensión de archivo. */
+/** Formato de las instrucciones de una tarea: Markdown o HTML (con CSS/JS embebidos). */
+export type FormatoInstrucciones = 'markdown' | 'html'
+
 export type FormatoRecurso =
   | 'pptx'
   | 'pdf'

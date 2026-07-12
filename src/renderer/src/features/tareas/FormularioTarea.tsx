@@ -1,6 +1,6 @@
 import { useRef, useState, type ClipboardEvent, type FormEvent } from 'react'
 import { marked } from 'marked'
-import type { AsignaturaDTO, TareaDTO } from '@shared/dtos'
+import type { AsignaturaDTO, FormatoInstrucciones, TareaDTO } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
 import { CampoTexto } from '../../components/Campos'
 import { Modal } from '../../components/Modal'
@@ -35,6 +35,7 @@ export function FormularioTarea({
     () => new Set(tareaInicial?.temas ?? (temaPreseleccionado ? [temaPreseleccionado] : []))
   )
   const [instrucciones, setInstrucciones] = useState(tareaInicial?.instrucciones ?? '')
+  const [formato, setFormato] = useState<FormatoInstrucciones>(tareaInicial?.formato ?? 'markdown')
   const [previa, setPrevia] = useState(false)
   const [ocupado, setOcupado] = useState(false)
   const areaRef = useRef<HTMLTextAreaElement>(null)
@@ -58,7 +59,8 @@ export function FormularioTarea({
     const html = e.clipboardData.getData('text/html')
     if (html && html.trim()) {
       e.preventDefault()
-      insertar(`${htmlAMarkdown(html)}\n`)
+      // En modo HTML se pega el HTML tal cual (para Moodle); en Markdown se convierte.
+      insertar(formato === 'html' ? html : `${htmlAMarkdown(html)}\n`)
     }
     // Sin HTML (texto plano): se deja el pegado por defecto.
   }
@@ -77,6 +79,7 @@ export function FormularioTarea({
     const datos = {
       titulo: titulo.trim(),
       instrucciones,
+      formato,
       asignaturaId: asignatura.id,
       temas: [...temas],
       componente: componente || null
@@ -147,7 +150,23 @@ export function FormularioTarea({
         {/* Instrucciones (Markdown) */}
         <div>
           <div className="mb-1.5 flex items-center justify-between">
-            <span className="text-sm font-medium text-slate-700">Instrucciones</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-slate-700">Instrucciones</span>
+              <div className="inline-flex overflow-hidden rounded-md border border-slate-200 text-xs">
+                {(['markdown', 'html'] as const).map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => setFormato(f)}
+                    className={`px-2 py-0.5 transition ${
+                      formato === f ? 'bg-marca-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    {f === 'markdown' ? 'Markdown' : 'HTML'}
+                  </button>
+                ))}
+              </div>
+            </div>
             <button
               type="button"
               onClick={() => setPrevia((p) => !p)}
@@ -157,42 +176,64 @@ export function FormularioTarea({
             </button>
           </div>
           {previa ? (
-            <div
-              className="markdown-preview min-h-[8rem] rounded-lg border border-slate-200 bg-slate-50 p-3"
-              dangerouslySetInnerHTML={{ __html: marked.parse(instrucciones || '_Sin contenido_') as string }}
-            />
+            formato === 'html' ? (
+              <iframe
+                title="Vista previa"
+                sandbox="allow-scripts"
+                srcDoc={instrucciones || '<p style="color:#94a3b8;font-family:sans-serif">Sin contenido</p>'}
+                className="min-h-[12rem] w-full rounded-lg border border-slate-200 bg-white"
+              />
+            ) : (
+              <div
+                className="markdown-preview min-h-[8rem] rounded-lg border border-slate-200 bg-slate-50 p-3"
+                dangerouslySetInnerHTML={{ __html: marked.parse(instrucciones || '_Sin contenido_') as string }}
+              />
+            )
           ) : (
             <>
-              <div className="mb-1.5 flex flex-wrap gap-1">
-                {[
-                  { etiqueta: 'Título', frag: '\n## Título\n' },
-                  { etiqueta: 'Subtítulo', frag: '\n### Subtítulo\n' },
-                  { etiqueta: 'Lista', frag: '\n- \n' },
-                  { etiqueta: 'Tabla / rúbrica', frag: PLANTILLA_TABLA },
-                  { etiqueta: 'Enlace', frag: '[texto](https://…)' },
-                  { etiqueta: 'Negrita', frag: '**texto**' }
-                ].map((b) => (
-                  <button
-                    key={b.etiqueta}
-                    type="button"
-                    onClick={() => insertar(b.frag)}
-                    className="rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 transition hover:bg-slate-50"
-                  >
-                    {b.etiqueta}
-                  </button>
-                ))}
-              </div>
+              {formato === 'markdown' ? (
+                <div className="mb-1.5 flex flex-wrap gap-1">
+                  {[
+                    { etiqueta: 'Título', frag: '\n## Título\n' },
+                    { etiqueta: 'Subtítulo', frag: '\n### Subtítulo\n' },
+                    { etiqueta: 'Lista', frag: '\n- \n' },
+                    { etiqueta: 'Tabla / rúbrica', frag: PLANTILLA_TABLA },
+                    { etiqueta: 'Enlace', frag: '[texto](https://…)' },
+                    { etiqueta: 'Negrita', frag: '**texto**' }
+                  ].map((b) => (
+                    <button
+                      key={b.etiqueta}
+                      type="button"
+                      onClick={() => insertar(b.frag)}
+                      className="rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 transition hover:bg-slate-50"
+                    >
+                      {b.etiqueta}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="mb-1.5 text-xs text-slate-500">
+                  Modo HTML: pega o escribe HTML; admite <code>&lt;style&gt;</code> y{' '}
+                  <code>&lt;script&gt;</code>. Se guarda tal cual para copiarlo en Moodle.
+                </p>
+              )}
               <textarea
                 ref={areaRef}
                 value={instrucciones}
                 onChange={(e) => setInstrucciones(e.target.value)}
                 onPaste={alPegar}
-                placeholder="Escribe o PEGA desde Word/web: títulos, párrafos, listas, tablas y rúbrica se convierten a formato automáticamente. Los enlaces también."
+                placeholder={
+                  formato === 'html'
+                    ? 'Escribe o pega HTML (con <style> y <script> si lo necesitas). Se sube tal cual a Moodle.'
+                    : 'Escribe o PEGA desde Word/web: títulos, párrafos, listas, tablas y rúbrica se convierten a formato automáticamente. Los enlaces también.'
+                }
                 rows={10}
                 className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm outline-none focus:border-marca-500 focus:ring-2 focus:ring-marca-100"
               />
               <p className="mt-1 text-xs text-slate-400">
-                Pega contenido con formato y se convierte solo. Usa «Vista previa» para verlo como quedará.
+                {formato === 'html'
+                  ? 'El HTML se guarda tal cual; la vista previa se ejecuta aislada (sandbox).'
+                  : 'Pega contenido con formato y se convierte solo. Usa «Vista previa» para verlo como quedará.'}
               </p>
             </>
           )}
