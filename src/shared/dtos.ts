@@ -19,6 +19,8 @@ export interface ResumenConceptoDTO {
   totalRecursos: number
   /** Títulos de los temas que usan el concepto (para búsqueda). */
   temas: string[]
+  /** Nombres de las asignaturas donde se usa (para agrupar/filtrar). */
+  asignaturas: string[]
 }
 
 export interface RecursoDTO {

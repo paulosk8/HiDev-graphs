@@ -92,7 +92,24 @@ async function envolver<T>(fn: () => T | Promise<T>): Promise<Resultado<T>> {
 export function registrarHandlersIpc(servicios: Servicios): void {
   const { vault, repositorio } = servicios
 
-  ipcMain.handle(CANALES.conceptosListar, () => envolver(() => repositorio.listarConceptos()))
+  ipcMain.handle(CANALES.conceptosListar, () =>
+    envolver(() => {
+      // Enriquece cada concepto con las asignaturas donde se usa (para agrupar/filtrar).
+      const nombreAsignatura = new Map(repositorio.listarAsignaturas().map((a) => [a.id, a.nombre]))
+      const asignaturasPorConcepto = new Map<string, Set<string>>()
+      for (const { conceptoId, asignaturaId } of repositorio.usosConceptoAsignatura()) {
+        const nombre = nombreAsignatura.get(asignaturaId)
+        if (!nombre) continue
+        const set = asignaturasPorConcepto.get(conceptoId) ?? new Set<string>()
+        set.add(nombre)
+        asignaturasPorConcepto.set(conceptoId, set)
+      }
+      return repositorio.listarConceptos().map((c) => ({
+        ...c,
+        asignaturas: [...(asignaturasPorConcepto.get(c.id) ?? [])].sort((a, b) => a.localeCompare(b, 'es'))
+      }))
+    })
+  )
 
   ipcMain.handle(CANALES.conceptosBuscar, (_evento, texto: string) =>
     envolver(() => repositorio.buscarConceptos(texto))

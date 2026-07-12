@@ -33,9 +33,10 @@ export function aResumenConceptoDTO(concepto: Concepto): ResumenConceptoDTO {
     nombre: concepto.nombre,
     descripcion: concepto.descripcion,
     totalRecursos: concepto.recursos.length,
-    // Un resumen recién creado/editado no conoce sus temas; el listado los
-    // rellena al recargar desde el índice. El store conserva los previos al editar.
-    temas: []
+    // Un resumen recién creado/editado no conoce sus temas ni asignaturas; el
+    // listado los rellena al recargar. El store conserva los previos al editar.
+    temas: [],
+    asignaturas: []
   }
 }
 
