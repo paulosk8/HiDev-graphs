@@ -12,6 +12,7 @@ import {
 import { Boton } from '../../components/Boton'
 import { Modal } from '../../components/Modal'
 import { TerminalEmbebida } from '../terminal/TerminalEmbebida'
+import { CombinarTareasDialog } from '../tareas/CombinarTareasDialog'
 import { api } from '../../lib/api'
 import { useConceptosStore } from '../../stores/conceptosStore'
 import { useUiStore } from '../../stores/uiStore'
@@ -83,7 +84,8 @@ const ESTILO: cytoscape.StylesheetStyle[] = [
   { selector: 'edge[tipo="relacionado_con"]', style: { 'line-color': '#64748b' } },
   { selector: 'edge[tipo="profundiza"]', style: { 'line-color': '#10b981', 'target-arrow-shape': 'triangle', 'target-arrow-color': '#10b981' } },
   { selector: '.atenuado', style: { opacity: 0.1 } },
-  { selector: 'node.foco', style: { 'border-width': 3, 'border-color': '#4338ca' } }
+  { selector: 'node.foco', style: { 'border-width': 3, 'border-color': '#4338ca' } },
+  { selector: 'node.combinar', style: { 'border-width': 4, 'border-color': '#059669' } }
 ]
 
 function elementosVisibles(
@@ -199,6 +201,8 @@ export function GrafoPage(): JSX.Element {
   const [grafo, setGrafo] = useState<GrafoDTO | null>(null)
   const [tipos, setTipos] = useState<Set<TipoAristaGrafo>>(() => new Set(TIPOS_ARISTA.map((t) => t.tipo)))
   const [mostrarTareas, setMostrarTareas] = useState(true)
+  const [tareasCombinar, setTareasCombinar] = useState<string[]>([])
+  const [dialogoCombinar, setDialogoCombinar] = useState(false)
   const [busqueda, setBusqueda] = useState('')
   const [seleccionado, setSeleccionado] = useState<string | null>(null)
   const [modalId, setModalId] = useState<string | null>(null)
@@ -259,8 +263,13 @@ export function GrafoPage(): JSX.Element {
 
     cy.on('tap', 'node[tipo="concepto"]', (evt) => setSeleccionado(evt.target.id().slice(2)))
     cy.on('dbltap', 'node[tipo="concepto"]', (evt) => setModalId(evt.target.id().slice(2)))
-    // Clic en una tarea: ir a su asignatura para ver la ficha de la tarea.
+    // Clic en una tarea: añádela/quítala de la selección para combinar.
+    // Doble clic: ir a su asignatura para ver la ficha.
     cy.on('tap', 'node[tipo="tarea"]', (evt) => {
+      const id = evt.target.id().slice(2)
+      setTareasCombinar((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+    })
+    cy.on('dbltap', 'node[tipo="tarea"]', (evt) => {
       const aid = evt.target.data('asignaturaId') as string | undefined
       if (aid) {
         irASeccion('asignaturas')
@@ -322,6 +331,14 @@ export function GrafoPage(): JSX.Element {
     if (!cy) return
     cy.nodes('[tipo="concepto"]').style('color', tema === 'oscuro' ? '#cbd5e1' : '#334155')
   }, [tema, elementos])
+
+  // Resalta las tareas seleccionadas para combinar.
+  useEffect(() => {
+    const cy = cyRef.current
+    if (!cy) return
+    cy.nodes('[tipo="tarea"]').removeClass('combinar')
+    for (const id of tareasCombinar) cy.getElementById(`t:${id}`).addClass('combinar')
+  }, [tareasCombinar, elementos])
 
   // Carga el detalle para la modal.
   useEffect(() => {
@@ -426,6 +443,17 @@ export function GrafoPage(): JSX.Element {
     document.addEventListener('mouseup', onUp)
   }
 
+  // Tareas seleccionadas para combinar, con su título y asignatura (para el diálogo).
+  const tareasOrigen = useMemo(() => {
+    const porId = new Map(
+      (grafo?.nodos ?? []).filter((n) => n.tipo === 'tarea').map((n) => [n.id.slice(2), n])
+    )
+    return tareasCombinar
+      .map((id) => porId.get(id))
+      .filter((n): n is NonNullable<typeof n> => !!n)
+      .map((n) => ({ id: n.id.slice(2), titulo: n.etiqueta, asignaturaId: n.asignaturaId }))
+  }, [grafo, tareasCombinar])
+
   return (
     <div className="flex h-full flex-col">
       <header className="border-b border-slate-200 px-8 py-4">
@@ -479,6 +507,28 @@ export function GrafoPage(): JSX.Element {
                   style={{ left: tooltip.x, top: tooltip.y - 8 }}
                 >
                   {tooltip.texto}
+                </div>
+              )}
+              {/* Barra de combinación de tareas (aparece al seleccionar nodos-tarea). */}
+              {mostrarTareas && tareasCombinar.length > 0 && (
+                <div className="absolute bottom-4 left-4 z-20 flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-md">
+                  <span className="text-xs text-slate-600">
+                    {tareasCombinar.length} {tareasCombinar.length === 1 ? 'tarea' : 'tareas'}
+                    {tareasCombinar.length < 2 && ' · elige otra para combinar'}
+                  </span>
+                  <button
+                    onClick={() => setDialogoCombinar(true)}
+                    disabled={tareasCombinar.length < 2}
+                    className="rounded-md bg-marca-600 px-2.5 py-1 text-xs font-medium text-white transition hover:bg-marca-500 disabled:opacity-40"
+                  >
+                    Combinar en una tarea nueva
+                  </button>
+                  <button
+                    onClick={() => setTareasCombinar([])}
+                    className="text-xs text-slate-400 hover:underline"
+                  >
+                    Limpiar
+                  </button>
                 </div>
               )}
             </>
@@ -696,6 +746,21 @@ export function GrafoPage(): JSX.Element {
             <p className="text-sm text-slate-400">Cargando…</p>
           )}
         </Modal>
+      )}
+
+      {/* Diálogo para combinar las tareas seleccionadas en una nueva */}
+      {dialogoCombinar && tareasOrigen.length >= 2 && (
+        <CombinarTareasDialog
+          origen={tareasOrigen.map((t) => ({ id: t.id, titulo: t.titulo }))}
+          asignaturaSugerida={tareasOrigen[0]?.asignaturaId}
+          onCerrar={() => setDialogoCombinar(false)}
+          onCombinada={(nueva) => {
+            setDialogoCombinar(false)
+            setTareasCombinar([])
+            irASeccion('asignaturas')
+            seleccionarAsignatura(nueva.asignaturaId)
+          }}
+        />
       )}
 
       {/* Modal para componer el prompt de la IA a partir de la selección */}

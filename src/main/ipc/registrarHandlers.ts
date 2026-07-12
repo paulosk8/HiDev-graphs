@@ -5,6 +5,7 @@ import { existsSync } from 'node:fs'
 import { CANALES } from '../../shared/canales'
 import type {
   ClienteMcpId,
+  CombinarTareasDTO,
   DatosAsignaturaDTO,
   DatosConceptoDTO,
   DatosTareaDTO,
@@ -33,6 +34,7 @@ import {
 } from '../application/VincularTemaConcepto'
 import {
   agregarAdjuntoTarea,
+  combinarTareas,
   crearTarea,
   crucesDeTarea,
   duplicarTarea,
@@ -214,6 +216,9 @@ export function registrarHandlersIpc(servicios: Servicios): void {
   )
   ipcMain.handle(CANALES.tareaDuplicar, (_e, tareaId: string, destino: DuplicarTareaDTO) =>
     envolver(() => duplicarTarea(servicios, tareaId, destino))
+  )
+  ipcMain.handle(CANALES.tareaCombinar, (_e, datos: CombinarTareasDTO) =>
+    envolver(() => combinarTareas(servicios, datos))
   )
   ipcMain.handle(CANALES.tareaAdjuntoAbrir, (_e, tareaId: string, archivo: string) =>
     envolver(async () => {

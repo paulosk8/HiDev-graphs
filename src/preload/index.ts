@@ -50,6 +50,7 @@ const api: PedagoGraphApi = {
     ipcRenderer.invoke(CANALES.tareaAdjuntoAbrir, tareaId, archivo),
   crucesDeTarea: (tareaId) => ipcRenderer.invoke(CANALES.tareaCruces, tareaId),
   duplicarTarea: (tareaId, destino) => ipcRenderer.invoke(CANALES.tareaDuplicar, tareaId, destino),
+  combinarTareas: (datos) => ipcRenderer.invoke(CANALES.tareaCombinar, datos),
   obtenerGrafo: () => ipcRenderer.invoke(CANALES.grafoObtener),
   obtenerInfoMcp: () => ipcRenderer.invoke(CANALES.mcpInfo),
   conectarMcp: (cli) => ipcRenderer.invoke(CANALES.mcpConectar, cli),

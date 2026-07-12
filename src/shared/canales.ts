@@ -42,6 +42,7 @@ export const CANALES = {
   tareaAdjuntoAbrir: 'tarea:adjunto-abrir',
   tareaCruces: 'tarea:cruces',
   tareaDuplicar: 'tarea:duplicar',
+  tareaCombinar: 'tarea:combinar',
 
   // Grafo
   grafoObtener: 'grafo:obtener',

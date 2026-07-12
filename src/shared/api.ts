@@ -6,6 +6,7 @@ import type {
   DatosAsignaturaDTO,
   DatosConceptoDTO,
   DatosTareaDTO,
+  CombinarTareasDTO,
   DuplicarTareaDTO,
   FichaConceptoDTO,
   GrafoDTO,
@@ -84,6 +85,7 @@ export interface PedagoGraphApi {
   abrirAdjuntoTarea(tareaId: string, archivo: string): Promise<Resultado<void>>
   crucesDeTarea(tareaId: string): Promise<Resultado<CruceDTO[]>>
   duplicarTarea(tareaId: string, destino: DuplicarTareaDTO): Promise<Resultado<TareaDTO>>
+  combinarTareas(datos: CombinarTareasDTO): Promise<Resultado<TareaDTO>>
 
   // --- Grafo ---
   obtenerGrafo(): Promise<Resultado<GrafoDTO>>

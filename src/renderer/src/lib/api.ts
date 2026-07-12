@@ -1,5 +1,6 @@
 import type {
   ClienteMcpId,
+  CombinarTareasDTO,
   DatosAsignaturaDTO,
   DatosConceptoDTO,
   DatosTareaDTO,
@@ -82,6 +83,7 @@ export const api = {
   crucesDeTarea: (tareaId: string) => desenvolver(window.api.crucesDeTarea(tareaId)),
   duplicarTarea: (tareaId: string, destino: DuplicarTareaDTO) =>
     desenvolver(window.api.duplicarTarea(tareaId, destino)),
+  combinarTareas: (datos: CombinarTareasDTO) => desenvolver(window.api.combinarTareas(datos)),
   obtenerGrafo: () => desenvolver(window.api.obtenerGrafo()),
   obtenerInfoMcp: () => desenvolver(window.api.obtenerInfoMcp()),
   conectarMcp: (cli: ClienteMcpId) => desenvolver(window.api.conectarMcp(cli)),
