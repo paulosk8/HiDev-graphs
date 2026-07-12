@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, rmSync, copyFileSync } from 'node:fs'
 import { basename, extname, join, resolve, sep } from 'node:path'
-import yaml from 'js-yaml'
+import { load as leerYaml, dump as escribirYaml } from 'js-yaml'
 
 import { crearAsignatura, crearComponente, type Asignatura } from '../domain/Asignatura'
 import { crearConcepto, type Concepto } from '../domain/Concepto'
@@ -88,11 +88,11 @@ export class VaultFileSystemService {
         formato: r.formato
       }))
     }
-    writeFileSync(this.rutaConcepto(concepto.id), yaml.dump(plano, { lineWidth: 100 }), 'utf8')
+    writeFileSync(this.rutaConcepto(concepto.id), escribirYaml(plano, { lineWidth: 100 }), 'utf8')
   }
 
   leerConcepto(id: string): Concepto {
-    const datos = yaml.load(readFileSync(this.rutaConcepto(id), 'utf8')) as Record<string, unknown>
+    const datos = leerYaml(readFileSync(this.rutaConcepto(id), 'utf8')) as Record<string, unknown>
     return conceptoDesdePlano(datos)
   }
 
@@ -213,11 +213,11 @@ export class VaultFileSystemService {
         }))
       }))
     }
-    writeFileSync(this.rutaAsignatura(asignatura.id), yaml.dump(plano, { lineWidth: 100 }), 'utf8')
+    writeFileSync(this.rutaAsignatura(asignatura.id), escribirYaml(plano, { lineWidth: 100 }), 'utf8')
   }
 
   leerAsignatura(id: string): Asignatura {
-    const datos = yaml.load(readFileSync(this.rutaAsignatura(id), 'utf8')) as Record<string, unknown>
+    const datos = leerYaml(readFileSync(this.rutaAsignatura(id), 'utf8')) as Record<string, unknown>
     return asignaturaDesdePlano(datos)
   }
 
@@ -279,12 +279,12 @@ export class VaultFileSystemService {
       }))
     }
     // Las instrucciones (Markdown) van en su propio archivo, legible y descargable.
-    writeFileSync(this.rutaTarea(tarea.id), yaml.dump(plano, { lineWidth: 100 }), 'utf8')
+    writeFileSync(this.rutaTarea(tarea.id), escribirYaml(plano, { lineWidth: 100 }), 'utf8')
     writeFileSync(this.rutaInstrucciones(tarea.id), tarea.instrucciones, 'utf8')
   }
 
   leerTarea(id: string): Tarea {
-    const datos = yaml.load(readFileSync(this.rutaTarea(id), 'utf8')) as Record<string, unknown>
+    const datos = leerYaml(readFileSync(this.rutaTarea(id), 'utf8')) as Record<string, unknown>
     const rutaMd = this.rutaInstrucciones(id)
     const instrucciones = existsSync(rutaMd) ? readFileSync(rutaMd, 'utf8') : ''
     return tareaDesdePlano(datos, instrucciones)

@@ -1,5 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { join } from 'node:path'
+import { existsSync } from 'node:fs'
 
 import { CANALES } from '../../shared/canales'
 import type {
@@ -211,6 +212,17 @@ export function registrarHandlersIpc(servicios: Servicios): void {
   )
 
   ipcMain.handle(CANALES.grafoObtener, () => envolver(() => obtenerGrafo(servicios)))
+
+  ipcMain.handle(CANALES.mcpInfo, () =>
+    envolver(() => {
+      const rutaServidor = join(app.getAppPath(), 'out', 'mcp', 'pedagograph-mcp.mjs')
+      return {
+        rutaServidor,
+        rutaVault: join(app.getPath('documents'), 'PedagoGraph'),
+        compilado: existsSync(rutaServidor)
+      }
+    })
+  )
 
   ipcMain.handle(CANALES.reindexar, () => envolver(() => reindexarVault(vault, repositorio)))
 

@@ -7,6 +7,7 @@ import { ListaConceptos } from './features/conceptos/ListaConceptos'
 import { FichaAsignatura } from './features/asignaturas/FichaAsignatura'
 import { ListaAsignaturas } from './features/asignaturas/ListaAsignaturas'
 import { GrafoPage } from './features/grafo/GrafoPage'
+import { AsistentePage } from './features/asistente/AsistentePage'
 import { useAsignaturasStore } from './stores/asignaturasStore'
 import { useConceptosStore } from './stores/conceptosStore'
 import { useUiStore } from './stores/uiStore'
@@ -18,6 +19,10 @@ function Contenido(): JSX.Element {
 
   if (seccion === 'grafo') {
     return <GrafoPage />
+  }
+
+  if (seccion === 'asistente') {
+    return <AsistentePage />
   }
 
   if (seccion === 'asignaturas') {

@@ -206,6 +206,14 @@ export interface RespaldoDTO {
   ruta?: string
 }
 
+/** Datos para configurar el servidor MCP (asistente IA) en un CLI externo. */
+export interface McpInfoDTO {
+  rutaServidor: string
+  rutaVault: string
+  /** true si el bundle del servidor ya está compilado (npm run build:mcp). */
+  compilado: boolean
+}
+
 // --- Grafo (Fase 2) ---
 
 export type TipoNodoGrafo = 'concepto' | 'asignatura'

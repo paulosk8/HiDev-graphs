@@ -86,6 +86,7 @@ export function Sidebar(): JSX.Element {
         <Item seccion="asignaturas" etiqueta="Mis asignaturas" cuenta={totalAsignaturas} icono="🎓" />
         <Item seccion="conceptos" etiqueta="Conceptos" cuenta={totalConceptos} icono="💡" />
         <Item seccion="grafo" etiqueta="Mapa de conceptos" icono="🕸️" />
+        <Item seccion="asistente" etiqueta="Asistente IA" icono="🤖" />
       </nav>
 
       <div className="mt-auto space-y-2">

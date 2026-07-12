@@ -8,6 +8,7 @@ import type {
   DuplicarTareaDTO,
   FichaConceptoDTO,
   GrafoDTO,
+  McpInfoDTO,
   RespaldoDTO,
   ResultadoAdjuntoDTO,
   ResultadoMaterialDTO,
@@ -85,6 +86,9 @@ export interface PedagoGraphApi {
 
   // --- Grafo ---
   obtenerGrafo(): Promise<Resultado<GrafoDTO>>
+
+  // --- Asistente IA (MCP) ---
+  obtenerInfoMcp(): Promise<Resultado<McpInfoDTO>>
 
   // --- Sistema ---
   reindexar(): Promise<Resultado<ResultadoReindexadoDTO>>

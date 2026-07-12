@@ -82,6 +82,7 @@ export const api = {
   duplicarTarea: (tareaId: string, destino: DuplicarTareaDTO) =>
     desenvolver(window.api.duplicarTarea(tareaId, destino)),
   obtenerGrafo: () => desenvolver(window.api.obtenerGrafo()),
+  obtenerInfoMcp: () => desenvolver(window.api.obtenerInfoMcp()),
   reindexar: () => desenvolver(window.api.reindexar()),
   respaldar: () => desenvolver(window.api.respaldar()),
   onVaultCambiado: (callback: () => void): (() => void) => window.api.onVaultCambiado(callback)
