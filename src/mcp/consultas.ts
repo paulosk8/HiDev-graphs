@@ -154,6 +154,62 @@ export function crucesEntreAsignaturas(d: DatosVault, refA: string, refB: string
   }
 }
 
+/** Estructura completa de una asignatura (unidades → temas con ids y conceptos). */
+export function detalleAsignatura(d: DatosVault, ref: string): unknown {
+  const a = resolverAsignatura(d, ref)
+  if (!a) return { error: `No encontré la asignatura "${ref}".` }
+  return {
+    id: a.id,
+    nombre: a.nombre,
+    periodos: a.periodos,
+    componentes: a.componentes.map((c) => ({ clave: c.clave, nombre: c.nombre })),
+    unidades: a.unidades.map((u) => ({
+      titulo: u.titulo,
+      temas: u.temas.map((t) => ({
+        id: t.id,
+        titulo: t.titulo,
+        semana: t.semana,
+        conceptos: t.conceptos.map((id) => nombreConcepto(d, id))
+      }))
+    }))
+  }
+}
+
+/** Resuelve referencias de tema (id exacto o título) a ids dentro de una asignatura. */
+export function resolverTemas(
+  d: DatosVault,
+  asignaturaRef: string,
+  refs: string[]
+): { asignaturaId: string | null; ids: string[]; noEncontrados: string[] } {
+  const a = resolverAsignatura(d, asignaturaRef)
+  if (!a) return { asignaturaId: null, ids: [], noEncontrados: refs }
+  const todos = a.unidades.flatMap((u) => u.temas)
+  const ids: string[] = []
+  const noEncontrados: string[] = []
+  for (const ref of refs) {
+    const r = ref.trim().toLowerCase()
+    const tema = todos.find((t) => t.id.toLowerCase() === r) ?? todos.find((t) => t.titulo.toLowerCase().includes(r))
+    if (tema) ids.push(tema.id)
+    else noEncontrados.push(ref)
+  }
+  return { asignaturaId: a.id, ids, noEncontrados }
+}
+
+export function listarTareasDe(d: DatosVault, asignaturaRef: string): unknown {
+  const a = resolverAsignatura(d, asignaturaRef)
+  if (!a) return { error: `No encontré la asignatura "${asignaturaRef}".` }
+  const tituloTema = new Map(a.unidades.flatMap((u) => u.temas.map((t) => [t.id, t.titulo] as const)))
+  return d.tareas
+    .filter((t) => t.asignaturaId === a.id)
+    .map((t) => ({
+      id: t.id,
+      titulo: t.titulo,
+      componente: t.componente,
+      temas: t.temas.map((id) => tituloTema.get(id) ?? id),
+      adjuntos: t.recursos.length
+    }))
+}
+
 export function resumenGrafo(d: DatosVault): unknown {
   const transversales = d.conceptos
     .map((c) => ({ concepto: c.nombre, conceptoId: c.id, asignaturas: transversalidad(d, c.id) }))

@@ -13,16 +13,24 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 import { VaultFileSystemService } from '../main/infrastructure/VaultFileSystemService'
+import { crearTarea, duplicarTarea } from '../main/application/Tareas'
+import type { Servicios } from '../main/servicios'
 import {
   buscarConceptos,
   cargarVault,
   crucesEntreAsignaturas,
+  detalleAsignatura,
   listarAsignaturas,
+  listarTareasDe,
   relacionesDeConcepto,
+  resolverTemas,
   resumenGrafo,
   usosDeConcepto
 } from './consultas'
 import { extraerTexto } from './extraerTexto'
+
+/** Servicios mínimos para los casos de uso de tarea (solo usan el vault). */
+const servicios = (): Servicios => ({ vault: new VaultFileSystemService(rutaVault) }) as unknown as Servicios
 
 const MAX_TEXTO = 8000
 
@@ -129,6 +137,85 @@ server.registerTool(
       }
     }
     return texto({ concepto: concepto.nombre, materiales })
+  }
+)
+
+server.registerTool(
+  'detalle_asignatura',
+  {
+    description:
+      'Estructura completa de una asignatura: unidades → temas (con su id, título, semana y conceptos). Úsalo para conocer los temas antes de crear una tarea.',
+    inputSchema: { asignatura: z.string().describe('Id o nombre de la asignatura') },
+    annotations: { readOnlyHint: true }
+  },
+  async ({ asignatura }) => texto(detalleAsignatura(cargarVault(rutaVault), asignatura))
+)
+
+server.registerTool(
+  'listar_tareas',
+  {
+    description: 'Lista las tareas de una asignatura (título, componente, temas, adjuntos).',
+    inputSchema: { asignatura: z.string().describe('Id o nombre de la asignatura') },
+    annotations: { readOnlyHint: true }
+  },
+  async ({ asignatura }) => texto(listarTareasDe(cargarVault(rutaVault), asignatura))
+)
+
+server.registerTool(
+  'crear_tarea',
+  {
+    description:
+      'Crea una tarea en una asignatura para uno o más temas, con instrucciones en Markdown (puede incluir la rúbrica) y un componente opcional. Los conceptos se derivan de los temas. Devuelve la tarea creada.',
+    inputSchema: {
+      asignatura: z.string().describe('Id o nombre de la asignatura'),
+      temas: z.array(z.string()).describe('Ids o títulos de los temas'),
+      titulo: z.string(),
+      instrucciones: z.string().describe('Instrucciones en Markdown'),
+      componente: z.string().optional().describe('Clave del componente (p. ej. AA), opcional')
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false }
+  },
+  async ({ asignatura, temas, titulo, instrucciones, componente }) => {
+    const datos = cargarVault(rutaVault)
+    const { asignaturaId, ids, noEncontrados } = resolverTemas(datos, asignatura, temas)
+    if (!asignaturaId) return texto({ error: `No encontré la asignatura "${asignatura}".` })
+    if (ids.length === 0) return texto({ error: 'No encontré ninguno de esos temas.', noEncontrados })
+    const tarea = crearTarea(servicios(), {
+      titulo,
+      instrucciones,
+      asignaturaId,
+      temas: ids,
+      componente: componente ?? null
+    })
+    return texto({ creada: tarea, temasNoEncontrados: noEncontrados })
+  }
+)
+
+server.registerTool(
+  'duplicar_tarea',
+  {
+    description:
+      'Duplica una tarea en otra asignatura para propagar una actividad a materias relacionadas. Copia instrucciones y adjuntos y re-deriva los conceptos según los temas destino.',
+    inputSchema: {
+      tareaId: z.string().describe('Id de la tarea a duplicar'),
+      asignaturaDestino: z.string().describe('Id o nombre de la asignatura destino'),
+      temasDestino: z.array(z.string()).describe('Ids o títulos de los temas destino'),
+      titulo: z.string().optional().describe('Título de la copia (opcional)')
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false }
+  },
+  async ({ tareaId, asignaturaDestino, temasDestino, titulo }) => {
+    const datos = cargarVault(rutaVault)
+    const { asignaturaId, ids } = resolverTemas(datos, asignaturaDestino, temasDestino)
+    if (!asignaturaId) return texto({ error: `No encontré la asignatura "${asignaturaDestino}".` })
+    if (ids.length === 0) return texto({ error: 'No encontré ninguno de esos temas destino.' })
+    const original = datos.tareas.find((t) => t.id === tareaId)
+    const copia = duplicarTarea(servicios(), tareaId, {
+      asignaturaId,
+      temas: ids,
+      titulo: titulo ?? `${original?.titulo ?? 'Tarea'} (copia)`
+    })
+    return texto({ duplicada: copia })
   }
 )
 

@@ -7,16 +7,21 @@ import { useUiStore } from '../../stores/uiStore'
 const HERRAMIENTAS = [
   ['resumen_grafo', 'Totales y conceptos más transversales.'],
   ['listar_asignaturas', 'Asignaturas con períodos y componentes.'],
+  ['detalle_asignatura', 'Unidades y temas (con conceptos) de una asignatura.'],
   ['buscar_conceptos', 'Busca conceptos y su material.'],
   ['usos_de_concepto', 'Dónde se usa un concepto.'],
   ['relaciones_de_concepto', 'Conceptos relacionados (tipados y co-ocurrentes).'],
-  ['cruces_entre_asignaturas', 'Conceptos/temas que conectan dos asignaturas.']
+  ['cruces_entre_asignaturas', 'Conceptos/temas que conectan dos asignaturas.'],
+  ['leer_material', 'Extrae el texto del material (PDF/Word/PPT/MD…) de un concepto.'],
+  ['listar_tareas', 'Tareas de una asignatura.'],
+  ['crear_tarea', 'Crea una tarea (temas + instrucciones + componente).'],
+  ['duplicar_tarea', 'Propaga una tarea a otra asignatura relacionada.']
 ]
 
 const EJEMPLOS = [
   '¿Qué conceptos conectan «Computación Paralela» y «Estructura de Datos»?',
-  'Planifícame una actividad que sirva a esas dos asignaturas usando sus temas relacionados.',
-  '¿Cuáles son mis conceptos más transversales y en qué asignaturas se usan?'
+  'Lee el material de esos conceptos y redáctame una actividad basada en su contenido.',
+  'Crea esa tarea en «Estructura de Datos» para sus temas relacionados y duplícala en «Computación Paralela».'
 ]
 
 export function AsistentePage(): JSX.Element {
