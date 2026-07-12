@@ -213,6 +213,12 @@ export interface RespaldoDTO {
 export interface McpInfoDTO {
   rutaServidor: string
   rutaVault: string
+  /**
+   * Ruta del ejecutable de la app (Electron). Se usa como `command` con
+   * ELECTRON_RUN_AS_NODE=1 para lanzar el servidor MCP con el motor incluido,
+   * sin exigir que el usuario tenga Node instalado.
+   */
+  ejecutable: string
   /** true si el bundle del servidor ya está compilado (npm run build:mcp). */
   compilado: boolean
 }

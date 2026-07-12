@@ -38,9 +38,11 @@ export function AsistentePage(): JSX.Element {
         {
           mcpServers: {
             pedagograph: {
-              command: 'node',
+              // Usa el motor incluido en PedagoGraph (Electron como Node), así no
+              // hace falta instalar Node aparte.
+              command: info.ejecutable,
               args: [info.rutaServidor],
-              env: { PEDAGOGRAPH_VAULT: info.rutaVault }
+              env: { ELECTRON_RUN_AS_NODE: '1', PEDAGOGRAPH_VAULT: info.rutaVault }
             }
           }
         },
@@ -84,7 +86,8 @@ export function AsistentePage(): JSX.Element {
         </div>
         <p className="mb-2 text-sm text-slate-600">
           Pega esto en la configuración MCP de tu CLI (p. ej. un archivo <code>.mcp.json</code>, o con{' '}
-          <code>claude mcp add-json pedagograph …</code>):
+          <code>claude mcp add-json pedagograph …</code>). Usa el motor incluido en PedagoGraph, así que{' '}
+          <strong>no necesitas instalar Node</strong>:
         </p>
         <pre className="overflow-x-auto rounded-lg bg-slate-900 p-4 text-xs leading-relaxed text-slate-100">
           {config || 'Cargando…'}

@@ -218,7 +218,8 @@ export function registrarHandlersIpc(servicios: Servicios): void {
       const rutaServidor = join(app.getAppPath(), 'out', 'mcp', 'pedagograph-mcp.mjs')
       return {
         rutaServidor,
-        rutaVault: join(app.getPath('documents'), 'PedagoGraph'),
+        rutaVault: vault.raiz,
+        ejecutable: process.execPath,
         compilado: existsSync(rutaServidor)
       }
     })
