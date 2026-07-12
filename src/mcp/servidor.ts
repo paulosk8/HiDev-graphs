@@ -14,8 +14,10 @@ import { join } from 'node:path'
 
 import { VaultFileSystemService } from '../main/infrastructure/VaultFileSystemService'
 import { crearTarea, duplicarTarea } from '../main/application/Tareas'
+import { vincularConceptos } from '../main/application/VincularConceptos'
 import type { Servicios } from '../main/servicios'
 import {
+  analizarConexiones,
   buscarConceptos,
   cargarVault,
   crucesEntreAsignaturas,
@@ -23,6 +25,7 @@ import {
   listarAsignaturas,
   listarTareasDe,
   relacionesDeConcepto,
+  resolverConcepto,
   resolverTemas,
   resumenGrafo,
   usosDeConcepto
@@ -216,6 +219,48 @@ server.registerTool(
       titulo: titulo ?? `${original?.titulo ?? 'Tarea'} (copia)`
     })
     return texto({ duplicada: copia })
+  }
+)
+
+server.registerTool(
+  'analizar_conexiones',
+  {
+    description:
+      'Análisis de conexiones del grafo (estilo Graphify): detecta pares de conceptos que se enseñan juntos pero NO están vinculados con una relación tipada (posiblesConexiones) y conceptos sin ninguna conexión (aislados). Úsalo para revisar si el grafo está bien conectado; combínalo con leer_material para decidir conexiones semánticas y aplícalas con vincular_conceptos.',
+    annotations: { readOnlyHint: true }
+  },
+  async () => texto(analizarConexiones(cargarVault(rutaVault)))
+)
+
+server.registerTool(
+  'vincular_conceptos',
+  {
+    description:
+      'Crea una relación tipada entre DOS conceptos (capa de conocimiento). Úsalo para APLICAR una conexión sugerida tras el visto bueno del usuario. Acepta id o nombre de cada concepto. Tipos: prerequisito_de, relacionado_con, profundiza.',
+    inputSchema: {
+      conceptoOrigen: z.string().describe('Id o nombre del concepto de origen'),
+      conceptoDestino: z.string().describe('Id o nombre del concepto de destino'),
+      tipo: z
+        .enum(['prerequisito_de', 'relacionado_con', 'profundiza'])
+        .describe('Tipo de relación')
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false }
+  },
+  async ({ conceptoOrigen, conceptoDestino, tipo }) => {
+    const datos = cargarVault(rutaVault)
+    const origen = resolverConcepto(datos, conceptoOrigen)
+    const destino = resolverConcepto(datos, conceptoDestino)
+    if (!origen) return texto({ error: `No encontré el concepto "${conceptoOrigen}".` })
+    if (!destino) return texto({ error: `No encontré el concepto "${conceptoDestino}".` })
+    try {
+      const actualizado = vincularConceptos(servicios(), origen.id, destino.id, tipo)
+      return texto({
+        vinculado: { origen: origen.nombre, destino: destino.nombre, tipo },
+        relaciones: actualizado.relaciones
+      })
+    } catch (error) {
+      return texto({ error: error instanceof Error ? error.message : String(error) })
+    }
   }
 )
 

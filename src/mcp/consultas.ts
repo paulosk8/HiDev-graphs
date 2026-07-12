@@ -107,6 +107,83 @@ export function relacionesDeConcepto(
   return { tipadas, coocurren }
 }
 
+/** Encuentra un concepto por id exacto o por nombre (contiene, sin distinguir mayúsculas). */
+export function resolverConcepto(d: DatosVault, ref: string): Concepto | null {
+  const r = ref.trim().toLowerCase()
+  return (
+    d.conceptos.find((c) => c.id.toLowerCase() === r) ??
+    d.conceptos.find((c) => c.nombre.toLowerCase().includes(r)) ??
+    null
+  )
+}
+
+/**
+ * Análisis de conexiones del grafo (estilo Graphify): da a la IA las señales
+ * estructurales para detectar vínculos que faltan.
+ *  - `posiblesConexiones`: pares de conceptos que se enseñan en el mismo tema
+ *    (co-ocurren) pero NO tienen una relación tipada entre sí. Candidatos a
+ *    formalizar (la IA decide el tipo tras leer su material/descripción).
+ *  - `aislados`: conceptos sin relaciones tipadas y sin co-ocurrencias.
+ * La IA complementa esto leyendo el material (leer_material) para proponer
+ * conexiones semánticas y aplicarlas con vincular_conceptos.
+ */
+export function analizarConexiones(d: DatosVault): unknown {
+  const clave = (a: string, b: string): string => (a < b ? `${a}|${b}` : `${b}|${a}`)
+  const info = (id: string): { id: string; nombre: string; materiales: number } => ({
+    id,
+    nombre: nombreConcepto(d, id),
+    materiales: d.conceptos.find((c) => c.id === id)?.recursos.length ?? 0
+  })
+
+  // Relaciones tipadas existentes (no dirigidas, para no re-sugerir lo ya vinculado).
+  const tipadas = new Set<string>()
+  for (const c of d.conceptos) {
+    for (const r of c.relaciones) tipadas.add(clave(c.id, r.destino))
+  }
+
+  // Co-ocurrencias: pares que comparten un tema, con los temas como motivo.
+  const cooc = new Map<string, Set<string>>()
+  for (const a of d.asignaturas) {
+    for (const u of a.unidades) {
+      for (const t of u.temas) {
+        for (let i = 0; i < t.conceptos.length; i++) {
+          for (let j = i + 1; j < t.conceptos.length; j++) {
+            const k = clave(t.conceptos[i], t.conceptos[j])
+            const set = cooc.get(k) ?? new Set<string>()
+            set.add(`${a.nombre} › ${t.titulo}`)
+            cooc.set(k, set)
+          }
+        }
+      }
+    }
+  }
+
+  const posiblesConexiones = [...cooc.entries()]
+    .filter(([k]) => !tipadas.has(k))
+    .map(([k, temas]) => {
+      const [a, b] = k.split('|')
+      return { a: info(a), b: info(b), enTemas: [...temas] }
+    })
+
+  // Conceptos conectados (tienen relación tipada como origen o destino, o co-ocurren).
+  const conectados = new Set<string>()
+  for (const k of [...tipadas, ...cooc.keys()]) {
+    const [a, b] = k.split('|')
+    conectados.add(a)
+    conectados.add(b)
+  }
+  const aislados = d.conceptos.filter((c) => !conectados.has(c.id)).map((c) => info(c.id))
+
+  return {
+    totales: { conceptos: d.conceptos.length },
+    tiposDeRelacion: ['prerequisito_de', 'relacionado_con', 'profundiza'],
+    posiblesConexiones,
+    aislados,
+    nota:
+      'posiblesConexiones = co-ocurren en un tema pero sin relación tipada. Lee su material/descripción y, si procede, vincúlalos con vincular_conceptos indicando el tipo. aislados = sin ninguna conexión; busca a qué concepto podrían enlazar.'
+  }
+}
+
 /** Encuentra una asignatura por id exacto o por nombre (contiene, sin distinguir mayúsculas). */
 export function resolverAsignatura(d: DatosVault, ref: string): Asignatura | null {
   const r = ref.trim().toLowerCase()
