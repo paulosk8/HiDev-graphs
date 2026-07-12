@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { basename, extname } from 'node:path'
 
 import type {
+  CombinarTareasDTO,
   CruceDTO,
   DatosTareaDTO,
   DuplicarTareaDTO,
@@ -9,6 +10,7 @@ import type {
   ResumenTareaDTO,
   TareaDTO
 } from '../../shared/dtos'
+import type { Tarea } from '../domain/Tarea'
 import type { Asignatura } from '../domain/Asignatura'
 import { ErrorDeDominio } from '../domain/errores'
 import { crearRecurso } from '../domain/Recurso'
@@ -223,6 +225,63 @@ export function duplicarTarea(
 
   vault.guardarTarea(copia)
   return aTareaDTO(copia)
+}
+
+/** Fusiona las instrucciones de varias tareas en un solo Markdown. */
+function fusionarInstrucciones(origenes: Tarea[]): string {
+  return origenes
+    .map((t) => `## De «${t.titulo}»\n\n${t.instrucciones}`.trim())
+    .join('\n\n---\n\n')
+}
+
+/**
+ * Combina varias tareas en una NUEVA reutilizando su material: la nueva tarea
+ * hereda la UNIÓN de los adjuntos de las tareas origen (sin duplicar por nombre)
+ * y deriva los conceptos de los temas destino. Las instrucciones se pasan o, si
+ * no, se fusionan las de las tareas origen. Generaliza `duplicarTarea` a varias
+ * fuentes; es la base para que el docente no prepare material desde cero.
+ */
+export function combinarTareas(servicios: Servicios, datos: CombinarTareasDTO): TareaDTO {
+  const { vault } = servicios
+  const origenes: Tarea[] = []
+  for (const idOrigen of datos.tareasOrigen) {
+    if (!vault.existeTarea(idOrigen)) {
+      throw new ErrorDeDominio(`No encontramos la tarea "${idOrigen}".`, 'Puede que ya se haya eliminado.')
+    }
+    origenes.push(vault.leerTarea(idOrigen))
+  }
+  if (origenes.length < 2) {
+    throw new ErrorDeDominio('Se necesitan al menos dos tareas para combinar.')
+  }
+  const asignatura = exigirAsignatura(servicios, datos.asignaturaId)
+
+  const id = slugUnico(datos.titulo, new Set(vault.listarIdsTareas()), 'tarea')
+  let combinada = nuevaTarea({
+    id,
+    titulo: datos.titulo,
+    instrucciones: datos.instrucciones ?? fusionarInstrucciones(origenes),
+    asignaturaId: datos.asignaturaId,
+    temas: datos.temas,
+    componente: datos.componente ?? null,
+    conceptos: derivarConceptos(asignatura, datos.temas)
+  })
+
+  // Copia física de la UNIÓN de adjuntos (dedup por nombre visible).
+  const vistos = new Set<string>()
+  for (const origen of origenes) {
+    for (const recurso of origen.recursos) {
+      const clave = recurso.nombre.toLowerCase()
+      if (vistos.has(clave)) continue
+      const ruta = vault.rutaAdjuntoTarea(origen.id, recurso.archivo)
+      if (ruta === null) continue
+      vistos.add(clave)
+      const { archivo, formato } = vault.copiarAdjuntoTarea(id, ruta)
+      combinada = agregarAdjunto(combinada, crearRecurso({ id: randomUUID(), nombre: recurso.nombre, archivo, formato }))
+    }
+  }
+
+  vault.guardarTarea(combinada)
+  return aTareaDTO(combinada)
 }
 
 export function eliminarAdjuntoTarea(

@@ -13,7 +13,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 import { VaultFileSystemService } from '../main/infrastructure/VaultFileSystemService'
-import { crearTarea, duplicarTarea } from '../main/application/Tareas'
+import { combinarTareas, crearTarea, duplicarTarea } from '../main/application/Tareas'
 import { vincularConceptos } from '../main/application/VincularConceptos'
 import type { Servicios } from '../main/servicios'
 import {
@@ -219,6 +219,42 @@ server.registerTool(
       titulo: titulo ?? `${original?.titulo ?? 'Tarea'} (copia)`
     })
     return texto({ duplicada: copia })
+  }
+)
+
+server.registerTool(
+  'combinar_tareas',
+  {
+    description:
+      'Combina DOS o más tareas existentes en una NUEVA, reutilizando su material: la nueva hereda la unión de los adjuntos de las tareas origen y deriva sus conceptos de los temas destino. Úsalo cuando dos tareas comparten conceptos y quieres una actividad conjunta sin preparar material desde cero. Si no pasas `instrucciones`, se fusionan las de las tareas origen.',
+    inputSchema: {
+      tareasOrigen: z.array(z.string()).describe('Ids de las tareas a combinar (2 o más)'),
+      asignatura: z.string().describe('Id o nombre de la asignatura destino'),
+      temas: z.array(z.string()).describe('Ids o títulos de los temas destino'),
+      titulo: z.string(),
+      instrucciones: z.string().optional().describe('Instrucciones en Markdown (opcional; si falta se fusionan)'),
+      componente: z.string().optional().describe('Clave del componente (opcional)')
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false }
+  },
+  async ({ tareasOrigen, asignatura, temas, titulo, instrucciones, componente }) => {
+    const datos = cargarVault(rutaVault)
+    const { asignaturaId, ids, noEncontrados } = resolverTemas(datos, asignatura, temas)
+    if (!asignaturaId) return texto({ error: `No encontré la asignatura "${asignatura}".` })
+    if (ids.length === 0) return texto({ error: 'No encontré ninguno de esos temas destino.', noEncontrados })
+    try {
+      const combinada = combinarTareas(servicios(), {
+        tareasOrigen,
+        asignaturaId,
+        temas: ids,
+        titulo,
+        instrucciones,
+        componente: componente ?? null
+      })
+      return texto({ combinada, temasNoEncontrados: noEncontrados })
+    } catch (error) {
+      return texto({ error: error instanceof Error ? error.message : String(error) })
+    }
   }
 )
 

@@ -189,6 +189,21 @@ export interface DuplicarTareaDTO {
   titulo: string
 }
 
+/**
+ * Datos para combinar varias tareas en una nueva reutilizando su material.
+ * La nueva tarea hereda la UNIÓN de los adjuntos de las tareas origen.
+ */
+export interface CombinarTareasDTO {
+  /** Ids de las tareas origen (2 o más). */
+  tareasOrigen: string[]
+  asignaturaId: string
+  temas: string[]
+  titulo: string
+  /** Instrucciones en Markdown; si se omite, se fusionan las de las tareas origen. */
+  instrucciones?: string
+  componente?: string | null
+}
+
 /** Un lugar donde se usa un concepto: "Algoritmos · 2026A, 2026B › Unidad 1 › Tema 1". */
 export interface UsoDeConceptoDTO {
   asignaturaId: string
