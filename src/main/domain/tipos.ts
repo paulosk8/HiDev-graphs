@@ -21,7 +21,18 @@ export function esTipoRelacion(valor: string): valor is TipoRelacion {
 }
 
 /** Formatos de material soportados, según su extensión de archivo. */
-export type FormatoRecurso = 'pptx' | 'pdf' | 'md' | 'html' | 'docx' | 'xml'
+export type FormatoRecurso =
+  | 'pptx'
+  | 'pdf'
+  | 'md'
+  | 'html'
+  | 'docx'
+  | 'xml'
+  | 'txt'
+  | 'css'
+  | 'js'
+  | 'json'
+  | 'csv'
 
 export const FORMATOS_SOPORTADOS: readonly FormatoRecurso[] = [
   'pptx',
@@ -29,8 +40,16 @@ export const FORMATOS_SOPORTADOS: readonly FormatoRecurso[] = [
   'md',
   'html',
   'docx',
-  'xml'
+  'xml',
+  'txt',
+  'css',
+  'js',
+  'json',
+  'csv'
 ]
+
+/** Formatos basados en texto que se pueden previsualizar como texto plano. */
+export const FORMATOS_TEXTO: readonly FormatoRecurso[] = ['md', 'xml', 'txt', 'css', 'js', 'json', 'csv']
 
 /**
  * Deduce el formato de un recurso a partir del nombre de archivo.

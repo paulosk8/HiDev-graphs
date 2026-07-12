@@ -49,6 +49,11 @@ export async function extraerTexto(ruta: string, formato: FormatoRecurso): Promi
   switch (formato) {
     case 'md':
     case 'xml':
+    case 'txt':
+    case 'css':
+    case 'js':
+    case 'json':
+    case 'csv':
       return readFile(ruta, 'utf8')
     case 'html':
       return limpiarHtml(await readFile(ruta, 'utf8'))

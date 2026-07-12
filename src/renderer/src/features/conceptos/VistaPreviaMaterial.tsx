@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { marked } from 'marked'
-import type { RecursoDTO } from '@shared/dtos'
+import { FORMATOS_TEXTO, type RecursoDTO } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
 import { api } from '../../lib/api'
 import { useUiStore } from '../../stores/uiStore'
@@ -12,7 +12,7 @@ interface Props {
   onCerrar: () => void
 }
 
-const PREVISUALIZABLES = ['pdf', 'md', 'html', 'xml']
+const PREVISUALIZABLES = ['pdf', 'html', ...FORMATOS_TEXTO]
 
 export function VistaPreviaMaterial({ conceptoId, recurso, onCerrar }: Props): JSX.Element {
   const [texto, setTexto] = useState<string | null>(null)
@@ -29,7 +29,7 @@ export function VistaPreviaMaterial({ conceptoId, recurso, onCerrar }: Props): J
   }, [onCerrar])
 
   useEffect(() => {
-    if (recurso.formato !== 'md' && recurso.formato !== 'xml') return
+    if (!FORMATOS_TEXTO.includes(recurso.formato)) return
     setCargando(true)
     api
       .leerTextoMaterial(conceptoId, recurso.archivo)
@@ -70,9 +70,10 @@ export function VistaPreviaMaterial({ conceptoId, recurso, onCerrar }: Props): J
         />
       )
     }
-    if (recurso.formato === 'xml') {
+    if (FORMATOS_TEXTO.includes(recurso.formato)) {
+      // xml, txt, css, js, json, csv: se muestran como texto plano.
       return (
-        <pre className="h-full overflow-auto p-6 text-xs leading-relaxed text-slate-700">
+        <pre className="h-full overflow-auto p-6 font-mono text-xs leading-relaxed text-slate-700">
           {texto}
         </pre>
       )

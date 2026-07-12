@@ -8,7 +8,21 @@
 
 export type TipoRelacion = 'prerequisito_de' | 'relacionado_con' | 'profundiza'
 
-export type FormatoRecurso = 'pptx' | 'pdf' | 'md' | 'html' | 'docx' | 'xml'
+export type FormatoRecurso =
+  | 'pptx'
+  | 'pdf'
+  | 'md'
+  | 'html'
+  | 'docx'
+  | 'xml'
+  | 'txt'
+  | 'css'
+  | 'js'
+  | 'json'
+  | 'csv'
+
+/** Formatos basados en texto que se pueden previsualizar como texto plano. */
+export const FORMATOS_TEXTO: readonly FormatoRecurso[] = ['md', 'xml', 'txt', 'css', 'js', 'json', 'csv']
 
 // --- Lecturas (proyecciones para listados y fichas) ---
 
