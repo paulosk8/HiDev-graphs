@@ -159,6 +159,11 @@ src/
 
 ## 8. Criterios de aceptación de la Fase 1
 
+> **Estado: Fase 1 (MVP) COMPLETADA.** Los 11 bloques están implementados y los 6
+> criterios verificados con smoke tests (incluido uno de aceptación end-to-end).
+> Cada bloque se entregó en su rama `feat/*` con PR. Siguiente: Fase 2 (grafo).
+
+
 1. `npm run dev` abre la app y crea el vault en `Documentos/PedagoGraph` si no existe.
 2. Puedo crear el concepto "Divide y vencerás", arrastrarle un PDF y verlo listado en su ficha.
 3. Puedo crear la asignatura "Algoritmos 2026A" con 1 unidad, 2 temas y componentes CD/APE/AA, en menos de 2 minutos y sin leer documentación.

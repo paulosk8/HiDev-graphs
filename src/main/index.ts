@@ -5,6 +5,9 @@ import { registrarHandlersIpc } from './ipc/registrarHandlers'
 import { IndexSyncService } from './infrastructure/IndexSyncService'
 import { CANALES } from '../shared/canales'
 
+// Nombre visible de la app (menú de macOS, avisos del sistema).
+app.setName('PedagoGraph')
+
 let servicios: Servicios | null = null
 let sincronizador: IndexSyncService | null = null
 let ventanaPrincipal: BrowserWindow | null = null

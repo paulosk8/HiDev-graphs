@@ -100,7 +100,7 @@ export function Sidebar(): JSX.Element {
         <button
           onClick={() => void respaldar()}
           disabled={respaldando}
-          title="Guarda todo tu material y asignaturas en un archivo .zip"
+          title="Guarda todo tu material y asignaturas en un solo archivo, por seguridad"
           className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-slate-500 transition hover:bg-slate-100 disabled:opacity-50"
         >
           <span aria-hidden>💾</span>
