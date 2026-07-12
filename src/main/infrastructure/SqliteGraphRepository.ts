@@ -340,4 +340,18 @@ export class SqliteGraphRepository implements IGraphRepository {
       )
       .all() as Array<{ origen: string; destino: string; tipo: string }>
   }
+
+  coocurrenciasDeConceptos(): Array<{ a: string; b: string }> {
+    return this.db
+      .prepare(
+        `SELECT DISTINCT e1.destino_id AS a, e2.destino_id AS b
+         FROM edges e1
+         JOIN edges e2 ON e1.origen_id = e2.origen_id
+         WHERE e1.origen_tipo = 'tema' AND e2.origen_tipo = 'tema'
+           AND e1.destino_tipo = 'concepto' AND e2.destino_tipo = 'concepto'
+           AND e1.tipo_relacion = 'instancia' AND e2.tipo_relacion = 'instancia'
+           AND e1.destino_id < e2.destino_id`
+      )
+      .all() as Array<{ a: string; b: string }>
+  }
 }

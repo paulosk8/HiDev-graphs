@@ -209,7 +209,7 @@ export interface RespaldoDTO {
 // --- Grafo (Fase 2) ---
 
 export type TipoNodoGrafo = 'concepto' | 'asignatura'
-export type TipoAristaGrafo = 'usado_en' | TipoRelacion
+export type TipoAristaGrafo = 'usado_en' | 'coocurre' | TipoRelacion
 
 export interface NodoGrafoDTO {
   /** Id con prefijo ('c:' concepto, 'a:' asignatura) para unicidad en el grafo. */

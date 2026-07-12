@@ -55,4 +55,7 @@ export interface IGraphRepository {
 
   /** Relaciones tipadas concepto → concepto. */
   relacionesEntreConceptos(): Array<{ origen: string; destino: string; tipo: string }>
+
+  /** Pares de conceptos que se instancian en un MISMO tema (co-ocurrencia). */
+  coocurrenciasDeConceptos(): Array<{ a: string; b: string }>
 }

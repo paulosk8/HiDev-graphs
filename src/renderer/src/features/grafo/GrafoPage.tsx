@@ -3,9 +3,11 @@ import cytoscape from 'cytoscape'
 import fcose from 'cytoscape-fcose'
 import {
   ETIQUETAS_RELACION,
+  type FichaConceptoDTO,
   type GrafoDTO,
   type TipoAristaGrafo
 } from '@shared/dtos'
+import { Boton } from '../../components/Boton'
 import { api } from '../../lib/api'
 import { useAsignaturasStore } from '../../stores/asignaturasStore'
 import { useConceptosStore } from '../../stores/conceptosStore'
@@ -14,11 +16,16 @@ import { useUiStore } from '../../stores/uiStore'
 cytoscape.use(fcose)
 
 const TIPOS_ARISTA: { tipo: TipoAristaGrafo; etiqueta: string; color: string }[] = [
-  { tipo: 'usado_en', etiqueta: 'Usado en', color: '#94a3b8' },
+  { tipo: 'coocurre', etiqueta: 'Se enseñan juntos', color: '#818cf8' },
+  { tipo: 'usado_en', etiqueta: 'Usado en', color: '#cbd5e1' },
   { tipo: 'prerequisito_de', etiqueta: ETIQUETAS_RELACION.prerequisito_de, color: '#ef4444' },
   { tipo: 'relacionado_con', etiqueta: ETIQUETAS_RELACION.relacionado_con, color: '#64748b' },
   { tipo: 'profundiza', etiqueta: ETIQUETAS_RELACION.profundiza, color: '#10b981' }
 ]
+
+const ETIQUETA_ARISTA: Record<string, string> = Object.fromEntries(
+  TIPOS_ARISTA.map((t) => [t.tipo, t.etiqueta])
+)
 
 const ESTILO: cytoscape.StylesheetStyle[] = [
   {
@@ -54,9 +61,12 @@ const ESTILO: cytoscape.StylesheetStyle[] = [
     }
   },
   { selector: 'edge', style: { 'curve-style': 'bezier', width: 1.5, 'line-color': '#cbd5e1' } },
+  { selector: 'edge[tipo="coocurre"]', style: { 'line-color': '#818cf8', 'line-style': 'dashed' } },
   { selector: 'edge[tipo="prerequisito_de"]', style: { 'line-color': '#ef4444', 'target-arrow-shape': 'triangle', 'target-arrow-color': '#ef4444' } },
-  { selector: 'edge[tipo="relacionado_con"]', style: { 'line-color': '#94a3b8' } },
-  { selector: 'edge[tipo="profundiza"]', style: { 'line-color': '#10b981', 'target-arrow-shape': 'triangle', 'target-arrow-color': '#10b981' } }
+  { selector: 'edge[tipo="relacionado_con"]', style: { 'line-color': '#64748b' } },
+  { selector: 'edge[tipo="profundiza"]', style: { 'line-color': '#10b981', 'target-arrow-shape': 'triangle', 'target-arrow-color': '#10b981' } },
+  { selector: '.atenuado', style: { opacity: 0.12 } },
+  { selector: 'node.foco', style: { 'border-width': 3, 'border-color': '#4338ca' } }
 ]
 
 function elementosVisibles(
@@ -92,13 +102,35 @@ function elementosVisibles(
   ]
 }
 
+/** Conceptos conectados a `conceptoId` en el grafo (con la relación que los une). */
+function relacionadosDe(grafo: GrafoDTO, conceptoId: string): { id: string; etiqueta: string; via: string }[] {
+  const yo = `c:${conceptoId}`
+  const etiquetaDe = new Map(grafo.nodos.map((n) => [n.id, n.etiqueta]))
+  const vistos = new Map<string, { id: string; etiqueta: string; via: string }>()
+  for (const a of grafo.aristas) {
+    let otro: string | null = null
+    if (a.origen === yo && a.destino.startsWith('c:')) otro = a.destino
+    else if (a.destino === yo && a.origen.startsWith('c:')) otro = a.origen
+    if (!otro || vistos.has(otro)) continue
+    vistos.set(otro, {
+      id: otro.slice(2),
+      etiqueta: etiquetaDe.get(otro) ?? otro.slice(2),
+      via: ETIQUETA_ARISTA[a.tipo] ?? a.tipo
+    })
+  }
+  return [...vistos.values()]
+}
+
 export function GrafoPage(): JSX.Element {
   const [grafo, setGrafo] = useState<GrafoDTO | null>(null)
   const [asignaturaFiltro, setAsignaturaFiltro] = useState('')
   const [tipos, setTipos] = useState<Set<TipoAristaGrafo>>(
     () => new Set(TIPOS_ARISTA.map((t) => t.tipo))
   )
+  const [seleccionado, setSeleccionado] = useState<string | null>(null)
+  const [detalle, setDetalle] = useState<FichaConceptoDTO | null>(null)
   const contenedor = useRef<HTMLDivElement>(null)
+  const cyRef = useRef<cytoscape.Core | null>(null)
 
   const asignaturas = useAsignaturasStore((s) => s.lista)
   const notificarError = useUiStore((s) => s.notificarError)
@@ -115,6 +147,7 @@ export function GrafoPage(): JSX.Element {
     [grafo, asignaturaFiltro, tipos]
   )
 
+  // Crea el grafo cuando cambian los elementos (filtros).
   useEffect(() => {
     if (!contenedor.current || elementos.length === 0) return
     const cy = cytoscape({
@@ -125,14 +158,39 @@ export function GrafoPage(): JSX.Element {
       minZoom: 0.2,
       maxZoom: 2.5
     })
-    cy.on('tap', 'node[tipo="concepto"]', (evt) => {
-      const id = evt.target.id().slice(2) // quita el prefijo 'c:'
-      irASeccion('conceptos')
-      void cargarConceptos()
-      seleccionarConcepto(id)
+    cyRef.current = cy
+    window.__cy = cy // handle de depuración
+    cy.on('tap', 'node[tipo="concepto"]', (evt) => setSeleccionado(evt.target.id().slice(2)))
+    cy.on('tap', (evt) => {
+      if (evt.target === cy) setSeleccionado(null) // clic en el fondo deselecciona
     })
-    return () => cy.destroy()
-  }, [elementos, irASeccion, seleccionarConcepto, cargarConceptos])
+    return () => {
+      cy.destroy()
+      cyRef.current = null
+    }
+  }, [elementos])
+
+  // Carga el detalle y resalta el vecindario al seleccionar.
+  useEffect(() => {
+    const cy = cyRef.current
+    if (!cy) return
+    cy.elements().removeClass('atenuado').removeClass('foco')
+    if (!seleccionado) {
+      setDetalle(null)
+      return
+    }
+    setDetalle(null)
+    api.obtenerFichaConcepto(seleccionado).then(setDetalle).catch((e) => notificarError(e))
+
+    const nodo = cy.getElementById(`c:${seleccionado}`)
+    if (nodo.nonempty()) {
+      cy.elements().addClass('atenuado')
+      nodo.removeClass('atenuado').addClass('foco')
+      nodo.neighborhood().removeClass('atenuado')
+      cy.animate({ center: { eles: nodo }, duration: 250 })
+    }
+    cy.resize()
+  }, [seleccionado, elementos, notificarError])
 
   const alternarTipo = (t: TipoAristaGrafo): void =>
     setTipos((prev) => {
@@ -141,7 +199,14 @@ export function GrafoPage(): JSX.Element {
       return s
     })
 
+  const abrirFicha = (id: string): void => {
+    irASeccion('conceptos')
+    void cargarConceptos()
+    seleccionarConcepto(id)
+  }
+
   const vacio = grafo !== null && grafo.nodos.length === 0
+  const relacionados = grafo && seleccionado ? relacionadosDe(grafo, seleccionado) : []
 
   return (
     <div className="flex h-full flex-col">
@@ -150,7 +215,6 @@ export function GrafoPage(): JSX.Element {
         <p className="mt-1 text-sm text-slate-500">
           Cómo se conectan tus conceptos y en qué asignaturas se reutilizan.
         </p>
-
         <div className="mt-4 flex flex-wrap items-center gap-4">
           <label className="flex items-center gap-2 text-sm">
             <span className="text-slate-500">Asignatura:</span>
@@ -167,7 +231,6 @@ export function GrafoPage(): JSX.Element {
               ))}
             </select>
           </label>
-
           <div className="flex flex-wrap items-center gap-1.5">
             {TIPOS_ARISTA.map((t) => (
               <button
@@ -187,30 +250,103 @@ export function GrafoPage(): JSX.Element {
         </div>
       </header>
 
-      <div className="relative min-h-0 flex-1">
-        {vacio ? (
-          <div className="flex h-full items-center justify-center px-6 text-center">
-            <div>
-              <div className="mb-2 text-3xl">🕸️</div>
-              <p className="text-sm text-slate-500">
-                Aún no hay nada que mostrar. Crea conceptos y vincúlalos a temas de tus asignaturas.
-              </p>
+      <div className="flex min-h-0 flex-1">
+        {/* Panel lateral izquierdo */}
+        {seleccionado && (
+          <aside className="w-80 shrink-0 overflow-y-auto border-r border-slate-200 bg-white p-5">
+            <div className="mb-3 flex items-start justify-between">
+              <h2 className="text-lg font-semibold text-slate-900">
+                {detalle?.concepto.nombre ?? 'Cargando…'}
+              </h2>
+              <button
+                onClick={() => setSeleccionado(null)}
+                className="text-slate-400 hover:text-slate-700"
+                aria-label="Cerrar"
+              >
+                ✕
+              </button>
             </div>
-          </div>
-        ) : (
-          <>
-            <div ref={contenedor} className="h-full w-full" />
-            <div className="pointer-events-none absolute bottom-4 left-4 flex gap-4 rounded-lg bg-white/90 px-3 py-2 text-xs text-slate-500 shadow-sm">
-              <span className="flex items-center gap-1.5">
-                <span className="h-3 w-3 rounded-full bg-marca-600" /> Concepto
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="h-3 w-3 rounded-sm border border-slate-500 bg-slate-200" /> Asignatura
-              </span>
-              <span className="text-slate-400">Toca un concepto para abrir su ficha</span>
-            </div>
-          </>
+
+            {detalle && (
+              <div className="space-y-5 text-sm">
+                {detalle.concepto.descripcion && (
+                  <p className="text-slate-600">{detalle.concepto.descripcion}</p>
+                )}
+                <p className="text-xs text-slate-400">
+                  {detalle.concepto.recursos.length === 0
+                    ? 'Sin material'
+                    : `${detalle.concepto.recursos.length} ${detalle.concepto.recursos.length === 1 ? 'material' : 'materiales'}`}
+                </p>
+
+                <section>
+                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Se usa en
+                  </h3>
+                  {detalle.usos.length === 0 ? (
+                    <p className="text-xs text-slate-400">No se usa en ninguna asignatura.</p>
+                  ) : (
+                    <ul className="space-y-1.5">
+                      {detalle.usos.map((u) => (
+                        <li key={`${u.asignaturaId}-${u.temaId}`} className="text-xs text-slate-600">
+                          <span className="font-medium">{u.asignatura} · {u.periodos.join(', ')}</span>
+                          <span className="text-slate-400"> › {u.unidad} › {u.tema}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+
+                <section>
+                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Conceptos relacionados
+                  </h3>
+                  {relacionados.length === 0 ? (
+                    <p className="text-xs text-slate-400">Sin conexiones todavía.</p>
+                  ) : (
+                    <ul className="flex flex-wrap gap-1.5">
+                      {relacionados.map((r) => (
+                        <li key={r.id}>
+                          <button
+                            onClick={() => setSeleccionado(r.id)}
+                            title={r.via}
+                            className="rounded-full bg-marca-50 px-2.5 py-1 text-xs text-marca-700 hover:bg-marca-100"
+                          >
+                            {r.etiqueta}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+
+                <Boton variante="secundario" onClick={() => abrirFicha(detalle.concepto.id)}>
+                  Abrir ficha completa
+                </Boton>
+              </div>
+            )}
+          </aside>
         )}
+
+        {/* Área del grafo */}
+        <div className="relative min-h-0 flex-1">
+          {vacio ? (
+            <div className="flex h-full items-center justify-center px-6 text-center">
+              <div>
+                <div className="mb-2 text-3xl">🕸️</div>
+                <p className="text-sm text-slate-500">
+                  Aún no hay nada que mostrar. Crea conceptos y vincúlalos a temas de tus asignaturas.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div ref={contenedor} className="h-full w-full" />
+              <div className="pointer-events-none absolute bottom-4 right-4 rounded-lg bg-white/90 px-3 py-2 text-xs text-slate-400 shadow-sm">
+                Toca un concepto para ver sus conexiones
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   )

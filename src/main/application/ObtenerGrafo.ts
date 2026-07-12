@@ -46,5 +46,10 @@ export function obtenerGrafo(servicios: Servicios): GrafoDTO {
     }
   }
 
+  // Co-ocurrencia: conceptos que se enseñan en un mismo tema quedan conectados.
+  for (const { a, b } of repositorio.coocurrenciasDeConceptos()) {
+    aristas.push({ origen: `c:${a}`, destino: `c:${b}`, tipo: 'coocurre' })
+  }
+
   return { nodos, aristas }
 }
