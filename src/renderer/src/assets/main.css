@@ -15,6 +15,82 @@ body,
   margin: 0;
 }
 
+/* =========================================================================
+   MODO OSCURO
+   Se activa con la clase .dark en <html>. En vez de anotar dark: en cada
+   componente, se remapea el conjunto de neutros de Tailwind que usa la app.
+   NO se tocan las superficies ya oscuras a propósito (slate-800/900,
+   la terminal, el overlay del modal), que se ven bien tal cual.
+   ========================================================================= */
+.dark {
+  color-scheme: dark;
+}
+.dark body {
+  background-color: #0f172a;
+  color: #e2e8f0;
+}
+
+/* Fondos claros -> superficies oscuras */
+.dark .bg-white { background-color: #1e293b; }
+.dark .bg-slate-50 { background-color: #0f172a; }
+.dark .bg-slate-100 { background-color: #334155; }
+
+/* Texto: se aclara según jerarquía */
+.dark .text-slate-900 { color: #f1f5f9; }
+.dark .text-slate-800 { color: #e2e8f0; }
+.dark .text-slate-700 { color: #cbd5e1; }
+.dark .text-slate-600 { color: #cbd5e1; }
+.dark .text-slate-500 { color: #94a3b8; }
+.dark .text-slate-400 { color: #94a3b8; }
+
+/* Bordes y divisores */
+.dark .border-slate-200 { border-color: #334155; }
+.dark .border-slate-100 { border-color: #1e293b; }
+.dark .border-slate-300 { border-color: #475569; }
+.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: #1e293b; }
+
+/* Marca (indigo) usada en estados activos y enlaces */
+.dark .bg-marca-50 { background-color: #312e81; }
+.dark .bg-marca-100 { background-color: #3730a3; }
+.dark .text-marca-700 { color: #a5b4fc; }
+.dark .text-marca-600 { color: #818cf8; }
+.dark .text-marca-500 { color: #818cf8; }
+.dark .text-marca-400 { color: #818cf8; }
+
+/* Avisos semánticos */
+.dark .bg-amber-50 { background-color: #451a03; }
+.dark .bg-amber-100 { background-color: #78350f; }
+.dark .text-amber-800 { color: #fcd34d; }
+.dark .border-amber-200 { border-color: #78350f; }
+.dark .bg-red-50 { background-color: #450a0a; }
+.dark .text-red-800 { color: #fca5a5; }
+.dark .border-red-200 { border-color: #7f1d1d; }
+.dark .bg-emerald-50 { background-color: #022c22; }
+.dark .text-emerald-800 { color: #6ee7b7; }
+.dark .border-emerald-200 { border-color: #065f46; }
+
+/* Variantes hover/focus/placeholder */
+.dark .hover\:bg-slate-50:hover { background-color: #1e293b; }
+.dark .hover\:bg-slate-100:hover { background-color: #334155; }
+.dark .hover\:bg-slate-200:hover { background-color: #475569; }
+.dark .hover\:text-slate-600:hover { color: #cbd5e1; }
+.dark .hover\:text-slate-700:hover { color: #e2e8f0; }
+.dark .hover\:text-slate-800:hover { color: #f1f5f9; }
+.dark .hover\:bg-marca-50:hover { background-color: #312e81; }
+.dark .hover\:text-marca-700:hover { color: #a5b4fc; }
+.dark .hover\:border-marca-300:hover { border-color: #6366f1; }
+.dark .hover\:text-red-600:hover { color: #f87171; }
+.dark .focus\:ring-marca-100:focus { --tw-ring-color: #3730a3; }
+.dark .placeholder\:text-slate-400::placeholder { color: #64748b; }
+
+/* Campos de formulario (por si no traen fondo explícito) */
+.dark input:not([type='checkbox']):not([type='radio']):not([type='color']),
+.dark textarea,
+.dark select {
+  background-color: #1e293b;
+  color: #e2e8f0;
+}
+
 /* Estilos del Markdown previsualizado (sin plugin de tipografía). */
 .markdown-preview {
   color: #334155;
@@ -93,3 +169,14 @@ body,
 .markdown-preview img {
   max-width: 100%;
 }
+
+/* Markdown previsualizado en modo oscuro */
+.dark .markdown-preview { color: #cbd5e1; }
+.dark .markdown-preview h1,
+.dark .markdown-preview h2 { color: #f1f5f9; }
+.dark .markdown-preview a { color: #a5b4fc; }
+.dark .markdown-preview code { background: #334155; }
+.dark .markdown-preview pre { background: #0f172a; }
+.dark .markdown-preview blockquote { color: #94a3b8; border-color: #475569; }
+.dark .markdown-preview th,
+.dark .markdown-preview td { border-color: #334155; }

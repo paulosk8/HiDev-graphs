@@ -11,6 +11,7 @@ import { AsistentePage } from './features/asistente/AsistentePage'
 import { TerminalPage } from './features/terminal/TerminalPage'
 import { useAsignaturasStore } from './stores/asignaturasStore'
 import { useConceptosStore } from './stores/conceptosStore'
+import { useLayoutStore } from './stores/layoutStore'
 import { useUiStore } from './stores/uiStore'
 
 function Contenido(): JSX.Element {
@@ -48,6 +49,12 @@ function Contenido(): JSX.Element {
 function App(): JSX.Element {
   const cargarConceptos = useConceptosStore((s) => s.cargar)
   const cargarAsignaturas = useAsignaturasStore((s) => s.cargar)
+  const tema = useLayoutStore((s) => s.tema)
+
+  // Aplica el tema (claro/oscuro) a la raíz del documento.
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', tema === 'oscuro')
+  }, [tema])
 
   useEffect(() => {
     void cargarConceptos()

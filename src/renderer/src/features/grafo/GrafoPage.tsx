@@ -182,6 +182,7 @@ export function GrafoPage(): JSX.Element {
   const terminalAltura = useLayoutStore((s) => s.terminalAltura)
   const setTerminalAltura = useLayoutStore((s) => s.setTerminalAltura)
   const alternarTerminal = useLayoutStore((s) => s.alternarTerminal)
+  const tema = useLayoutStore((s) => s.tema)
 
   useEffect(() => {
     api.obtenerGrafo().then(setGrafo).catch((e) => notificarError(e))
@@ -262,6 +263,13 @@ export function GrafoPage(): JSX.Element {
       }
     }
   }, [seleccionado, elementos, colorPorId])
+
+  // Color de las etiquetas de los nodos según el tema (legible en claro y oscuro).
+  useEffect(() => {
+    const cy = cyRef.current
+    if (!cy) return
+    cy.nodes('[tipo="concepto"]').style('color', tema === 'oscuro' ? '#cbd5e1' : '#334155')
+  }, [tema, elementos])
 
   // Carga el detalle para la modal.
   useEffect(() => {
@@ -386,9 +394,10 @@ export function GrafoPage(): JSX.Element {
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1">
-        {/* Columna izquierda: grafo arriba + terminal redimensionable abajo */}
-        <div ref={columnaRef} className="flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        {/* Columna izquierda: grafo arriba + terminal redimensionable abajo.
+            min-w-0 permite que se encoja por debajo del ancho del lienzo. */}
+        <div ref={columnaRef} className="flex min-h-0 min-w-0 flex-1 flex-col">
         {/* Grafo */}
         <div className="relative min-h-0 flex-1">
           {vacio ? (

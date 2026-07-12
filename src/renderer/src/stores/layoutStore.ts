@@ -4,6 +4,8 @@ import { persist } from 'zustand/middleware'
 /** Altura por defecto (px) al abrir la terminal del Mapa de conceptos. */
 export const ALTURA_TERMINAL_DEFECTO = 300
 
+export type Tema = 'claro' | 'oscuro'
+
 interface LayoutState {
   /** Menú lateral en modo franja de iconos (sin texto). */
   sidebarColapsada: boolean
@@ -11,11 +13,14 @@ interface LayoutState {
   panelGrafoColapsado: boolean
   /** Altura de la terminal del grafo en px (0 = cerrada). */
   terminalAltura: number
+  /** Tema de la interfaz (claro u oscuro). */
+  tema: Tema
 
   alternarSidebar: () => void
   alternarPanelGrafo: () => void
   setTerminalAltura: (px: number) => void
   alternarTerminal: () => void
+  alternarTema: () => void
 }
 
 /**
@@ -29,12 +34,14 @@ export const useLayoutStore = create<LayoutState>()(
       sidebarColapsada: false,
       panelGrafoColapsado: false,
       terminalAltura: 0,
+      tema: 'claro',
 
       alternarSidebar: () => set((s) => ({ sidebarColapsada: !s.sidebarColapsada })),
       alternarPanelGrafo: () => set((s) => ({ panelGrafoColapsado: !s.panelGrafoColapsado })),
       setTerminalAltura: (px) => set({ terminalAltura: Math.max(0, Math.round(px)) }),
       alternarTerminal: () =>
-        set((s) => ({ terminalAltura: s.terminalAltura > 0 ? 0 : ALTURA_TERMINAL_DEFECTO }))
+        set((s) => ({ terminalAltura: s.terminalAltura > 0 ? 0 : ALTURA_TERMINAL_DEFECTO })),
+      alternarTema: () => set((s) => ({ tema: s.tema === 'oscuro' ? 'claro' : 'oscuro' }))
     }),
     { name: 'pedagograph-layout' }
   )

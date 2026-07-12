@@ -49,6 +49,8 @@ export function Sidebar(): JSX.Element {
   const notificarError = useUiStore((s) => s.notificarError)
   const colapsada = useLayoutStore((s) => s.sidebarColapsada)
   const alternar = useLayoutStore((s) => s.alternarSidebar)
+  const tema = useLayoutStore((s) => s.tema)
+  const alternarTema = useLayoutStore((s) => s.alternarTema)
   const [actualizando, setActualizando] = useState(false)
   const [respaldando, setRespaldando] = useState(false)
 
@@ -124,6 +126,16 @@ export function Sidebar(): JSX.Element {
       </nav>
 
       <div className="mt-auto w-full space-y-2">
+        <button
+          onClick={alternarTema}
+          title={tema === 'oscuro' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+          className={`flex w-full items-center rounded-md text-sm text-slate-500 transition hover:bg-slate-100 ${
+            colapsada ? 'justify-center px-0 py-2.5' : 'gap-2 px-3 py-2'
+          }`}
+        >
+          <span aria-hidden>{tema === 'oscuro' ? '☀️' : '🌙'}</span>
+          {!colapsada && (tema === 'oscuro' ? 'Modo claro' : 'Modo oscuro')}
+        </button>
         <button
           onClick={() => void actualizar()}
           disabled={actualizando}
