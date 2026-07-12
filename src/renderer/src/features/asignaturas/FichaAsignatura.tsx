@@ -9,6 +9,7 @@ import { useUiStore } from '../../stores/uiStore'
 import { BuscadorConceptos } from '../vinculos/BuscadorConceptos'
 import { FormularioTarea } from '../tareas/FormularioTarea'
 import { FichaTarea } from '../tareas/FichaTarea'
+import { PlanificacionSemanal } from './PlanificacionSemanal'
 
 interface Props {
   asignaturaId: string
@@ -23,6 +24,7 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
   const [tareas, setTareas] = useState<ResumenTareaDTO[]>([])
   const [creandoTarea, setCreandoTarea] = useState(false)
   const [tareaAbierta, setTareaAbierta] = useState<string | null>(null)
+  const [vistaPlan, setVistaPlan] = useState(false)
 
   const cargarTareas = useCallback(async () => {
     try {
@@ -196,11 +198,29 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
         </section>
       )}
 
-      {/* Contenido */}
+      {/* Contenido / Planificación semanal */}
       <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">
-          Contenido
-        </h2>
+        <div className="mb-4 flex gap-5 border-b border-slate-100 text-sm">
+          <button
+            onClick={() => setVistaPlan(false)}
+            className={`-mb-px border-b-2 pb-2 font-medium transition ${
+              !vistaPlan ? 'border-marca-600 text-marca-700' : 'border-transparent text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            Contenido
+          </button>
+          <button
+            onClick={() => setVistaPlan(true)}
+            className={`-mb-px border-b-2 pb-2 font-medium transition ${
+              vistaPlan ? 'border-marca-600 text-marca-700' : 'border-transparent text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            Planificación semanal
+          </button>
+        </div>
+
+        {vistaPlan && <PlanificacionSemanal asignatura={asig} />}
+        {!vistaPlan && (
         <div className="space-y-4">
           {asignatura.unidades.map((unidad) => (
             <div key={unidad.id} className="rounded-xl border border-slate-200 p-4">
@@ -267,6 +287,7 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
             </div>
           ))}
         </div>
+        )}
       </section>
 
       {/* Tareas */}
