@@ -250,10 +250,10 @@ export function GrafoPage(): JSX.Element {
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1">
-        {/* Panel lateral izquierdo */}
+      <div className="flex min-h-0 flex-1 flex-row-reverse">
+        {/* Panel lateral derecho */}
         {seleccionado && (
-          <aside className="w-80 shrink-0 overflow-y-auto border-r border-slate-200 bg-white p-5">
+          <aside className="w-80 shrink-0 overflow-y-auto border-l border-slate-200 bg-white p-5">
             <div className="mb-3 flex items-start justify-between">
               <h2 className="text-lg font-semibold text-slate-900">
                 {detalle?.concepto.nombre ?? 'Cargando…'}

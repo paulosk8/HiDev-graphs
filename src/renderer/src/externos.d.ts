@@ -4,11 +4,7 @@ declare module 'cytoscape-fcose' {
   export default fcose
 }
 
-declare global {
-  interface Window {
-    /** Handle de depuración de la instancia de Cytoscape del mapa de conceptos. */
-    __cy?: import('cytoscape').Core
-  }
+interface Window {
+  /** Handle de depuración de la instancia de Cytoscape del mapa de conceptos. */
+  __cy?: import('cytoscape').Core
 }
-
-export {}
