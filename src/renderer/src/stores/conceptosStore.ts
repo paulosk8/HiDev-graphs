@@ -60,7 +60,10 @@ export const useConceptosStore = create<ConceptosState>((set) => ({
     try {
       const actualizado = await api.editarConcepto(id, datos)
       set((estado) => ({
-        lista: ordenarPorNombre(estado.lista.map((c) => (c.id === id ? actualizado : c)))
+        // Conserva los temas ya conocidos (el resumen de edición no los trae).
+        lista: ordenarPorNombre(
+          estado.lista.map((c) => (c.id === id ? { ...actualizado, temas: c.temas } : c))
+        )
       }))
       ui().notificar({ tipo: 'exito', mensaje: 'Cambios guardados.' })
       return actualizado

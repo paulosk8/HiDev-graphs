@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS nodes (
   tipo        TEXT NOT NULL,           -- 'concepto'|'asignatura'|'unidad'|'tema'|'subtema'
   id          TEXT NOT NULL,           -- slug (concepto/asignatura) o uuid (unidad/tema/subtema)
   nombre      TEXT NOT NULL,           -- nombre o título visible
+  descripcion TEXT,                    -- solo concepto (para búsqueda por texto)
   padre_tipo  TEXT,                    -- jerarquía curricular (nullable)
   padre_id    TEXT,
   orden       INTEGER,                 -- posición dentro del padre (unidad/tema/subtema)

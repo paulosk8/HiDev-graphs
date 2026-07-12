@@ -15,7 +15,10 @@ export type FormatoRecurso = 'pptx' | 'pdf' | 'md' | 'html' | 'docx' | 'xml'
 export interface ResumenConceptoDTO {
   id: string
   nombre: string
+  descripcion: string
   totalRecursos: number
+  /** Títulos de los temas que usan el concepto (para búsqueda). */
+  temas: string[]
 }
 
 export interface RecursoDTO {

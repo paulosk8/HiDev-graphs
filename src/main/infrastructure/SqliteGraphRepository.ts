@@ -27,6 +27,19 @@ export class SqliteGraphRepository implements IGraphRepository {
     this.db = new Database(rutaDb)
     this.db.pragma('journal_mode = WAL')
     this.db.exec(ESQUEMA_SQL)
+    this.migrar()
+  }
+
+  /**
+   * Migraciones ligeras para índices ya existentes (el DDL usa IF NOT EXISTS y no
+   * añade columnas a tablas creadas por versiones anteriores). El índice es
+   * derivado: el siguiente reindexado repuebla los valores nuevos.
+   */
+  private migrar(): void {
+    const columnas = this.db.prepare('PRAGMA table_info(nodes)').all() as { name: string }[]
+    if (!columnas.some((c) => c.name === 'descripcion')) {
+      this.db.exec('ALTER TABLE nodes ADD COLUMN descripcion TEXT')
+    }
   }
 
   /** Cierra la conexión (usar al salir de la app). */
@@ -42,8 +55,8 @@ export class SqliteGraphRepository implements IGraphRepository {
 
   indexarConcepto(concepto: Concepto): void {
     const insertarNodo = this.db.prepare(
-      `INSERT OR REPLACE INTO nodes (tipo, id, nombre, padre_tipo, padre_id, orden, periodo)
-       VALUES ('concepto', @id, @nombre, NULL, NULL, NULL, NULL)`
+      `INSERT OR REPLACE INTO nodes (tipo, id, nombre, descripcion, padre_tipo, padre_id, orden, periodo)
+       VALUES ('concepto', @id, @nombre, @descripcion, NULL, NULL, NULL, NULL)`
     )
     const insertarRecurso = this.db.prepare(
       `INSERT OR REPLACE INTO resources (id, concepto_id, nombre, archivo, formato)
@@ -63,7 +76,7 @@ export class SqliteGraphRepository implements IGraphRepository {
         .prepare("DELETE FROM edges WHERE origen_tipo = 'concepto' AND origen_id = ?")
         .run(c.id)
 
-      insertarNodo.run({ id: c.id, nombre: c.nombre })
+      insertarNodo.run({ id: c.id, nombre: c.nombre, descripcion: c.descripcion })
       for (const r of c.recursos) {
         insertarRecurso.run({
           id: r.id,
@@ -227,31 +240,62 @@ export class SqliteGraphRepository implements IGraphRepository {
 
   // --- Consultas ---
 
+  /**
+   * SELECT base para el resumen de conceptos: material contado y los títulos de
+   * los temas que lo usan (aristas 'instancia'), unidos por saltos de línea para
+   * separarlos luego sin colisionar con comas en los títulos.
+   */
+  private readonly SELECT_RESUMEN_CONCEPTO = /* sql */ `
+    SELECT n.id AS id, n.nombre AS nombre, n.descripcion AS descripcion,
+           COUNT(DISTINCT r.id) AS totalRecursos,
+           (SELECT GROUP_CONCAT(t.nombre, char(10))
+              FROM edges e JOIN nodes t ON t.tipo = 'tema' AND t.id = e.origen_id
+              WHERE e.tipo_relacion = 'instancia'
+                AND e.destino_tipo = 'concepto' AND e.destino_id = n.id) AS temasRaw
+    FROM nodes n
+    LEFT JOIN resources r ON r.concepto_id = n.id
+    WHERE n.tipo = 'concepto'`
+
+  private filaAResumenConcepto(fila: {
+    id: string
+    nombre: string
+    descripcion: string | null
+    totalRecursos: number
+    temasRaw: string | null
+  }): ResumenConcepto {
+    return {
+      id: fila.id,
+      nombre: fila.nombre,
+      descripcion: fila.descripcion ?? '',
+      totalRecursos: fila.totalRecursos,
+      temas: fila.temasRaw ? fila.temasRaw.split('\n') : []
+    }
+  }
+
   listarConceptos(): ResumenConcepto[] {
-    return this.db
-      .prepare(
-        `SELECT n.id AS id, n.nombre AS nombre, COUNT(r.id) AS totalRecursos
-         FROM nodes n
-         LEFT JOIN resources r ON r.concepto_id = n.id
-         WHERE n.tipo = 'concepto'
-         GROUP BY n.id, n.nombre
-         ORDER BY n.nombre COLLATE NOCASE`
-      )
-      .all() as ResumenConcepto[]
+    return (
+      this.db
+        .prepare(
+          `${this.SELECT_RESUMEN_CONCEPTO}
+           GROUP BY n.id, n.nombre, n.descripcion
+           ORDER BY n.nombre COLLATE NOCASE`
+        )
+        .all() as Parameters<SqliteGraphRepository['filaAResumenConcepto']>[0][]
+    ).map((f) => this.filaAResumenConcepto(f))
   }
 
   buscarConceptos(texto: string): ResumenConcepto[] {
     const patron = `%${texto.trim()}%`
-    return this.db
-      .prepare(
-        `SELECT n.id AS id, n.nombre AS nombre, COUNT(r.id) AS totalRecursos
-         FROM nodes n
-         LEFT JOIN resources r ON r.concepto_id = n.id
-         WHERE n.tipo = 'concepto' AND n.nombre LIKE @patron COLLATE NOCASE
-         GROUP BY n.id, n.nombre
-         ORDER BY n.nombre COLLATE NOCASE`
-      )
-      .all({ patron }) as ResumenConcepto[]
+    return (
+      this.db
+        .prepare(
+          `${this.SELECT_RESUMEN_CONCEPTO}
+             AND n.nombre LIKE @patron COLLATE NOCASE
+           GROUP BY n.id, n.nombre, n.descripcion
+           ORDER BY n.nombre COLLATE NOCASE`
+        )
+        .all({ patron }) as Parameters<SqliteGraphRepository['filaAResumenConcepto']>[0][]
+    ).map((f) => this.filaAResumenConcepto(f))
   }
 
   listarAsignaturas(): ResumenAsignatura[] {

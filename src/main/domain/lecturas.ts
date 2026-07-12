@@ -7,7 +7,10 @@
 export interface ResumenConcepto {
   readonly id: string
   readonly nombre: string
+  readonly descripcion: string
   readonly totalRecursos: number
+  /** Títulos de los temas que usan el concepto (para búsqueda). */
+  readonly temas: string[]
 }
 
 /** Resumen de una asignatura para el listado lateral. */
