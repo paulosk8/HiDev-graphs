@@ -35,6 +35,11 @@ export const api = {
   editarConcepto: (id: string, datos: DatosConceptoDTO) =>
     desenvolver(window.api.editarConcepto(id, datos)),
   eliminarConcepto: (id: string) => desenvolver(window.api.eliminarConcepto(id)),
+  rutaDeArchivo: (archivo: File): string => window.api.rutaDeArchivo(archivo),
+  agregarMaterial: (conceptoId: string, rutas: string[]) =>
+    desenvolver(window.api.agregarMaterial(conceptoId, rutas)),
+  eliminarMaterial: (conceptoId: string, recursoId: string) =>
+    desenvolver(window.api.eliminarMaterial(conceptoId, recursoId)),
   listarAsignaturas: () => desenvolver(window.api.listarAsignaturas()),
   reindexar: () => desenvolver(window.api.reindexar())
 }

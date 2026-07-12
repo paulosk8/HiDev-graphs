@@ -120,6 +120,12 @@ export class VaultFileSystemService {
     return { archivo, formato }
   }
 
+  /** Borra el archivo físico de un material dentro de la carpeta del concepto. */
+  eliminarArchivoRecurso(conceptoId: string, archivo: string): void {
+    const ruta = join(this.carpetaConcepto(conceptoId), archivo)
+    if (existsSync(ruta)) rmSync(ruta, { force: true })
+  }
+
   private leerToleranteConcepto(id: string): Concepto | null {
     try {
       return this.leerConcepto(id)

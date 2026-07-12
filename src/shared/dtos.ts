@@ -51,6 +51,14 @@ export interface DatosConceptoDTO {
   descripcion?: string
 }
 
+/** Resultado de agregar material: concepto actualizado + qué se ignoró. */
+export interface ResultadoMaterialDTO {
+  concepto: ConceptoDTO
+  agregados: number
+  /** Nombres de archivo ignorados por tener un formato no soportado. */
+  ignorados: string[]
+}
+
 export interface ResumenAsignaturaDTO {
   id: string
   nombre: string

@@ -1,6 +1,8 @@
 import type {
+  ConceptoDTO,
   DatosConceptoDTO,
   FichaConceptoDTO,
+  ResultadoMaterialDTO,
   ResultadoReindexadoDTO,
   ResumenAsignaturaDTO,
   ResumenConceptoDTO,
@@ -24,6 +26,15 @@ export interface PedagoGraphApi {
   crearConcepto(datos: DatosConceptoDTO): Promise<Resultado<ResumenConceptoDTO>>
   editarConcepto(id: string, datos: DatosConceptoDTO): Promise<Resultado<ResumenConceptoDTO>>
   eliminarConcepto(id: string): Promise<Resultado<void>>
+
+  // --- Material ---
+  /**
+   * Devuelve la ruta absoluta de un archivo (para drag & drop / selector).
+   * No es IPC: se resuelve en el preload con webUtils. Síncrono.
+   */
+  rutaDeArchivo(archivo: File): string
+  agregarMaterial(conceptoId: string, rutas: string[]): Promise<Resultado<ResultadoMaterialDTO>>
+  eliminarMaterial(conceptoId: string, recursoId: string): Promise<Resultado<ConceptoDTO>>
 
   // --- Asignaturas ---
   listarAsignaturas(): Promise<Resultado<ResumenAsignaturaDTO[]>>

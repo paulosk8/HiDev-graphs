@@ -8,6 +8,8 @@ import { crearConcepto } from '../application/CrearConcepto'
 import { editarConcepto } from '../application/EditarConcepto'
 import { eliminarConcepto } from '../application/EliminarConcepto'
 import { obtenerFichaConcepto } from '../application/ObtenerFichaConcepto'
+import { agregarMaterial } from '../application/AgregarMaterial'
+import { eliminarMaterial } from '../application/EliminarMaterial'
 import { reindexarVault } from '../application/ReindexarVault'
 import type { Servicios } from '../servicios'
 
@@ -67,6 +69,14 @@ export function registrarHandlersIpc(servicios: Servicios): void {
 
   ipcMain.handle(CANALES.conceptoEliminar, (_evento, id: string) =>
     envolver(() => eliminarConcepto(servicios, id))
+  )
+
+  ipcMain.handle(CANALES.materialAgregar, (_evento, conceptoId: string, rutas: string[]) =>
+    envolver(() => agregarMaterial(servicios, conceptoId, rutas))
+  )
+
+  ipcMain.handle(CANALES.materialEliminar, (_evento, conceptoId: string, recursoId: string) =>
+    envolver(() => eliminarMaterial(servicios, conceptoId, recursoId))
   )
 
   ipcMain.handle(CANALES.asignaturasListar, () => envolver(() => repositorio.listarAsignaturas()))

@@ -2,11 +2,11 @@ import { useCallback, useEffect, useState } from 'react'
 import type { FichaConceptoDTO } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
 import { DialogoConfirmacion } from '../../components/DialogoConfirmacion'
-import { EstadoVacio } from '../../components/EstadoVacio'
 import { api } from '../../lib/api'
 import { useConceptosStore } from '../../stores/conceptosStore'
 import { useUiStore } from '../../stores/uiStore'
 import { FormularioConcepto } from './FormularioConcepto'
+import { ZonaMaterial } from './ZonaMaterial'
 
 interface Props {
   conceptoId: string
@@ -81,24 +81,13 @@ export function FichaConcepto({ conceptoId }: Props): JSX.Element {
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">
           Material
         </h2>
-        {concepto.recursos.length === 0 ? (
-          <EstadoVacio
-            icono="📎"
-            titulo="Aún no hay material"
-            descripcion="Muy pronto podrás arrastrar aquí tus archivos (PDF, PPTX, Word…) para agregarlos a este concepto."
-          />
-        ) : (
-          <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200">
-            {concepto.recursos.map((recurso) => (
-              <li key={recurso.id} className="flex items-center gap-3 px-4 py-3">
-                <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold uppercase text-slate-500">
-                  {recurso.formato}
-                </span>
-                <span className="truncate text-sm text-slate-700">{recurso.nombre}</span>
-              </li>
-            ))}
-          </ul>
-        )}
+        <ZonaMaterial
+          conceptoId={concepto.id}
+          recursos={concepto.recursos}
+          onActualizado={(actualizado) =>
+            setFicha((f) => (f ? { ...f, concepto: actualizado } : f))
+          }
+        />
       </section>
 
       {/* Se usa en */}

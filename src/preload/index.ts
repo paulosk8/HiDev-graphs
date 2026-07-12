@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 
 import { CANALES } from '../shared/canales'
 import type { PedagoGraphApi } from '../shared/api'
@@ -15,6 +15,11 @@ const api: PedagoGraphApi = {
   crearConcepto: (datos) => ipcRenderer.invoke(CANALES.conceptoCrear, datos),
   editarConcepto: (id, datos) => ipcRenderer.invoke(CANALES.conceptoEditar, id, datos),
   eliminarConcepto: (id) => ipcRenderer.invoke(CANALES.conceptoEliminar, id),
+  rutaDeArchivo: (archivo) => webUtils.getPathForFile(archivo),
+  agregarMaterial: (conceptoId, rutas) =>
+    ipcRenderer.invoke(CANALES.materialAgregar, conceptoId, rutas),
+  eliminarMaterial: (conceptoId, recursoId) =>
+    ipcRenderer.invoke(CANALES.materialEliminar, conceptoId, recursoId),
   listarAsignaturas: () => ipcRenderer.invoke(CANALES.asignaturasListar),
   reindexar: () => ipcRenderer.invoke(CANALES.reindexar)
 }

@@ -41,6 +41,17 @@ function App(): JSX.Element {
     void cargarAsignaturas()
   }, [cargarConceptos, cargarAsignaturas])
 
+  useEffect(() => {
+    // Evita que soltar un archivo fuera de una zona válida haga navegar la app.
+    const prevenir = (e: Event): void => e.preventDefault()
+    window.addEventListener('dragover', prevenir)
+    window.addEventListener('drop', prevenir)
+    return () => {
+      window.removeEventListener('dragover', prevenir)
+      window.removeEventListener('drop', prevenir)
+    }
+  }, [])
+
   return (
     <div className="flex h-full text-slate-800">
       <Sidebar />

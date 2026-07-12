@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { DatosConceptoDTO, ResumenConceptoDTO } from '@shared/dtos'
+import type { ConceptoDTO, DatosConceptoDTO, ResumenConceptoDTO } from '@shared/dtos'
 import { api } from '../lib/api'
 import { useUiStore } from './uiStore'
 
@@ -17,6 +17,17 @@ interface ConceptosState {
   crear: (datos: DatosConceptoDTO) => Promise<ResumenConceptoDTO | null>
   editar: (id: string, datos: DatosConceptoDTO) => Promise<ResumenConceptoDTO | null>
   eliminar: (id: string, nombre: string) => Promise<boolean>
+  agregarMaterial: (conceptoId: string, rutas: string[]) => Promise<ConceptoDTO | null>
+  eliminarMaterial: (conceptoId: string, recursoId: string) => Promise<ConceptoDTO | null>
+}
+
+/** Actualiza el conteo de material de un concepto en el listado. */
+function conConteoActualizado(
+  lista: ResumenConceptoDTO[],
+  id: string,
+  total: number
+): ResumenConceptoDTO[] {
+  return lista.map((c) => (c.id === id ? { ...c, totalRecursos: total } : c))
 }
 
 export const useConceptosStore = create<ConceptosState>((set) => ({
@@ -68,6 +79,46 @@ export const useConceptosStore = create<ConceptosState>((set) => ({
     } catch (error) {
       ui().notificarError(error)
       return false
+    }
+  },
+
+  agregarMaterial: async (conceptoId, rutas) => {
+    try {
+      const { concepto, agregados, ignorados } = await api.agregarMaterial(conceptoId, rutas)
+      set((estado) => ({
+        lista: conConteoActualizado(estado.lista, conceptoId, concepto.recursos.length)
+      }))
+      if (agregados > 0) {
+        ui().notificar({
+          tipo: 'exito',
+          mensaje: agregados === 1 ? 'Material agregado.' : `${agregados} materiales agregados.`
+        })
+      }
+      if (ignorados.length > 0) {
+        ui().notificar({
+          tipo: 'error',
+          mensaje: `No se pudo agregar: ${ignorados.join(', ')}.`,
+          sugerencia: 'Formatos aceptados: PDF, PowerPoint, Word, Markdown, HTML y XML.'
+        })
+      }
+      return concepto
+    } catch (error) {
+      ui().notificarError(error)
+      return null
+    }
+  },
+
+  eliminarMaterial: async (conceptoId, recursoId) => {
+    try {
+      const concepto = await api.eliminarMaterial(conceptoId, recursoId)
+      set((estado) => ({
+        lista: conConteoActualizado(estado.lista, conceptoId, concepto.recursos.length)
+      }))
+      ui().notificar({ tipo: 'exito', mensaje: 'Material eliminado.' })
+      return concepto
+    } catch (error) {
+      ui().notificarError(error)
+      return null
     }
   }
 }))

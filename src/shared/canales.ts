@@ -12,6 +12,10 @@ export const CANALES = {
   conceptoEditar: 'concepto:editar',
   conceptoEliminar: 'concepto:eliminar',
 
+  // Material
+  materialAgregar: 'material:agregar',
+  materialEliminar: 'material:eliminar',
+
   // Asignaturas
   asignaturasListar: 'asignaturas:listar',
 
