@@ -62,7 +62,7 @@ app.whenReady().then(() => {
   // Inicializa el núcleo (vault + índice) y registra la API IPC antes de la ventana.
   servicios = inicializarServicios()
   registrarHandlersIpc(servicios)
-  registrarHandlersTerminal()
+  registrarHandlersTerminal(servicios.vault.raiz)
   habilitarProtocoloRecurso(servicios.vault)
 
   createWindow()

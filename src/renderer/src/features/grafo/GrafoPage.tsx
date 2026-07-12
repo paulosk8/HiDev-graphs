@@ -25,6 +25,11 @@ const TIPOS_ARISTA: { tipo: TipoAristaGrafo; etiqueta: string; color: string }[]
 ]
 const ETIQUETA_ARISTA: Record<string, string> = Object.fromEntries(TIPOS_ARISTA.map((t) => [t.tipo, t.etiqueta]))
 
+/** Paleta para colorear los conceptos relacionados con el seleccionado. */
+const PALETA = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#0ea5e9', '#a855f7']
+
+const truncar = (s: string, n = 22): string => (s.length > n ? `${s.slice(0, n - 1)}…` : s)
+
 const ESTILO: cytoscape.StylesheetStyle[] = [
   {
     selector: 'node[tipo="concepto"]',
@@ -70,7 +75,9 @@ function elementosVisibles(grafo: GrafoDTO, tipos: Set<TipoAristaGrafo>): cytosc
     ...grafo.nodos.map((n) => ({
       data: {
         id: n.id,
-        etiqueta: n.etiqueta,
+        // El nombre completo se ve en el panel y el tooltip; en el grafo se trunca.
+        etiqueta: n.tipo === 'concepto' ? truncar(n.etiqueta) : n.etiqueta,
+        completa: n.etiqueta,
         tipo: n.tipo,
         tam: n.tipo === 'concepto' ? Math.min(24 + n.peso * 8, 64) : 22
       }
@@ -118,6 +125,15 @@ export function GrafoPage(): JSX.Element {
 
   const elementos = useMemo(() => (grafo ? elementosVisibles(grafo, tipos) : []), [grafo, tipos])
 
+  const relacionados = useMemo(
+    () =>
+      grafo && seleccionado
+        ? relacionadosDe(grafo, seleccionado).map((r, i) => ({ ...r, color: PALETA[i % PALETA.length] }))
+        : [],
+    [grafo, seleccionado]
+  )
+  const colorPorId = useMemo(() => new Map(relacionados.map((r) => [r.id, r.color])), [relacionados])
+
   // Crea el grafo cuando cambian los elementos (filtros de arista).
   useEffect(() => {
     if (!contenedor.current || elementos.length === 0) return
@@ -134,11 +150,11 @@ export function GrafoPage(): JSX.Element {
 
     cy.on('tap', 'node[tipo="concepto"]', (evt) => setSeleccionado(evt.target.id().slice(2)))
     cy.on('dbltap', 'node[tipo="concepto"]', (evt) => setModalId(evt.target.id().slice(2)))
-    cy.on('mouseover', 'node[tipo="asignatura"]', (evt) => {
+    cy.on('mouseover', 'node', (evt) => {
       const p = evt.target.renderedPosition()
-      setTooltip({ x: p.x, y: p.y, texto: String(evt.target.data('etiqueta')) })
+      setTooltip({ x: p.x, y: p.y, texto: String(evt.target.data('completa') ?? evt.target.data('etiqueta')) })
     })
-    cy.on('mouseout', 'node[tipo="asignatura"]', () => setTooltip(null))
+    cy.on('mouseout', 'node', () => setTooltip(null))
     cy.on('pan zoom', () => setTooltip(null))
 
     // Mantiene el lienzo sincronizado con el tamaño real del contenedor
@@ -152,10 +168,11 @@ export function GrafoPage(): JSX.Element {
     }
   }, [elementos])
 
-  // Resalta el vecindario del nodo seleccionado (filtra visualmente el grafo).
+  // Resalta el vecindario del nodo seleccionado y colorea los relacionados.
   useEffect(() => {
     const cy = cyRef.current
     if (!cy) return
+    cy.nodes('[tipo="concepto"]').style('background-color', '#6366f1') // restablece
     cy.elements().removeClass('atenuado').removeClass('foco')
     if (!seleccionado) return
     const nodo = cy.getElementById(`c:${seleccionado}`)
@@ -163,8 +180,11 @@ export function GrafoPage(): JSX.Element {
       cy.elements().addClass('atenuado')
       nodo.removeClass('atenuado').addClass('foco')
       nodo.neighborhood().removeClass('atenuado')
+      for (const [id, color] of colorPorId) {
+        cy.getElementById(`c:${id}`).style('background-color', color)
+      }
     }
-  }, [seleccionado, elementos])
+  }, [seleccionado, elementos, colorPorId])
 
   // Carga el detalle para la modal.
   useEffect(() => {
@@ -190,7 +210,6 @@ export function GrafoPage(): JSX.Element {
       .sort((a, b) => a.etiqueta.localeCompare(b.etiqueta, 'es'))
   }, [grafo, busqueda])
 
-  const relacionados = grafo && seleccionado ? relacionadosDe(grafo, seleccionado) : []
   const nombreSel = grafo?.nodos.find((n) => n.id === `c:${seleccionado}`)?.etiqueta
   const vacio = grafo !== null && grafo.nodos.length === 0
 
@@ -260,17 +279,23 @@ export function GrafoPage(): JSX.Element {
               {conceptos.map((c) => {
                 const id = c.id.slice(2)
                 const activo = id === seleccionado
+                const color = colorPorId.get(id)
                 return (
                   <li key={c.id}>
                     <button
                       onClick={() => setSeleccionado(id)}
                       onDoubleClick={() => setModalId(id)}
-                      className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-sm transition ${
+                      title={c.etiqueta}
+                      className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm transition ${
                         activo ? 'bg-marca-50 text-marca-700' : 'text-slate-700 hover:bg-slate-100'
                       }`}
                     >
-                      <span className="truncate">{c.etiqueta}</span>
-                      {c.peso > 0 && <span className="ml-2 shrink-0 text-xs text-slate-400">{c.peso}</span>}
+                      <span
+                        className="h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: activo ? '#4338ca' : (color ?? '#e2e8f0') }}
+                      />
+                      <span className="min-w-0 flex-1 truncate">{c.etiqueta}</span>
+                      {c.peso > 0 && <span className="shrink-0 text-xs text-slate-400">{c.peso}</span>}
                     </button>
                   </li>
                 )
@@ -292,11 +317,11 @@ export function GrafoPage(): JSX.Element {
                       <li key={r.id}>
                         <button
                           onClick={() => setModalId(r.id)}
-                          title={`${r.via} · ver detalle`}
+                          title={`${r.etiqueta} · ${r.via} · ver detalle`}
                           className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-100"
                         >
-                          <span className="h-1.5 w-1.5 rounded-full bg-marca-400" />
-                          <span className="truncate">{r.etiqueta}</span>
+                          <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: r.color }} />
+                          <span className="min-w-0 flex-1 truncate">{r.etiqueta}</span>
                         </button>
                       </li>
                     ))}

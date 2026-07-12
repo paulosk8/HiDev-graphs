@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron'
 import { spawn, type IPty } from 'node-pty'
+import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 
 import { CANALES } from '../../shared/canales'
@@ -15,18 +16,27 @@ function shellPredeterminado(): string {
  * Terminal embebida: abre un pseudo-terminal (pty) real con el shell del sistema
  * y lo conecta al renderer (xterm.js). Multiplataforma vía node-pty (ConPTY en
  * Windows). El proceso de IA (Claude Code, Gemini CLI…) se ejecuta dentro.
+ *
+ * Se abre en la carpeta del vault, para que el CLI (y su MCP) pueda navegar los
+ * archivos de conceptos, asignaturas y material de los temas relacionados.
  */
-export function registrarHandlersTerminal(): void {
+export function registrarHandlersTerminal(rutaVault: string): void {
   ipcMain.handle(CANALES.terminalCrear, (evento, cols: number, rows: number) => {
     pty?.kill()
+    const cwd = existsSync(rutaVault) ? rutaVault : homedir()
     pty = spawn(shellPredeterminado(), [], {
       name: 'xterm-color',
       cols: cols || 80,
       rows: rows || 24,
-      cwd: homedir(),
+      cwd,
       env: process.env as Record<string, string>
     })
     const sender = evento.sender
+    // Aviso inicial: en qué carpeta está el terminal (el material del vault).
+    sender.send(
+      CANALES.terminalDatos,
+      `\x1b[90m# PedagoGraph — tu material está en: ${cwd}\r\n# (conceptos/, asignaturas/, tareas/). Ejecuta aquí tu CLI de IA.\x1b[0m\r\n`
+    )
     pty.onData((datos) => {
       if (!sender.isDestroyed()) sender.send(CANALES.terminalDatos, datos)
     })
