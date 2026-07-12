@@ -2,8 +2,12 @@ import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { inicializarServicios, type Servicios } from './servicios'
 import { registrarHandlersIpc } from './ipc/registrarHandlers'
+import { IndexSyncService } from './infrastructure/IndexSyncService'
+import { CANALES } from '../shared/canales'
 
 let servicios: Servicios | null = null
+let sincronizador: IndexSyncService | null = null
+let ventanaPrincipal: BrowserWindow | null = null
 
 function createWindow(): void {
   const ventana = new BrowserWindow({
@@ -22,6 +26,8 @@ function createWindow(): void {
       nodeIntegration: false
     }
   })
+
+  ventanaPrincipal = ventana
 
   ventana.on('ready-to-show', () => {
     ventana.show()
@@ -48,6 +54,14 @@ app.whenReady().then(() => {
 
   createWindow()
 
+  // Mantiene el índice sincronizado con el vault y avisa al renderer.
+  sincronizador = new IndexSyncService(servicios.vault, servicios.repositorio, () => {
+    if (ventanaPrincipal && !ventanaPrincipal.isDestroyed()) {
+      ventanaPrincipal.webContents.send(CANALES.vaultCambiado)
+    }
+  })
+  sincronizador.iniciar()
+
   app.on('activate', () => {
     // En macOS es habitual recrear la ventana al hacer clic en el icono del dock.
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -61,6 +75,7 @@ app.on('window-all-closed', () => {
 })
 
 app.on('will-quit', () => {
-  // Cierra la conexión del índice de forma ordenada.
+  // Detiene el observador y cierra la conexión del índice de forma ordenada.
+  void sincronizador?.detener()
   servicios?.repositorio.cerrar()
 })

@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { api } from './lib/api'
 import { Avisos } from './components/Avisos'
 import { Sidebar } from './components/Sidebar'
 import { FichaConcepto } from './features/conceptos/FichaConcepto'
@@ -36,6 +37,14 @@ function App(): JSX.Element {
   useEffect(() => {
     void cargarConceptos()
     void cargarAsignaturas()
+  }, [cargarConceptos, cargarAsignaturas])
+
+  useEffect(() => {
+    // Refresca las vistas cuando el vault cambia en segundo plano (sincronización).
+    return api.onVaultCambiado(() => {
+      void cargarConceptos()
+      void cargarAsignaturas()
+    })
   }, [cargarConceptos, cargarAsignaturas])
 
   useEffect(() => {

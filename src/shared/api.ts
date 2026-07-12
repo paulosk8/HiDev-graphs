@@ -58,4 +58,10 @@ export interface PedagoGraphApi {
 
   // --- Sistema ---
   reindexar(): Promise<Resultado<ResultadoReindexadoDTO>>
+
+  /**
+   * Se suscribe a los cambios del vault detectados en segundo plano.
+   * Devuelve una función para cancelar la suscripción.
+   */
+  onVaultCambiado(callback: () => void): () => void
 }

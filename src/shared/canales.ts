@@ -27,7 +27,10 @@ export const CANALES = {
   temaDesvincularConcepto: 'tema:desvincular-concepto',
 
   // Sistema
-  reindexar: 'sistema:reindexar'
+  reindexar: 'sistema:reindexar',
+
+  // Eventos push (main -> renderer)
+  vaultCambiado: 'vault:cambiado'
 } as const
 
 export type Canal = (typeof CANALES)[keyof typeof CANALES]
