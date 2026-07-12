@@ -6,10 +6,12 @@ import {
   type FichaConceptoDTO,
   type GrafoDTO,
   type NodoGrafoDTO,
-  type TipoAristaGrafo
+  type TipoAristaGrafo,
+  type UsoDeConceptoDTO
 } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
 import { Modal } from '../../components/Modal'
+import { TerminalEmbebida } from '../terminal/TerminalEmbebida'
 import { api } from '../../lib/api'
 import { useConceptosStore } from '../../stores/conceptosStore'
 import { useUiStore } from '../../stores/uiStore'
@@ -29,6 +31,12 @@ const ETIQUETA_ARISTA: Record<string, string> = Object.fromEntries(TIPOS_ARISTA.
 const PALETA = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#0ea5e9', '#a855f7']
 
 const truncar = (s: string, n = 22): string => (s.length > n ? `${s.slice(0, n - 1)}…` : s)
+
+/** Clases de un botón de toggle: resaltado cuando el estado difiere del habitual. */
+const clsToggle = (activo: boolean): string =>
+  activo
+    ? 'border-marca-300 bg-marca-50 text-marca-700'
+    : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
 
 const ESTILO: cytoscape.StylesheetStyle[] = [
   {
@@ -103,6 +111,17 @@ function relacionadosDe(grafo: GrafoDTO, conceptoId: string): { id: string; etiq
   return [...vistos.values()]
 }
 
+/** Redacta una instrucción lista para pegar en el CLI de IA (usa las tools MCP). */
+function construirInstruccion(concepto: string, relacionados: string[], temas: string[]): string {
+  const lista = [concepto, ...relacionados].map((c) => `"${c}"`).join(', ')
+  const sobreTemas = temas.length > 0 ? ` Céntrate en estos temas: ${temas.join('; ')}.` : ''
+  return (
+    `Usando las herramientas de PedagoGraph (MCP), prepara una tarea que integre los conceptos ${lista}. ` +
+    `Primero consulta dónde se usan (usos_de_concepto) y su material (leer_material), ` +
+    `y luego redacta las instrucciones de la tarea para los temas relacionados.${sobreTemas}`
+  )
+}
+
 export function GrafoPage(): JSX.Element {
   const [grafo, setGrafo] = useState<GrafoDTO | null>(null)
   const [tipos, setTipos] = useState<Set<TipoAristaGrafo>>(() => new Set(TIPOS_ARISTA.map((t) => t.tipo)))
@@ -111,12 +130,18 @@ export function GrafoPage(): JSX.Element {
   const [modalId, setModalId] = useState<string | null>(null)
   const [detalle, setDetalle] = useState<FichaConceptoDTO | null>(null)
   const [tooltip, setTooltip] = useState<{ x: number; y: number; texto: string } | null>(null)
+  const [mostrarTerminal, setMostrarTerminal] = useState(false)
+  const [panelVisible, setPanelVisible] = useState(true)
+  const [usosSel, setUsosSel] = useState<UsoDeConceptoDTO[]>([])
+  const [copiado, setCopiado] = useState(false)
   const contenedor = useRef<HTMLDivElement>(null)
   const cyRef = useRef<cytoscape.Core | null>(null)
 
   const notificarError = useUiStore((s) => s.notificarError)
   const irASeccion = useUiStore((s) => s.irASeccion)
   const seleccionarConcepto = useUiStore((s) => s.seleccionarConcepto)
+  const sidebarVisible = useUiStore((s) => s.sidebarVisible)
+  const alternarSidebar = useUiStore((s) => s.alternarSidebar)
   const cargarConceptos = useConceptosStore((s) => s.cargar)
 
   useEffect(() => {
@@ -157,6 +182,19 @@ export function GrafoPage(): JSX.Element {
     cy.on('mouseout', 'node', () => setTooltip(null))
     cy.on('pan zoom', () => setTooltip(null))
 
+    // Mantiene el texto de las etiquetas a un tamaño de pantalla ~constante:
+    // el tamaño en el modelo es inverso al zoom, así al acercarse no se agranda y
+    // sigue legible con cientos de nodos. Se ocultan al alejarse mucho.
+    const ajustarEtiquetas = (): void => {
+      const z = cy.zoom()
+      const tam = Math.min(Math.max(11 / z, 3), 40)
+      cy.batch(() => {
+        cy.nodes('[tipo="concepto"]').style({ 'font-size': tam, 'text-opacity': z < 0.4 ? 0 : 1 })
+      })
+    }
+    cy.on('zoom', ajustarEtiquetas)
+    ajustarEtiquetas()
+
     // Mantiene el lienzo sincronizado con el tamaño real del contenedor
     // (arregla el clic tras hacer zoom o al cambiar el layout).
     const ro = new ResizeObserver(() => cy.resize())
@@ -196,6 +234,18 @@ export function GrafoPage(): JSX.Element {
     api.obtenerFichaConcepto(modalId).then(setDetalle).catch((e) => notificarError(e))
   }, [modalId, notificarError])
 
+  // Temas donde se usa el concepto seleccionado (contexto para la instrucción de IA).
+  useEffect(() => {
+    if (!mostrarTerminal || !seleccionado) {
+      setUsosSel([])
+      return
+    }
+    api
+      .obtenerFichaConcepto(seleccionado)
+      .then((f) => setUsosSel(f.usos))
+      .catch(() => setUsosSel([]))
+  }, [mostrarTerminal, seleccionado])
+
   const alternarTipo = (t: TipoAristaGrafo): void =>
     setTipos((prev) => {
       const s = new Set(prev)
@@ -203,20 +253,71 @@ export function GrafoPage(): JSX.Element {
       return s
     })
 
+  // IDs de conceptos conectados al seleccionado (incluye el propio seleccionado).
+  const idsConectados = useMemo(() => {
+    if (!seleccionado) return null
+    return new Set<string>([seleccionado, ...relacionados.map((r) => r.id)])
+  }, [seleccionado, relacionados])
+
   const conceptos = useMemo(() => {
     const q = busqueda.trim().toLowerCase()
     return (grafo?.nodos ?? [])
-      .filter((n): n is NodoGrafoDTO => n.tipo === 'concepto' && n.etiqueta.toLowerCase().includes(q))
+      .filter((n): n is NodoGrafoDTO => {
+        if (n.tipo !== 'concepto') return false
+        // Con un nodo seleccionado, la lista se limita a sus nodos conectados.
+        if (idsConectados && !idsConectados.has(n.id.slice(2))) return false
+        return n.etiqueta.toLowerCase().includes(q)
+      })
       .sort((a, b) => a.etiqueta.localeCompare(b.etiqueta, 'es'))
-  }, [grafo, busqueda])
+  }, [grafo, busqueda, idsConectados])
 
   const nombreSel = grafo?.nodos.find((n) => n.id === `c:${seleccionado}`)?.etiqueta
   const vacio = grafo !== null && grafo.nodos.length === 0
 
+  const temasSel = useMemo(() => [...new Set(usosSel.map((u) => u.tema))], [usosSel])
+  const instruccion = useMemo(
+    () => (nombreSel ? construirInstruccion(nombreSel, relacionados.map((r) => r.etiqueta), temasSel) : ''),
+    [nombreSel, relacionados, temasSel]
+  )
+
+  const copiarInstruccion = (): void => {
+    if (!instruccion) return
+    void navigator.clipboard.writeText(instruccion)
+    setCopiado(true)
+    setTimeout(() => setCopiado(false), 1500)
+  }
+  const insertarEnTerminal = (): void => {
+    if (instruccion) window.api.terminal.escribir(instruccion)
+  }
+
   return (
     <div className="flex h-full flex-col">
       <header className="border-b border-slate-200 px-8 py-4">
-        <h1 className="text-2xl font-semibold text-slate-900">Mapa de conceptos</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold text-slate-900">Mapa de conceptos</h1>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={alternarSidebar}
+              title={sidebarVisible ? 'Ocultar el menú lateral' : 'Mostrar el menú lateral'}
+              className={`rounded-lg border px-3 py-1.5 text-sm transition ${clsToggle(!sidebarVisible)}`}
+            >
+              ☰ Menú
+            </button>
+            <button
+              onClick={() => setPanelVisible((v) => !v)}
+              title={panelVisible ? 'Ocultar el panel de conceptos' : 'Mostrar el panel de conceptos'}
+              className={`rounded-lg border px-3 py-1.5 text-sm transition ${clsToggle(!panelVisible)}`}
+            >
+              ▤ Panel
+            </button>
+            <button
+              onClick={() => setMostrarTerminal((v) => !v)}
+              className={`rounded-lg border px-3 py-1.5 text-sm transition ${clsToggle(mostrarTerminal)}`}
+            >
+              ⌨ Terminal IA
+            </button>
+          </div>
+        </div>
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
           {TIPOS_ARISTA.map((t) => (
             <button
@@ -234,6 +335,8 @@ export function GrafoPage(): JSX.Element {
       </header>
 
       <div className="flex min-h-0 flex-1">
+        {/* Columna izquierda: grafo arriba + terminal opcional abajo */}
+        <div className="flex min-h-0 flex-1 flex-col">
         {/* Grafo */}
         <div className="relative min-h-0 flex-1">
           {vacio ? (
@@ -260,7 +363,55 @@ export function GrafoPage(): JSX.Element {
           )}
         </div>
 
+        {/* Terminal embebida debajo del grafo (para lanzar el CLI de IA) */}
+        {mostrarTerminal && (
+          <div className="flex h-72 shrink-0 flex-col border-t border-slate-800 bg-slate-900">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-800 px-4 py-2">
+              <div className="min-w-0">
+                {nombreSel ? (
+                  <>
+                    <p className="truncate text-xs text-slate-300">
+                      Tarea sobre <span className="font-semibold text-white">«{nombreSel}»</span>
+                      {relacionados.length > 0 && (
+                        <span className="text-slate-400"> + {relacionados.length} relacionados</span>
+                      )}
+                    </p>
+                    {temasSel.length > 0 && (
+                      <p className="mt-0.5 truncate text-[11px] text-slate-500">
+                        Temas: {temasSel.join(' · ')}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-xs text-slate-400">
+                    Selecciona un concepto en el mapa para preparar una instrucción para la IA.
+                  </p>
+                )}
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  onClick={copiarInstruccion}
+                  disabled={!instruccion}
+                  className="rounded-md border border-slate-600 px-2.5 py-1 text-xs text-slate-200 transition hover:bg-slate-800 disabled:opacity-40"
+                >
+                  {copiado ? '✓ Copiado' : 'Copiar instrucción'}
+                </button>
+                <button
+                  onClick={insertarEnTerminal}
+                  disabled={!instruccion}
+                  className="rounded-md bg-marca-600 px-2.5 py-1 text-xs font-medium text-white transition hover:bg-marca-500 disabled:opacity-40"
+                >
+                  Insertar en la terminal ↵
+                </button>
+              </div>
+            </div>
+            <TerminalEmbebida className="min-h-0 flex-1 p-2" />
+          </div>
+        )}
+        </div>
+
         {/* Panel derecho: lista de nodos + relacionados */}
+        {panelVisible && (
         <aside className="flex w-80 shrink-0 flex-col border-l border-slate-200 bg-white">
           <div className="border-b border-slate-100 p-4">
             <input
@@ -272,9 +423,19 @@ export function GrafoPage(): JSX.Element {
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto p-3">
-            <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Conceptos ({conceptos.length})
-            </p>
+            <div className="mb-2 flex items-center justify-between px-1">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                {seleccionado ? `Conectados (${conceptos.length})` : `Conceptos (${conceptos.length})`}
+              </p>
+              {seleccionado && (
+                <button
+                  onClick={() => setSeleccionado(null)}
+                  className="text-xs text-marca-600 hover:underline"
+                >
+                  Ver todos
+                </button>
+              )}
+            </div>
             <ul className="space-y-0.5">
               {conceptos.map((c) => {
                 const id = c.id.slice(2)
@@ -304,36 +465,19 @@ export function GrafoPage(): JSX.Element {
 
             {seleccionado && (
               <div className="mt-4 border-t border-slate-100 pt-3">
-                <div className="mb-2 flex items-center justify-between px-1">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                    Relacionados con «{nombreSel}»
-                  </p>
-                </div>
-                {relacionados.length === 0 ? (
-                  <p className="px-1 text-xs text-slate-400">Sin conexiones todavía.</p>
-                ) : (
-                  <ul className="space-y-0.5">
-                    {relacionados.map((r) => (
-                      <li key={r.id}>
-                        <button
-                          onClick={() => setModalId(r.id)}
-                          title={`${r.etiqueta} · ${r.via} · ver detalle`}
-                          className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-100"
-                        >
-                          <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: r.color }} />
-                          <span className="min-w-0 flex-1 truncate">{r.etiqueta}</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                <Boton variante="secundario" className="mt-3 w-full" onClick={() => setModalId(seleccionado)}>
+                <p className="mb-2 px-1 text-xs text-slate-400">
+                  {relacionados.length === 0
+                    ? 'Este concepto aún no tiene conexiones.'
+                    : `Mostrando «${nombreSel}» y sus ${relacionados.length} conexiones. Doble clic abre el detalle.`}
+                </p>
+                <Boton variante="secundario" className="w-full" onClick={() => setModalId(seleccionado)}>
                   Ver descripción y datos
                 </Boton>
               </div>
             )}
           </div>
         </aside>
+        )}
       </div>
 
       {/* Modal de detalle del concepto */}

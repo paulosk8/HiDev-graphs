@@ -40,6 +40,8 @@ export function Sidebar(): JSX.Element {
   const cargarAsignaturas = useAsignaturasStore((s) => s.cargar)
   const notificar = useUiStore((s) => s.notificar)
   const notificarError = useUiStore((s) => s.notificarError)
+  const sidebarVisible = useUiStore((s) => s.sidebarVisible)
+  const alternarSidebar = useUiStore((s) => s.alternarSidebar)
   const [actualizando, setActualizando] = useState(false)
   const [respaldando, setRespaldando] = useState(false)
 
@@ -73,6 +75,20 @@ export function Sidebar(): JSX.Element {
     }
   }
 
+  // Colapsado: solo un botón flotante para volver a mostrar el menú (disponible
+  // en cualquier sección, así nunca se pierde la navegación).
+  if (!sidebarVisible) {
+    return (
+      <button
+        onClick={alternarSidebar}
+        title="Mostrar el menú"
+        className="fixed left-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50"
+      >
+        ☰
+      </button>
+    )
+  }
+
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r border-slate-200 bg-slate-50 p-4">
       <div className="mb-8 flex items-center gap-2 px-2">
@@ -80,6 +96,13 @@ export function Sidebar(): JSX.Element {
           P
         </div>
         <span className="text-lg font-semibold text-slate-800">PedagoGraph</span>
+        <button
+          onClick={alternarSidebar}
+          title="Ocultar el menú"
+          className="ml-auto flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-200 hover:text-slate-600"
+        >
+          «
+        </button>
       </div>
 
       <nav className="space-y-1">
