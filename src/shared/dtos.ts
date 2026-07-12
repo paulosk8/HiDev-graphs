@@ -206,6 +206,33 @@ export interface RespaldoDTO {
   ruta?: string
 }
 
+// --- Grafo (Fase 2) ---
+
+export type TipoNodoGrafo = 'concepto' | 'asignatura'
+export type TipoAristaGrafo = 'usado_en' | TipoRelacion
+
+export interface NodoGrafoDTO {
+  /** Id con prefijo ('c:' concepto, 'a:' asignatura) para unicidad en el grafo. */
+  id: string
+  etiqueta: string
+  tipo: TipoNodoGrafo
+  /** Para conceptos: en cuántas asignaturas se usa (mide su transversalidad). */
+  peso: number
+}
+
+export interface AristaGrafoDTO {
+  origen: string
+  destino: string
+  tipo: TipoAristaGrafo
+  /** Id de la asignatura (solo aristas 'usado_en'), para filtrar por asignatura. */
+  asignaturaId?: string
+}
+
+export interface GrafoDTO {
+  nodos: NodoGrafoDTO[]
+  aristas: AristaGrafoDTO[]
+}
+
 // --- Catálogos de textos para la UI (siempre en español) ---
 
 /** Etiquetas legibles de las relaciones entre conceptos. */

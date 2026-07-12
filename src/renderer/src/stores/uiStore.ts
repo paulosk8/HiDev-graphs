@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { ErrorAmigableError } from '../lib/api'
 
-export type Seccion = 'conceptos' | 'asignaturas'
+export type Seccion = 'conceptos' | 'asignaturas' | 'grafo'
 
 export type TipoAviso = 'exito' | 'error' | 'info'
 

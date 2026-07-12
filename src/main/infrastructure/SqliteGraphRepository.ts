@@ -315,4 +315,29 @@ export class SqliteGraphRepository implements IGraphRepository {
       tema: f.tema
     }))
   }
+
+  usosConceptoAsignatura(): Array<{ conceptoId: string; asignaturaId: string }> {
+    return this.db
+      .prepare(
+        `SELECT DISTINCT e.destino_id AS conceptoId, a.id AS asignaturaId
+         FROM edges e
+         JOIN nodes t ON t.tipo = 'tema' AND t.id = e.origen_id
+         JOIN nodes u ON u.tipo = 'unidad' AND u.id = t.padre_id
+         JOIN nodes a ON a.tipo = 'asignatura' AND a.id = u.padre_id
+         WHERE e.origen_tipo = 'tema'
+           AND e.destino_tipo = 'concepto'
+           AND e.tipo_relacion = 'instancia'`
+      )
+      .all() as Array<{ conceptoId: string; asignaturaId: string }>
+  }
+
+  relacionesEntreConceptos(): Array<{ origen: string; destino: string; tipo: string }> {
+    return this.db
+      .prepare(
+        `SELECT origen_id AS origen, destino_id AS destino, tipo_relacion AS tipo
+         FROM edges
+         WHERE origen_tipo = 'concepto' AND destino_tipo = 'concepto'`
+      )
+      .all() as Array<{ origen: string; destino: string; tipo: string }>
+  }
 }

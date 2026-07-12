@@ -81,6 +81,7 @@ export const api = {
   crucesDeTarea: (tareaId: string) => desenvolver(window.api.crucesDeTarea(tareaId)),
   duplicarTarea: (tareaId: string, destino: DuplicarTareaDTO) =>
     desenvolver(window.api.duplicarTarea(tareaId, destino)),
+  obtenerGrafo: () => desenvolver(window.api.obtenerGrafo()),
   reindexar: () => desenvolver(window.api.reindexar()),
   respaldar: () => desenvolver(window.api.respaldar()),
   onVaultCambiado: (callback: () => void): (() => void) => window.api.onVaultCambiado(callback)

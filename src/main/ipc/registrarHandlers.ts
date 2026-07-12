@@ -39,6 +39,7 @@ import {
   listarTareasDeConcepto,
   obtenerTarea
 } from '../application/Tareas'
+import { obtenerGrafo } from '../application/ObtenerGrafo'
 import { reindexarVault } from '../application/ReindexarVault'
 import { respaldarVault } from '../application/RespaldarVault'
 import type { RespaldoDTO } from '../../shared/dtos'
@@ -208,6 +209,8 @@ export function registrarHandlersIpc(servicios: Servicios): void {
       if (error) throw new ErrorDeDominio('No se pudo abrir el adjunto.', error)
     })
   )
+
+  ipcMain.handle(CANALES.grafoObtener, () => envolver(() => obtenerGrafo(servicios)))
 
   ipcMain.handle(CANALES.reindexar, () => envolver(() => reindexarVault(vault, repositorio)))
 

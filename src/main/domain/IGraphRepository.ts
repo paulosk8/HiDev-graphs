@@ -47,4 +47,12 @@ export interface IGraphRepository {
 
   /** Lugares (asignatura › unidad › tema) donde se usa un concepto. */
   usosDeConcepto(conceptoId: string): UsoDeConcepto[]
+
+  // --- Grafo ---
+
+  /** Pares (concepto, asignatura) donde el concepto se instancia en algún tema. */
+  usosConceptoAsignatura(): Array<{ conceptoId: string; asignaturaId: string }>
+
+  /** Relaciones tipadas concepto → concepto. */
+  relacionesEntreConceptos(): Array<{ origen: string; destino: string; tipo: string }>
 }

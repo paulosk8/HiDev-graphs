@@ -43,6 +43,9 @@ export const CANALES = {
   tareaCruces: 'tarea:cruces',
   tareaDuplicar: 'tarea:duplicar',
 
+  // Grafo
+  grafoObtener: 'grafo:obtener',
+
   // Sistema
   reindexar: 'sistema:reindexar',
   respaldar: 'sistema:respaldar',

@@ -6,6 +6,7 @@ import { FichaConcepto } from './features/conceptos/FichaConcepto'
 import { ListaConceptos } from './features/conceptos/ListaConceptos'
 import { FichaAsignatura } from './features/asignaturas/FichaAsignatura'
 import { ListaAsignaturas } from './features/asignaturas/ListaAsignaturas'
+import { GrafoPage } from './features/grafo/GrafoPage'
 import { useAsignaturasStore } from './stores/asignaturasStore'
 import { useConceptosStore } from './stores/conceptosStore'
 import { useUiStore } from './stores/uiStore'
@@ -14,6 +15,10 @@ function Contenido(): JSX.Element {
   const seccion = useUiStore((s) => s.seccion)
   const conceptoSeleccionadoId = useUiStore((s) => s.conceptoSeleccionadoId)
   const asignaturaSeleccionadaId = useUiStore((s) => s.asignaturaSeleccionadaId)
+
+  if (seccion === 'grafo') {
+    return <GrafoPage />
+  }
 
   if (seccion === 'asignaturas') {
     return asignaturaSeleccionadaId ? (

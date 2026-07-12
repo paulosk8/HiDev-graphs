@@ -7,7 +7,7 @@ import { useUiStore, type Seccion } from '../stores/uiStore'
 interface ItemProps {
   seccion: Seccion
   etiqueta: string
-  cuenta: number
+  cuenta?: number
   icono: string
 }
 
@@ -26,7 +26,9 @@ function Item({ seccion, etiqueta, cuenta, icono }: ItemProps): JSX.Element {
         {icono}
       </span>
       <span className="flex-1 text-left">{etiqueta}</span>
-      <span className={`text-xs ${activo ? 'text-marca-500' : 'text-slate-400'}`}>{cuenta}</span>
+      {cuenta !== undefined && (
+        <span className={`text-xs ${activo ? 'text-marca-500' : 'text-slate-400'}`}>{cuenta}</span>
+      )}
     </button>
   )
 }
@@ -83,6 +85,7 @@ export function Sidebar(): JSX.Element {
       <nav className="space-y-1">
         <Item seccion="asignaturas" etiqueta="Mis asignaturas" cuenta={totalAsignaturas} icono="🎓" />
         <Item seccion="conceptos" etiqueta="Conceptos" cuenta={totalConceptos} icono="💡" />
+        <Item seccion="grafo" etiqueta="Mapa de conceptos" icono="🕸️" />
       </nav>
 
       <div className="mt-auto space-y-2">
