@@ -40,7 +40,10 @@ export function AsistentePage(): JSX.Element {
     try {
       const actualizado = await api.conectarMcp(cli)
       setInfo(actualizado)
-      notificar({ tipo: 'exito', mensaje: `${nombre} quedó conectado. Reinícialo para que tome los cambios.` })
+      notificar({
+        tipo: 'exito',
+        mensaje: `${nombre} quedó conectado. Cierra y vuelve a abrir el CLI (escribe «exit» en la terminal y ejecútalo otra vez) para que tome los cambios.`
+      })
     } catch (error) {
       notificarError(error)
     } finally {

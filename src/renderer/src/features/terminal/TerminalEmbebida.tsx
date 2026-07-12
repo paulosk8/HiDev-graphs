@@ -25,12 +25,14 @@ export function TerminalEmbebida({ className }: { className?: string }): JSX.Ele
     fit.fit()
     window.__term = term
 
-    void window.api.terminal.crear(term.cols, term.rows)
+    // Los listeners se registran ANTES de crear/reconectar, para no perder el
+    // historial que el proceso principal reenvía al volver a montar la terminal.
     const offDatos = window.api.terminal.onDatos((d) => term.write(d))
     const offSalida = window.api.terminal.onSalida(() =>
       term.write('\r\n\x1b[90m[el proceso terminó]\x1b[0m\r\n')
     )
     const disp = term.onData((d) => window.api.terminal.escribir(d))
+    void window.api.terminal.crear(term.cols, term.rows)
 
     const ro = new ResizeObserver(() => {
       fit.fit()
