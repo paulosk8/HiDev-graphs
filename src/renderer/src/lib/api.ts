@@ -49,5 +49,6 @@ export const api = {
   desvincularTemaConcepto: (asignaturaId: string, temaId: string, conceptoId: string) =>
     desenvolver(window.api.desvincularTemaConcepto(asignaturaId, temaId, conceptoId)),
   reindexar: () => desenvolver(window.api.reindexar()),
+  respaldar: () => desenvolver(window.api.respaldar()),
   onVaultCambiado: (callback: () => void): (() => void) => window.api.onVaultCambiado(callback)
 }

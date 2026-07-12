@@ -1,4 +1,5 @@
-import { ipcMain } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain } from 'electron'
+import { join } from 'node:path'
 
 import { CANALES } from '../../shared/canales'
 import type { DatosAsignaturaDTO, DatosConceptoDTO } from '../../shared/dtos'
@@ -18,7 +19,18 @@ import {
   vincularTemaConcepto
 } from '../application/VincularTemaConcepto'
 import { reindexarVault } from '../application/ReindexarVault'
+import { respaldarVault } from '../application/RespaldarVault'
+import type { RespaldoDTO } from '../../shared/dtos'
 import type { Servicios } from '../servicios'
+
+/** Nombre de archivo sugerido para el respaldo, con la fecha de hoy. */
+function nombreRespaldo(): string {
+  const hoy = new Date()
+  const iso = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(
+    hoy.getDate()
+  ).padStart(2, '0')}`
+  return `PedagoGraph-respaldo-${iso}.zip`
+}
 
 /**
  * Ejecuta un caso de uso y lo envuelve en un `Resultado<T>`.
@@ -113,4 +125,23 @@ export function registrarHandlersIpc(servicios: Servicios): void {
   )
 
   ipcMain.handle(CANALES.reindexar, () => envolver(() => reindexarVault(vault, repositorio)))
+
+  ipcMain.handle(CANALES.respaldar, (evento) =>
+    envolver<RespaldoDTO>(async () => {
+      const ventana = BrowserWindow.fromWebContents(evento.sender)
+      const destino = join(app.getPath('documents'), nombreRespaldo())
+      const seleccion = ventana
+        ? await dialog.showSaveDialog(ventana, {
+            title: 'Guardar copia de seguridad',
+            defaultPath: destino,
+            filters: [{ name: 'Archivo comprimido', extensions: ['zip'] }]
+          })
+        : await dialog.showSaveDialog({ defaultPath: destino })
+
+      if (seleccion.canceled || !seleccion.filePath) return { cancelado: true }
+
+      await respaldarVault(servicios, seleccion.filePath)
+      return { cancelado: false, ruta: seleccion.filePath }
+    })
+  )
 }

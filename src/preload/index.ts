@@ -29,6 +29,7 @@ const api: PedagoGraphApi = {
   desvincularTemaConcepto: (asignaturaId, temaId, conceptoId) =>
     ipcRenderer.invoke(CANALES.temaDesvincularConcepto, asignaturaId, temaId, conceptoId),
   reindexar: () => ipcRenderer.invoke(CANALES.reindexar),
+  respaldar: () => ipcRenderer.invoke(CANALES.respaldar),
   onVaultCambiado: (callback) => {
     const oyente = (): void => callback()
     ipcRenderer.on(CANALES.vaultCambiado, oyente)

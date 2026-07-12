@@ -39,6 +39,21 @@ export function Sidebar(): JSX.Element {
   const notificar = useUiStore((s) => s.notificar)
   const notificarError = useUiStore((s) => s.notificarError)
   const [actualizando, setActualizando] = useState(false)
+  const [respaldando, setRespaldando] = useState(false)
+
+  const respaldar = async (): Promise<void> => {
+    setRespaldando(true)
+    try {
+      const r = await api.respaldar()
+      if (!r.cancelado) {
+        notificar({ tipo: 'exito', mensaje: 'Copia de seguridad guardada.' })
+      }
+    } catch (error) {
+      notificarError(error)
+    } finally {
+      setRespaldando(false)
+    }
+  }
 
   const actualizar = async (): Promise<void> => {
     setActualizando(true)
@@ -81,6 +96,15 @@ export function Sidebar(): JSX.Element {
             ↻
           </span>
           {actualizando ? 'Actualizando…' : 'Actualizar'}
+        </button>
+        <button
+          onClick={() => void respaldar()}
+          disabled={respaldando}
+          title="Guarda todo tu material y asignaturas en un archivo .zip"
+          className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-slate-500 transition hover:bg-slate-100 disabled:opacity-50"
+        >
+          <span aria-hidden>💾</span>
+          {respaldando ? 'Guardando…' : 'Copia de seguridad'}
         </button>
         <div className="px-2 text-xs text-slate-400">PedagoGraph · versión 0.1.0</div>
       </div>

@@ -139,6 +139,12 @@ export interface ResultadoReindexadoDTO {
   asignaturas: number
 }
 
+/** Resultado de una copia de seguridad (o su cancelación por el usuario). */
+export interface RespaldoDTO {
+  cancelado: boolean
+  ruta?: string
+}
+
 // --- Catálogos de textos para la UI (siempre en español) ---
 
 /** Etiquetas legibles de las relaciones entre conceptos. */

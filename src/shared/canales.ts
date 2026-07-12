@@ -28,6 +28,7 @@ export const CANALES = {
 
   // Sistema
   reindexar: 'sistema:reindexar',
+  respaldar: 'sistema:respaldar',
 
   // Eventos push (main -> renderer)
   vaultCambiado: 'vault:cambiado'

@@ -4,6 +4,7 @@ import type {
   DatosAsignaturaDTO,
   DatosConceptoDTO,
   FichaConceptoDTO,
+  RespaldoDTO,
   ResultadoMaterialDTO,
   ResultadoReindexadoDTO,
   ResumenAsignaturaDTO,
@@ -58,6 +59,7 @@ export interface PedagoGraphApi {
 
   // --- Sistema ---
   reindexar(): Promise<Resultado<ResultadoReindexadoDTO>>
+  respaldar(): Promise<Resultado<RespaldoDTO>>
 
   /**
    * Se suscribe a los cambios del vault detectados en segundo plano.
