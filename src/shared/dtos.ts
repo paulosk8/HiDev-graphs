@@ -149,6 +149,12 @@ export interface DatosAsignaturaDTO {
 /** Formato de las instrucciones de una tarea: Markdown o HTML (con CSS/JS). */
 export type FormatoInstrucciones = 'markdown' | 'html'
 
+/** Enlace a un recurso online que el estudiante puede usar en la tarea. */
+export interface EnlaceDTO {
+  url: string
+  titulo: string
+}
+
 export interface TareaDTO {
   id: string
   titulo: string
@@ -161,6 +167,8 @@ export interface TareaDTO {
   componente: string | null
   conceptos: string[]
   recursos: RecursoDTO[]
+  /** Enlaces a recursos online (con su título visible). */
+  enlaces: EnlaceDTO[]
 }
 
 export interface ResumenTareaDTO {
@@ -180,6 +188,8 @@ export interface DatosTareaDTO {
   asignaturaId: string
   temas: string[]
   componente: string | null
+  /** Enlaces a recursos online (opcional). */
+  enlaces?: EnlaceDTO[]
 }
 
 /** Resultado de adjuntar archivos a una tarea. */

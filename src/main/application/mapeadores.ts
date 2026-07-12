@@ -79,7 +79,8 @@ export function aTareaDTO(tarea: Tarea): TareaDTO {
       nombre: r.nombre,
       archivo: r.archivo,
       formato: r.formato
-    }))
+    })),
+    enlaces: tarea.enlaces.map((e) => ({ url: e.url, titulo: e.titulo }))
   }
 }
 

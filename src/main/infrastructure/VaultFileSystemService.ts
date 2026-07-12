@@ -277,7 +277,8 @@ export class VaultFileSystemService {
         nombre: r.nombre,
         archivo: r.archivo,
         formato: r.formato
-      }))
+      })),
+      enlaces: tarea.enlaces.map((e) => ({ url: e.url, titulo: e.titulo }))
     }
     writeFileSync(this.rutaTarea(tarea.id), escribirYaml(plano, { lineWidth: 100 }), 'utf8')
     // Las instrucciones van en su propio archivo (.md o .html), legible y descargable.
@@ -458,6 +459,10 @@ function tareaDesdePlano(datos: Record<string, unknown>, instrucciones: string):
       })
     )
 
+  const enlaces = lista(datos.enlaces)
+    .map((e) => e as Record<string, unknown>)
+    .map((e) => ({ url: texto(e.url), titulo: texto(e.titulo) }))
+
   const componente = texto(datos.componente)
   return crearTarea({
     id: texto(datos.id),
@@ -468,6 +473,7 @@ function tareaDesdePlano(datos: Record<string, unknown>, instrucciones: string):
     temas: listaTextos(datos.temas),
     componente: componente.length > 0 ? componente : null,
     conceptos: listaTextos(datos.conceptos),
-    recursos
+    recursos,
+    enlaces
   })
 }

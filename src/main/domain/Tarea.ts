@@ -15,6 +15,12 @@ import type { FormatoInstrucciones } from './tipos'
  *  - `componente`: 0 ó 1 (opcional; si es null, es una tarea "general" del tema).
  *  - `conceptos`: los conceptos en que se basa (se derivan de sus temas).
  */
+/** Enlace a un recurso online (con su título visible). */
+export interface EnlaceRecurso {
+  readonly url: string
+  readonly titulo: string
+}
+
 export interface Tarea {
   readonly id: string
   readonly titulo: string
@@ -30,6 +36,8 @@ export interface Tarea {
   readonly conceptos: readonly string[]
   /** Archivos adjuntos propios de la tarea (para desarrollarla). */
   readonly recursos: readonly Recurso[]
+  /** Enlaces a recursos online. */
+  readonly enlaces: readonly EnlaceRecurso[]
 }
 
 export interface DatosTarea {
@@ -42,6 +50,15 @@ export interface DatosTarea {
   componente?: string | null
   conceptos?: readonly string[]
   recursos?: readonly Recurso[]
+  enlaces?: readonly EnlaceRecurso[]
+}
+
+/** Normaliza enlaces: quita los que no tengan URL y recorta espacios. */
+export function normalizarEnlaces(enlaces: readonly EnlaceRecurso[] | undefined): EnlaceRecurso[] {
+  return (enlaces ?? [])
+    .map((e) => ({ url: e.url.trim(), titulo: e.titulo.trim() }))
+    .filter((e) => e.url.length > 0)
+    .map((e) => ({ url: e.url, titulo: e.titulo || e.url }))
 }
 
 export function crearTarea(datos: DatosTarea): Tarea {
@@ -69,7 +86,8 @@ export function crearTarea(datos: DatosTarea): Tarea {
     temas: datos.temas ?? [],
     componente: componente ? componente : null,
     conceptos: datos.conceptos ?? [],
-    recursos: datos.recursos ?? []
+    recursos: datos.recursos ?? [],
+    enlaces: normalizarEnlaces(datos.enlaces)
   }
 }
 

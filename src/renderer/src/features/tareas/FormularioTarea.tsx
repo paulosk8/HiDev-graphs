@@ -46,6 +46,9 @@ export function FormularioTarea({
   )
   const [instrucciones, setInstrucciones] = useState(tareaInicial?.instrucciones ?? '')
   const [formato, setFormato] = useState<FormatoInstrucciones>(tareaInicial?.formato ?? 'markdown')
+  const [enlaces, setEnlaces] = useState<{ url: string; titulo: string }[]>(
+    () => tareaInicial?.enlaces.map((e) => ({ url: e.url, titulo: e.titulo })) ?? []
+  )
   const [previa, setPrevia] = useState(false)
   const [ocupado, setOcupado] = useState(false)
   const areaRef = useRef<HTMLTextAreaElement>(null)
@@ -117,7 +120,8 @@ export function FormularioTarea({
       formato,
       asignaturaId: asignatura.id,
       temas: [...temas],
-      componente: componente || null
+      componente: componente || null,
+      enlaces: enlaces.filter((e) => e.url.trim().length > 0)
     }
     const tarea = editando ? await editar(tareaInicial.id, datos) : await crear(datos)
     setOcupado(false)
@@ -271,6 +275,56 @@ export function FormularioTarea({
                   : 'Pega contenido con formato y se convierte solo; las imágenes se incrustan (base64). Usa «Vista previa» para verlo.'}
               </p>
             </>
+          )}
+        </div>
+
+        {/* Recursos online (enlaces con título) */}
+        <div>
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="text-sm font-medium text-slate-700">Recursos online</span>
+            <button
+              type="button"
+              onClick={() => setEnlaces((e) => [...e, { url: '', titulo: '' }])}
+              className="text-xs text-marca-600 hover:text-marca-700"
+            >
+              + Añadir enlace
+            </button>
+          </div>
+          {enlaces.length === 0 ? (
+            <p className="text-xs text-slate-400">
+              Enlaces que el estudiante puede consultar (documentación, videos…). Opcional.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {enlaces.map((e, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input
+                    value={e.titulo}
+                    onChange={(ev) =>
+                      setEnlaces((prev) => prev.map((x, j) => (j === i ? { ...x, titulo: ev.target.value } : x)))
+                    }
+                    placeholder="Título (ej. Documentación)"
+                    className="w-2/5 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-marca-500 focus:ring-2 focus:ring-marca-100"
+                  />
+                  <input
+                    value={e.url}
+                    onChange={(ev) =>
+                      setEnlaces((prev) => prev.map((x, j) => (j === i ? { ...x, url: ev.target.value } : x)))
+                    }
+                    placeholder="https://…"
+                    className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-marca-500 focus:ring-2 focus:ring-marca-100"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setEnlaces((prev) => prev.filter((_, j) => j !== i))}
+                    className="text-slate-400 transition hover:text-red-600"
+                    aria-label="Quitar enlace"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
         </div>
 

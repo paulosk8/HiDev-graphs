@@ -53,7 +53,8 @@ export function crearTarea(servicios: Servicios, datos: DatosTareaDTO): TareaDTO
     asignaturaId: datos.asignaturaId,
     temas: datos.temas,
     componente: datos.componente,
-    conceptos: derivarConceptos(asignatura, datos.temas)
+    conceptos: derivarConceptos(asignatura, datos.temas),
+    enlaces: datos.enlaces
   })
 
   vault.guardarTarea(tarea)
@@ -77,7 +78,8 @@ export function editarTarea(servicios: Servicios, id: string, datos: DatosTareaD
     temas: datos.temas,
     componente: datos.componente,
     conceptos: derivarConceptos(asignatura, datos.temas),
-    recursos: actual.recursos
+    recursos: actual.recursos,
+    enlaces: datos.enlaces
   })
 
   vault.guardarTarea(tarea)
@@ -215,7 +217,8 @@ export function duplicarTarea(
     asignaturaId: destino.asignaturaId,
     temas: destino.temas,
     componente,
-    conceptos: derivarConceptos(asignatura, destino.temas)
+    conceptos: derivarConceptos(asignatura, destino.temas),
+    enlaces: original.enlaces
   })
 
   // Copia física de los adjuntos a la nueva tarea.
@@ -258,6 +261,14 @@ export function combinarTareas(servicios: Servicios, datos: CombinarTareasDTO): 
   }
   const asignatura = exigirAsignatura(servicios, datos.asignaturaId)
 
+  // Unión de enlaces de las tareas origen (sin duplicar por URL).
+  const enlacesVistos = new Set<string>()
+  const enlaces = origenes.flatMap((o) => o.enlaces).filter((e) => {
+    if (enlacesVistos.has(e.url)) return false
+    enlacesVistos.add(e.url)
+    return true
+  })
+
   const id = slugUnico(datos.titulo, new Set(vault.listarIdsTareas()), 'tarea')
   let combinada = nuevaTarea({
     id,
@@ -266,7 +277,8 @@ export function combinarTareas(servicios: Servicios, datos: CombinarTareasDTO): 
     asignaturaId: datos.asignaturaId,
     temas: datos.temas,
     componente: datos.componente ?? null,
-    conceptos: derivarConceptos(asignatura, datos.temas)
+    conceptos: derivarConceptos(asignatura, datos.temas),
+    enlaces
   })
 
   // Copia física de la UNIÓN de adjuntos (dedup por nombre visible).

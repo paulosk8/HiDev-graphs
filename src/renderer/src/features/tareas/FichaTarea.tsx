@@ -241,6 +241,29 @@ export function FichaTarea({ tareaId, onCerrar, onCambiada }: Props): JSX.Elemen
             )}
           </div>
 
+          {/* Recursos online (enlaces) */}
+          {tarea.enlaces.length > 0 && (
+            <div className="mt-8">
+              <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">
+                Recursos online
+              </h3>
+              <ul className="space-y-1.5">
+                {tarea.enlaces.map((e, i) => (
+                  <li key={i}>
+                    <a
+                      href={/^https?:\/\//i.test(e.url) ? e.url : `https://${e.url}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 text-sm text-marca-600 hover:text-marca-700 hover:underline"
+                    >
+                      🔗 <span className="truncate">{e.titulo}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {/* Cruces con otras asignaturas (vía conceptos compartidos) */}
           {crucesPorAsig.size > 0 && (
             <div className="mt-8">
