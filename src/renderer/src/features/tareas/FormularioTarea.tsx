@@ -10,6 +10,16 @@ import { useTareasStore } from '../../stores/tareasStore'
 /** Fragmentos que inserta la barra de formato. */
 const PLANTILLA_TABLA = '\n| Criterio | Puntos |\n| --- | --- |\n| … | … |\n| … | … |\n'
 
+/** Lee un archivo (imagen) como Data URI base64 para incrustarlo autocontenido. */
+function leerComoDataUri(archivo: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const lector = new FileReader()
+    lector.onload = () => resolve(lector.result as string)
+    lector.onerror = () => reject(lector.error)
+    lector.readAsDataURL(archivo)
+  })
+}
+
 interface Props {
   asignatura: AsignaturaDTO
   tareaInicial?: TareaDTO
@@ -54,15 +64,40 @@ export function FormularioTarea({
     })
   }
 
-  /** Al pegar contenido con formato (Word/web), lo convierte a Markdown. */
+  /** Al pegar: imágenes → base64 autocontenido; HTML con formato → Markdown/HTML. */
   const alPegar = (e: ClipboardEvent<HTMLTextAreaElement>): void => {
+    // 1) Imágenes del portapapeles: se incrustan en base64 (viajan con el contenido).
+    const imagenes: File[] = []
+    for (const item of Array.from(e.clipboardData.items)) {
+      if (item.kind === 'file' && item.type.startsWith('image/')) {
+        const f = item.getAsFile()
+        if (f) imagenes.push(f)
+      }
+    }
+    if (imagenes.length > 0) {
+      e.preventDefault()
+      const el = areaRef.current
+      const inicio = el?.selectionStart ?? instrucciones.length
+      const fin = el?.selectionEnd ?? instrucciones.length
+      void Promise.all(imagenes.map(leerComoDataUri)).then((uris) => {
+        const frag = uris
+          .map((u) =>
+            formato === 'html'
+              ? `<img src="${u}" alt="imagen" style="max-width:100%">`
+              : `\n![imagen](${u})\n`
+          )
+          .join('')
+        setInstrucciones((prev) => prev.slice(0, inicio) + frag + prev.slice(fin))
+      })
+      return
+    }
+    // 2) HTML con formato: en modo HTML se pega tal cual; en Markdown se convierte.
     const html = e.clipboardData.getData('text/html')
     if (html && html.trim()) {
       e.preventDefault()
-      // En modo HTML se pega el HTML tal cual (para Moodle); en Markdown se convierte.
       insertar(formato === 'html' ? html : `${htmlAMarkdown(html)}\n`)
     }
-    // Sin HTML (texto plano): se deja el pegado por defecto.
+    // Sin HTML ni imagen (texto plano): se deja el pegado por defecto.
   }
 
   const alternarTema = (id: string): void =>
@@ -232,8 +267,8 @@ export function FormularioTarea({
               />
               <p className="mt-1 text-xs text-slate-400">
                 {formato === 'html'
-                  ? 'El HTML se guarda tal cual; la vista previa se ejecuta aislada (sandbox).'
-                  : 'Pega contenido con formato y se convierte solo. Usa «Vista previa» para verlo como quedará.'}
+                  ? 'El HTML se guarda tal cual; la vista previa se ejecuta aislada (sandbox). Las imágenes pegadas se incrustan (base64).'
+                  : 'Pega contenido con formato y se convierte solo; las imágenes se incrustan (base64). Usa «Vista previa» para verlo.'}
               </p>
             </>
           )}
