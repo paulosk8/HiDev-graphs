@@ -2,6 +2,7 @@ import type {
   ClienteMcpId,
   AsignaturaDTO,
   ConceptoDTO,
+  TipoRelacion,
   CruceDTO,
   DatosAsignaturaDTO,
   DatosConceptoDTO,
@@ -39,6 +40,7 @@ export interface PedagoGraphApi {
   crearConcepto(datos: DatosConceptoDTO): Promise<Resultado<ResumenConceptoDTO>>
   editarConcepto(id: string, datos: DatosConceptoDTO): Promise<Resultado<ResumenConceptoDTO>>
   eliminarConcepto(id: string): Promise<Resultado<void>>
+  vincularConceptos(origenId: string, destinoId: string, tipo: TipoRelacion): Promise<Resultado<ConceptoDTO>>
 
   // --- Material ---
   /**

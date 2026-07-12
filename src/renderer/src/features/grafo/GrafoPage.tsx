@@ -7,6 +7,7 @@ import {
   type GrafoDTO,
   type NodoGrafoDTO,
   type TipoAristaGrafo,
+  type TipoRelacion,
   type UsoDeConceptoDTO
 } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
@@ -219,6 +220,41 @@ const PLANTILLAS: Plantilla[] = [
   }
 ]
 
+/**
+ * Análisis de conexiones estructural (sin IA), calculado desde el grafo:
+ *  - `posibles`: pares de conceptos que co-ocurren (se enseñan juntos) pero no
+ *    tienen una relación tipada entre sí. Candidatos a vincular.
+ *  - `aislados`: conceptos sin ninguna conexión con otros conceptos.
+ */
+function sugerenciasDeConexion(grafo: GrafoDTO): {
+  posibles: { a: string; b: string; nombreA: string; nombreB: string }[]
+  aislados: { id: string; nombre: string }[]
+} {
+  const conceptos = grafo.nodos.filter((n) => n.tipo === 'concepto')
+  const nombreDe = new Map(conceptos.map((n) => [n.id, n.etiqueta]))
+  const clave = (a: string, b: string): string => (a < b ? `${a}|${b}` : `${b}|${a}`)
+  const tipadas = new Set<string>()
+  const coocurre = new Set<string>()
+  const conVinculo = new Set<string>()
+  for (const ar of grafo.aristas) {
+    if (!ar.origen.startsWith('c:') || !ar.destino.startsWith('c:')) continue
+    const k = clave(ar.origen, ar.destino)
+    if (ar.tipo === 'coocurre') coocurre.add(k)
+    else if (ar.tipo === 'prerequisito_de' || ar.tipo === 'relacionado_con' || ar.tipo === 'profundiza') tipadas.add(k)
+    else continue
+    conVinculo.add(ar.origen)
+    conVinculo.add(ar.destino)
+  }
+  const posibles = [...coocurre]
+    .filter((k) => !tipadas.has(k))
+    .map((k) => {
+      const [a, b] = k.split('|')
+      return { a, b, nombreA: nombreDe.get(a) ?? a, nombreB: nombreDe.get(b) ?? b }
+    })
+  const aislados = conceptos.filter((n) => !conVinculo.has(n.id)).map((n) => ({ id: n.id, nombre: n.etiqueta }))
+  return { posibles, aislados }
+}
+
 export function GrafoPage(): JSX.Element {
   const [grafo, setGrafo] = useState<GrafoDTO | null>(null)
   const [tipos, setTipos] = useState<Set<TipoAristaGrafo>>(() => new Set(TIPOS_ARISTA.map((t) => t.tipo)))
@@ -226,6 +262,8 @@ export function GrafoPage(): JSX.Element {
   const [asignaturasFiltro, setAsignaturasFiltro] = useState<Set<string>>(new Set())
   const [tareasCombinar, setTareasCombinar] = useState<string[]>([])
   const [dialogoCombinar, setDialogoCombinar] = useState(false)
+  const [modalAnalisis, setModalAnalisis] = useState(false)
+  const [vinculando, setVinculando] = useState<string | null>(null)
   const [busqueda, setBusqueda] = useState('')
   const [seleccionado, setSeleccionado] = useState<string | null>(null)
   const [modalId, setModalId] = useState<string | null>(null)
@@ -241,6 +279,7 @@ export function GrafoPage(): JSX.Element {
   const columnaRef = useRef<HTMLDivElement>(null)
 
   const notificarError = useUiStore((s) => s.notificarError)
+  const notificar = useUiStore((s) => s.notificar)
   const irASeccion = useUiStore((s) => s.irASeccion)
   const seleccionarConcepto = useUiStore((s) => s.seleccionarConcepto)
   const seleccionarAsignatura = useUiStore((s) => s.seleccionarAsignatura)
@@ -489,6 +528,25 @@ export function GrafoPage(): JSX.Element {
     document.addEventListener('mouseup', onUp)
   }
 
+  // Análisis de conexiones (estructural, desde el grafo).
+  const analisis = useMemo(
+    () => (grafo ? sugerenciasDeConexion(grafo) : { posibles: [], aislados: [] }),
+    [grafo]
+  )
+  const vincularPar = async (origen: string, destino: string, tipo: TipoRelacion): Promise<void> => {
+    const key = `${origen}|${destino}`
+    setVinculando(key)
+    try {
+      await api.vincularConceptos(origen.slice(2), destino.slice(2), tipo)
+      setGrafo(await api.obtenerGrafo()) // refresca para que aparezca la nueva arista
+      notificar({ tipo: 'exito', mensaje: 'Conceptos vinculados.' })
+    } catch (error) {
+      notificarError(error)
+    } finally {
+      setVinculando(null)
+    }
+  }
+
   // Tareas seleccionadas para combinar, con su título y asignatura (para el diálogo).
   const tareasOrigen = useMemo(() => {
     const porId = new Map(
@@ -503,7 +561,20 @@ export function GrafoPage(): JSX.Element {
   return (
     <div className="flex h-full flex-col">
       <header className="border-b border-slate-200 px-8 py-4">
-        <h1 className="text-2xl font-semibold text-slate-900">Mapa de conceptos</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold text-slate-900">Mapa de conceptos</h1>
+          <button
+            onClick={() => setModalAnalisis(true)}
+            className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 transition hover:bg-slate-50"
+          >
+            🔎 Analizar conexiones
+            {analisis.posibles.length + analisis.aislados.length > 0 && (
+              <span className="rounded-full bg-amber-100 px-2 text-xs font-medium text-amber-800">
+                {analisis.posibles.length + analisis.aislados.length}
+              </span>
+            )}
+          </button>
+        </div>
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
           {TIPOS_ARISTA.map((t) => (
             <button
@@ -837,6 +908,79 @@ export function GrafoPage(): JSX.Element {
             seleccionarAsignatura(nueva.asignaturaId)
           }}
         />
+      )}
+
+      {/* Modal de análisis de conexiones (estructural, sin IA) */}
+      {modalAnalisis && (
+        <Modal titulo="Analizar conexiones" ancho="lg" onCerrar={() => setModalAnalisis(false)}>
+          <div className="space-y-5 text-sm">
+            {analisis.posibles.length === 0 && analisis.aislados.length === 0 ? (
+              <p className="py-6 text-center text-slate-500">Tu grafo está bien conectado 🎉</p>
+            ) : (
+              <>
+                <section>
+                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Podrían estar relacionados ({analisis.posibles.length})
+                  </h3>
+                  {analisis.posibles.length === 0 ? (
+                    <p className="text-xs text-slate-400">Nada que sugerir por co-ocurrencia.</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {analisis.posibles.map((p) => {
+                        const key = `${p.a}|${p.b}`
+                        return (
+                          <li key={key} className="flex items-center gap-3 rounded-lg border border-slate-200 p-3">
+                            <span className="min-w-0 flex-1 text-slate-700">
+                              <span className="font-medium">«{p.nombreA}»</span> y{' '}
+                              <span className="font-medium">«{p.nombreB}»</span> se enseñan juntos pero no
+                              están vinculados.
+                            </span>
+                            <button
+                              onClick={() => void vincularPar(p.a, p.b, 'relacionado_con')}
+                              disabled={vinculando !== null}
+                              className="shrink-0 rounded-md bg-marca-600 px-2.5 py-1 text-xs font-medium text-white transition hover:bg-marca-500 disabled:opacity-40"
+                            >
+                              {vinculando === key ? 'Vinculando…' : 'Vincular'}
+                            </button>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+                </section>
+
+                {analisis.aislados.length > 0 && (
+                  <section>
+                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      Sin conexiones ({analisis.aislados.length})
+                    </h3>
+                    <p className="mb-2 text-xs text-slate-400">
+                      Estos conceptos no se conectan con otros. Enlázalos a un tema junto a otros conceptos,
+                      o pídele a la IA que los analice.
+                    </p>
+                    <ul className="flex flex-wrap gap-1.5">
+                      {analisis.aislados.map((c) => (
+                        <li key={c.id}>
+                          <button
+                            onClick={() => setModalId(c.id)}
+                            className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600 hover:bg-slate-200"
+                          >
+                            {c.nombre}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
+
+                <p className="text-[11px] text-slate-400">
+                  Este análisis es estructural (co-ocurrencias). Para conexiones semánticas más finas, pide a
+                  la IA: «analiza mis conexiones y sugiere las que falten».
+                </p>
+              </>
+            )}
+          </div>
+        </Modal>
       )}
 
       {/* Modal para componer el prompt de la IA a partir de la selección */}

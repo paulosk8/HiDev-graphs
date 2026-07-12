@@ -11,7 +11,6 @@ const nuevoId = (): string => `b${++secuencia}`
 interface TemaBorrador {
   id: string
   titulo: string
-  semana: string
 }
 interface UnidadBorrador {
   id: string
@@ -39,7 +38,7 @@ export function AsistenteAsignatura({ onCerrar, onCreada }: Props): JSX.Element 
   const [claveNueva, setClaveNueva] = useState('')
   const [nombreNuevo, setNombreNuevo] = useState('')
   const [unidades, setUnidades] = useState<UnidadBorrador[]>([
-    { id: nuevoId(), titulo: '', temas: [{ id: nuevoId(), titulo: '', semana: '' }] }
+    { id: nuevoId(), titulo: '', temas: [{ id: nuevoId(), titulo: '' }] }
   ])
 
   // --- Componentes ---
@@ -63,10 +62,10 @@ export function AsistenteAsignatura({ onCerrar, onCreada }: Props): JSX.Element 
   const modificarUnidad = (id: string, cambio: Partial<UnidadBorrador>): void =>
     setUnidades((us) => us.map((u) => (u.id === id ? { ...u, ...cambio } : u)))
   const agregarUnidad = (): void =>
-    setUnidades((us) => [...us, { id: nuevoId(), titulo: '', temas: [{ id: nuevoId(), titulo: '', semana: '' }] }])
+    setUnidades((us) => [...us, { id: nuevoId(), titulo: '', temas: [{ id: nuevoId(), titulo: '' }] }])
   const quitarUnidad = (id: string): void => setUnidades((us) => us.filter((u) => u.id !== id))
   const agregarTema = (unidadId: string): void =>
-    modificarTemas(unidadId, (temas) => [...temas, { id: nuevoId(), titulo: '', semana: '' }])
+    modificarTemas(unidadId, (temas) => [...temas, { id: nuevoId(), titulo: '' }])
   const quitarTema = (unidadId: string, temaId: string): void =>
     modificarTemas(unidadId, (temas) => temas.filter((t) => t.id !== temaId))
   const modificarTema = (unidadId: string, temaId: string, cambio: Partial<TemaBorrador>): void =>
@@ -99,7 +98,7 @@ export function AsistenteAsignatura({ onCerrar, onCreada }: Props): JSX.Element 
             .filter((t) => t.titulo.trim().length > 0)
             .map((t) => ({
               titulo: t.titulo.trim(),
-              semana: t.semana.trim() ? Number(t.semana) : null
+              semana: null
             }))
         }))
     }
@@ -274,7 +273,7 @@ export function AsistenteAsignatura({ onCerrar, onCreada }: Props): JSX.Element 
       {paso === 3 && (
         <div className="space-y-4">
           <p className="text-sm text-slate-500">
-            Organiza el contenido en unidades y temas. La semana es opcional.
+            Organiza el contenido en unidades y temas.
           </p>
 
           {unidades.map((unidad, i) => (
@@ -305,17 +304,6 @@ export function AsistenteAsignatura({ onCerrar, onCreada }: Props): JSX.Element 
                       onChange={(e) => modificarTema(unidad.id, tema.id, { titulo: e.target.value })}
                       placeholder="Tema"
                       className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-marca-500 focus:ring-2 focus:ring-marca-100"
-                    />
-                    <input
-                      value={tema.semana}
-                      onChange={(e) =>
-                        modificarTema(unidad.id, tema.id, {
-                          semana: e.target.value.replace(/[^0-9]/g, '')
-                        })
-                      }
-                      placeholder="Sem."
-                      inputMode="numeric"
-                      className="w-16 rounded-lg border border-slate-300 px-2 py-1.5 text-center text-sm outline-none focus:border-marca-500 focus:ring-2 focus:ring-marca-100"
                     />
                     {unidad.temas.length > 1 && (
                       <button

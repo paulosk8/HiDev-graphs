@@ -4,7 +4,8 @@ import type {
   DatosAsignaturaDTO,
   DatosConceptoDTO,
   DatosTareaDTO,
-  DuplicarTareaDTO
+  DuplicarTareaDTO,
+  TipoRelacion
 } from '@shared/dtos'
 import type { ErrorAmigable, Resultado } from '@shared/resultado'
 
@@ -42,6 +43,8 @@ export const api = {
   editarConcepto: (id: string, datos: DatosConceptoDTO) =>
     desenvolver(window.api.editarConcepto(id, datos)),
   eliminarConcepto: (id: string) => desenvolver(window.api.eliminarConcepto(id)),
+  vincularConceptos: (origenId: string, destinoId: string, tipo: TipoRelacion) =>
+    desenvolver(window.api.vincularConceptos(origenId, destinoId, tipo)),
   rutaDeArchivo: (archivo: File): string => window.api.rutaDeArchivo(archivo),
   agregarMaterial: (conceptoId: string, rutas: string[]) =>
     desenvolver(window.api.agregarMaterial(conceptoId, rutas)),

@@ -47,6 +47,8 @@ export const CANALES = {
   // Grafo
   grafoObtener: 'grafo:obtener',
 
+  conceptoVincular: 'concepto:vincular',
+
   // Asistente IA (MCP)
   mcpInfo: 'mcp:info',
   mcpConectar: 'mcp:conectar',

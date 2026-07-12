@@ -10,9 +10,12 @@ import type {
   DatosConceptoDTO,
   DatosTareaDTO,
   DuplicarTareaDTO,
-  McpInfoDTO
+  McpInfoDTO,
+  TipoRelacion
 } from '../../shared/dtos'
 import { conectarClienteMcp, detectarClientesMcp } from '../infrastructure/clientesMcp'
+import { vincularConceptos } from '../application/VincularConceptos'
+import { aConceptoDTO } from '../application/mapeadores'
 import type { Resultado } from '../../shared/resultado'
 import { ErrorDeDominio } from '../domain/errores'
 import { crearConcepto } from '../application/CrearConcepto'
@@ -133,6 +136,18 @@ export function registrarHandlersIpc(servicios: Servicios): void {
 
   ipcMain.handle(CANALES.conceptoEliminar, (_evento, id: string) =>
     envolver(() => eliminarConcepto(servicios, id))
+  )
+
+  ipcMain.handle(
+    CANALES.conceptoVincular,
+    (_e, origenId: string, destinoId: string, tipo: TipoRelacion) =>
+      envolver(() => {
+        const concepto = vincularConceptos(servicios, origenId, destinoId, tipo)
+        // Actualiza el índice de inmediato (la sync por chokidar es asíncrona),
+        // para que el grafo refleje la nueva relación al recargarlo enseguida.
+        repositorio.indexarConcepto(concepto)
+        return aConceptoDTO(concepto)
+      })
   )
 
   ipcMain.handle(CANALES.materialAgregar, (_evento, conceptoId: string, rutas: string[]) =>
