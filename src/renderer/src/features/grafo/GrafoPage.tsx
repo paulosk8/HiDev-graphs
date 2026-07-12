@@ -91,12 +91,34 @@ const ESTILO: cytoscape.StylesheetStyle[] = [
 function elementosVisibles(
   grafo: GrafoDTO,
   tipos: Set<TipoAristaGrafo>,
-  mostrarTareas: boolean
+  mostrarTareas: boolean,
+  asignaturasFiltro: Set<string>
 ): cytoscape.ElementDefinition[] {
-  const nodos = grafo.nodos.filter((n) => n.tipo !== 'tarea' || mostrarTareas)
-  const aristas = grafo.aristas.filter((a) =>
-    a.tipo === 'tarea_concepto' ? mostrarTareas : tipos.has(a.tipo)
-  )
+  const filtrar = asignaturasFiltro.size > 0
+  // Conceptos usados en las asignaturas filtradas (vía aristas 'usado_en').
+  const conceptosPermitidos = new Set<string>()
+  if (filtrar) {
+    for (const a of grafo.aristas) {
+      if (a.tipo === 'usado_en' && a.asignaturaId && asignaturasFiltro.has(a.asignaturaId)) {
+        conceptosPermitidos.add(a.origen)
+      }
+    }
+  }
+  const nodoVisible = (n: NodoGrafoDTO): boolean => {
+    if (n.tipo === 'tarea' && !mostrarTareas) return false
+    if (!filtrar) return true
+    if (n.tipo === 'asignatura') return asignaturasFiltro.has(n.id.slice(2))
+    if (n.tipo === 'concepto') return conceptosPermitidos.has(n.id)
+    if (n.tipo === 'tarea') return !!n.asignaturaId && asignaturasFiltro.has(n.asignaturaId)
+    return true
+  }
+
+  const nodos = grafo.nodos.filter(nodoVisible)
+  const idsVisibles = new Set(nodos.map((n) => n.id))
+  const aristas = grafo.aristas.filter((a) => {
+    const tipoOk = a.tipo === 'tarea_concepto' ? mostrarTareas : tipos.has(a.tipo)
+    return tipoOk && idsVisibles.has(a.origen) && idsVisibles.has(a.destino)
+  })
   return [
     ...nodos.map((n) => ({
       data: {
@@ -201,6 +223,7 @@ export function GrafoPage(): JSX.Element {
   const [grafo, setGrafo] = useState<GrafoDTO | null>(null)
   const [tipos, setTipos] = useState<Set<TipoAristaGrafo>>(() => new Set(TIPOS_ARISTA.map((t) => t.tipo)))
   const [mostrarTareas, setMostrarTareas] = useState(true)
+  const [asignaturasFiltro, setAsignaturasFiltro] = useState<Set<string>>(new Set())
   const [tareasCombinar, setTareasCombinar] = useState<string[]>([])
   const [dialogoCombinar, setDialogoCombinar] = useState(false)
   const [busqueda, setBusqueda] = useState('')
@@ -234,9 +257,25 @@ export function GrafoPage(): JSX.Element {
   }, [notificarError])
 
   const elementos = useMemo(
-    () => (grafo ? elementosVisibles(grafo, tipos, mostrarTareas) : []),
-    [grafo, tipos, mostrarTareas]
+    () => (grafo ? elementosVisibles(grafo, tipos, mostrarTareas, asignaturasFiltro) : []),
+    [grafo, tipos, mostrarTareas, asignaturasFiltro]
   )
+
+  // Asignaturas disponibles (desde los nodos del grafo) para el filtro.
+  const asignaturasGrafo = useMemo(
+    () =>
+      (grafo?.nodos ?? [])
+        .filter((n) => n.tipo === 'asignatura')
+        .map((n) => ({ id: n.id.slice(2), etiqueta: n.etiqueta }))
+        .sort((a, b) => a.etiqueta.localeCompare(b.etiqueta, 'es')),
+    [grafo]
+  )
+  const alternarAsignaturaFiltro = (id: string): void =>
+    setAsignaturasFiltro((prev) => {
+      const s = new Set(prev)
+      s.has(id) ? s.delete(id) : s.add(id)
+      return s
+    })
 
   const relacionados = useMemo(
     () =>
@@ -375,17 +414,24 @@ export function GrafoPage(): JSX.Element {
     return new Set<string>([seleccionado, ...relacionados.map((r) => r.id)])
   }, [seleccionado, relacionados])
 
+  // Conceptos realmente visibles en el grafo (respetan el filtro por asignatura).
+  const idsConceptoVisibles = useMemo(
+    () => new Set(elementos.filter((e) => e.data?.tipo === 'concepto').map((e) => e.data?.id as string)),
+    [elementos]
+  )
+
   const conceptos = useMemo(() => {
     const q = busqueda.trim().toLowerCase()
     return (grafo?.nodos ?? [])
       .filter((n): n is NodoGrafoDTO => {
         if (n.tipo !== 'concepto') return false
+        if (!idsConceptoVisibles.has(n.id)) return false // respeta el filtro por asignatura
         // Con un nodo seleccionado, la lista se limita a sus nodos conectados.
         if (idsConectados && !idsConectados.has(n.id.slice(2))) return false
         return n.etiqueta.toLowerCase().includes(q)
       })
       .sort((a, b) => a.etiqueta.localeCompare(b.etiqueta, 'es'))
-  }, [grafo, busqueda, idsConectados])
+  }, [grafo, busqueda, idsConectados, idsConceptoVisibles])
 
   const nombreSel = grafo?.nodos.find((n) => n.id === `c:${seleccionado}`)?.etiqueta
   const vacio = grafo !== null && grafo.nodos.length === 0
@@ -481,6 +527,36 @@ export function GrafoPage(): JSX.Element {
             Tareas
           </button>
         </div>
+
+        {asignaturasGrafo.length > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 text-xs font-medium text-slate-400">Asignatura:</span>
+            <button
+              onClick={() => setAsignaturasFiltro(new Set())}
+              className={`rounded-full border px-3 py-1 text-xs transition ${
+                asignaturasFiltro.size === 0
+                  ? 'border-marca-300 bg-marca-50 text-marca-700'
+                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              Todas
+            </button>
+            {asignaturasGrafo.map((a) => (
+              <button
+                key={a.id}
+                onClick={() => alternarAsignaturaFiltro(a.id)}
+                title={a.etiqueta}
+                className={`rounded-full border px-3 py-1 text-xs transition ${
+                  asignaturasFiltro.has(a.id)
+                    ? 'border-marca-300 bg-marca-50 text-marca-700'
+                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                {truncar(a.etiqueta, 26)}
+              </button>
+            ))}
+          </div>
+        )}
       </header>
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
