@@ -237,11 +237,6 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
                       <div className="flex items-center gap-2 text-slate-700">
                         <span className="text-slate-400">{tema.orden}.</span>
                         <span className="font-medium">{tema.titulo}</span>
-                        {tema.semana !== null && (
-                          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500">
-                            Semana {tema.semana}
-                          </span>
-                        )}
                       </div>
 
                       {/* Conceptos vinculados (puente) */}

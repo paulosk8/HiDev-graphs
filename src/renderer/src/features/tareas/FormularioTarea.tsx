@@ -4,6 +4,7 @@ import type { AsignaturaDTO, FormatoInstrucciones, TareaDTO } from '@shared/dtos
 import { Boton } from '../../components/Boton'
 import { CampoTexto } from '../../components/Campos'
 import { Modal } from '../../components/Modal'
+import { api } from '../../lib/api'
 import { htmlAMarkdown } from '../../lib/markdown'
 import { useTareasStore } from '../../stores/tareasStore'
 
@@ -38,6 +39,7 @@ export function FormularioTarea({
   const editando = tareaInicial !== undefined
   const crear = useTareasStore((s) => s.crear)
   const editar = useTareasStore((s) => s.editar)
+  const agregarAdjunto = useTareasStore((s) => s.agregarAdjunto)
 
   const [titulo, setTitulo] = useState(tareaInicial?.titulo ?? '')
   const [componente, setComponente] = useState<string>(tareaInicial?.componente ?? '')
@@ -49,6 +51,8 @@ export function FormularioTarea({
   const [enlaces, setEnlaces] = useState<{ url: string; titulo: string }[]>(
     () => tareaInicial?.enlaces.map((e) => ({ url: e.url, titulo: e.titulo })) ?? []
   )
+  const [archivos, setArchivos] = useState<File[]>([])
+  const inputArchivos = useRef<HTMLInputElement>(null)
   const [previa, setPrevia] = useState(false)
   const [ocupado, setOcupado] = useState(false)
   const areaRef = useRef<HTMLTextAreaElement>(null)
@@ -123,7 +127,12 @@ export function FormularioTarea({
       componente: componente || null,
       enlaces: enlaces.filter((e) => e.url.trim().length > 0)
     }
-    const tarea = editando ? await editar(tareaInicial.id, datos) : await crear(datos)
+    let tarea = editando ? await editar(tareaInicial.id, datos) : await crear(datos)
+    // Adjunta los archivos seleccionados a la tarea ya creada/actualizada.
+    if (tarea && archivos.length > 0) {
+      const conAdjuntos = await agregarAdjunto(tarea.id, archivos.map((a) => api.rutaDeArchivo(a)))
+      if (conAdjuntos) tarea = conAdjuntos
+    }
     setOcupado(false)
     if (tarea) {
       onGuardada(tarea)
@@ -275,6 +284,60 @@ export function FormularioTarea({
                   : 'Pega contenido con formato y se convierte solo; las imágenes se incrustan (base64). Usa «Vista previa» para verlo.'}
               </p>
             </>
+          )}
+        </div>
+
+        {/* Archivos base (adjuntos) */}
+        <div>
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="text-sm font-medium text-slate-700">Archivos base</span>
+            <button
+              type="button"
+              onClick={() => inputArchivos.current?.click()}
+              className="text-xs text-marca-600 hover:text-marca-700"
+            >
+              + Añadir archivos
+            </button>
+          </div>
+          <input
+            ref={inputArchivos}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              const nuevos = Array.from(e.target.files ?? [])
+              if (nuevos.length) setArchivos((prev) => [...prev, ...nuevos])
+              e.target.value = ''
+            }}
+          />
+          {editando && tareaInicial.recursos.length > 0 && (
+            <p className="mb-1 text-xs text-slate-400">
+              Ya adjuntos: {tareaInicial.recursos.map((r) => r.nombre).join(', ')} (se gestionan en la ficha).
+            </p>
+          )}
+          {archivos.length === 0 ? (
+            <p className="text-xs text-slate-400">
+              Archivos que el estudiante necesita para desarrollar la tarea. Opcional.
+            </p>
+          ) : (
+            <ul className="flex flex-wrap gap-1.5">
+              {archivos.map((a, i) => (
+                <li
+                  key={i}
+                  className="flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-700"
+                >
+                  <span className="max-w-[12rem] truncate">📎 {a.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => setArchivos((prev) => prev.filter((_, j) => j !== i))}
+                    className="text-slate-400 transition hover:text-red-600"
+                    aria-label="Quitar archivo"
+                  >
+                    ✕
+                  </button>
+                </li>
+              ))}
+            </ul>
           )}
         </div>
 

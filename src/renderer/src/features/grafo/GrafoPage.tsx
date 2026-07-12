@@ -21,12 +21,37 @@ import { useLayoutStore } from '../../stores/layoutStore'
 
 cytoscape.use(fcose)
 
-const TIPOS_ARISTA: { tipo: TipoAristaGrafo; etiqueta: string; color: string }[] = [
-  { tipo: 'coocurre', etiqueta: 'Se enseñan juntos', color: '#818cf8' },
-  { tipo: 'usado_en', etiqueta: 'Usado en', color: '#cbd5e1' },
-  { tipo: 'prerequisito_de', etiqueta: ETIQUETAS_RELACION.prerequisito_de, color: '#ef4444' },
-  { tipo: 'relacionado_con', etiqueta: ETIQUETAS_RELACION.relacionado_con, color: '#64748b' },
-  { tipo: 'profundiza', etiqueta: ETIQUETAS_RELACION.profundiza, color: '#10b981' }
+const TIPOS_ARISTA: { tipo: TipoAristaGrafo; etiqueta: string; color: string; ayuda: string }[] = [
+  {
+    tipo: 'coocurre',
+    etiqueta: 'Se enseñan juntos',
+    color: '#818cf8',
+    ayuda: 'Dos conceptos que aparecen en el mismo tema (co-ocurren).'
+  },
+  {
+    tipo: 'usado_en',
+    etiqueta: 'Usado en',
+    color: '#cbd5e1',
+    ayuda: 'Conecta un concepto con la asignatura donde se usa.'
+  },
+  {
+    tipo: 'prerequisito_de',
+    etiqueta: ETIQUETAS_RELACION.prerequisito_de,
+    color: '#ef4444',
+    ayuda: 'Un concepto que conviene dominar ANTES que el otro.'
+  },
+  {
+    tipo: 'relacionado_con',
+    etiqueta: ETIQUETAS_RELACION.relacionado_con,
+    color: '#64748b',
+    ayuda: 'Conceptos vinculados, sin un orden o jerarquía.'
+  },
+  {
+    tipo: 'profundiza',
+    etiqueta: ETIQUETAS_RELACION.profundiza,
+    color: '#10b981',
+    ayuda: 'Un concepto que amplía o profundiza en otro.'
+  }
 ]
 const ETIQUETA_ARISTA: Record<string, string> = Object.fromEntries(TIPOS_ARISTA.map((t) => [t.tipo, t.etiqueta]))
 
@@ -580,6 +605,7 @@ export function GrafoPage(): JSX.Element {
             <button
               key={t.tipo}
               onClick={() => alternarTipo(t.tipo)}
+              title={`${t.ayuda} Clic para mostrar u ocultar.`}
               className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition ${
                 tipos.has(t.tipo) ? 'border-slate-300 bg-white text-slate-700' : 'border-slate-200 bg-slate-50 text-slate-300'
               }`}
@@ -590,6 +616,7 @@ export function GrafoPage(): JSX.Element {
           ))}
           <button
             onClick={() => setMostrarTareas((v) => !v)}
+            title="Muestra las tareas como nodos, unidas a los conceptos que cubren. Clic para mostrar u ocultar."
             className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition ${
               mostrarTareas ? 'border-slate-300 bg-white text-slate-700' : 'border-slate-200 bg-slate-50 text-slate-300'
             }`}
