@@ -14,3 +14,82 @@ body,
   height: 100%;
   margin: 0;
 }
+
+/* Estilos del Markdown previsualizado (sin plugin de tipografía). */
+.markdown-preview {
+  color: #334155;
+  line-height: 1.7;
+  font-size: 0.95rem;
+}
+.markdown-preview h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 1.2rem 0 0.6rem;
+  color: #0f172a;
+}
+.markdown-preview h2 {
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin: 1.1rem 0 0.5rem;
+  color: #0f172a;
+}
+.markdown-preview h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 1rem 0 0.4rem;
+}
+.markdown-preview p {
+  margin: 0.6rem 0;
+}
+.markdown-preview ul,
+.markdown-preview ol {
+  margin: 0.6rem 0;
+  padding-left: 1.5rem;
+}
+.markdown-preview ul {
+  list-style: disc;
+}
+.markdown-preview ol {
+  list-style: decimal;
+}
+.markdown-preview li {
+  margin: 0.2rem 0;
+}
+.markdown-preview a {
+  color: #4f46e5;
+  text-decoration: underline;
+}
+.markdown-preview code {
+  background: #f1f5f9;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.25rem;
+  font-size: 0.85em;
+}
+.markdown-preview pre {
+  background: #f1f5f9;
+  padding: 0.8rem 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+}
+.markdown-preview pre code {
+  background: transparent;
+  padding: 0;
+}
+.markdown-preview blockquote {
+  border-left: 3px solid #cbd5e1;
+  padding-left: 1rem;
+  color: #64748b;
+  margin: 0.8rem 0;
+}
+.markdown-preview table {
+  border-collapse: collapse;
+  margin: 0.8rem 0;
+}
+.markdown-preview th,
+.markdown-preview td {
+  border: 1px solid #e2e8f0;
+  padding: 0.4rem 0.7rem;
+}
+.markdown-preview img {
+  max-width: 100%;
+}

@@ -4,6 +4,8 @@ import { Boton } from '../../components/Boton'
 import { DialogoConfirmacion } from '../../components/DialogoConfirmacion'
 import { api } from '../../lib/api'
 import { useConceptosStore } from '../../stores/conceptosStore'
+import { useUiStore } from '../../stores/uiStore'
+import { PREVISUALIZABLES, VistaPreviaMaterial } from './VistaPreviaMaterial'
 
 const FORMATOS_ACEPTADOS = '.pdf,.pptx,.docx,.md,.html,.xml'
 
@@ -17,10 +19,16 @@ export function ZonaMaterial({ conceptoId, recursos, onActualizado }: Props): JS
   const [arrastrando, setArrastrando] = useState(false)
   const [ocupado, setOcupado] = useState(false)
   const [aEliminar, setAEliminar] = useState<RecursoDTO | null>(null)
+  const [aVer, setAVer] = useState<RecursoDTO | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const agregarMaterial = useConceptosStore((s) => s.agregarMaterial)
   const eliminarMaterial = useConceptosStore((s) => s.eliminarMaterial)
+  const notificarError = useUiStore((s) => s.notificarError)
+
+  const abrir = (recurso: RecursoDTO): void => {
+    void api.abrirMaterial(conceptoId, recurso.archivo).catch((e) => notificarError(e))
+  }
 
   const procesarArchivos = async (archivos: FileList | null): Promise<void> => {
     if (!archivos || archivos.length === 0) return
@@ -85,11 +93,25 @@ export function ZonaMaterial({ conceptoId, recursos, onActualizado }: Props): JS
         <div className="p-2">
           <ul className="divide-y divide-slate-100">
             {recursos.map((recurso) => (
-              <li key={recurso.id} className="flex items-center gap-3 px-3 py-2.5">
+              <li key={recurso.id} className="group flex items-center gap-3 px-3 py-2.5">
                 <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold uppercase text-slate-500">
                   {recurso.formato}
                 </span>
                 <span className="flex-1 truncate text-sm text-slate-700">{recurso.nombre}</span>
+                {PREVISUALIZABLES.includes(recurso.formato) && (
+                  <button
+                    onClick={() => setAVer(recurso)}
+                    className="text-xs text-slate-500 transition hover:text-marca-700"
+                  >
+                    Ver
+                  </button>
+                )}
+                <button
+                  onClick={() => abrir(recurso)}
+                  className="text-xs text-slate-500 transition hover:text-marca-700"
+                >
+                  Abrir
+                </button>
                 <button
                   onClick={() => setAEliminar(recurso)}
                   className="text-slate-400 transition hover:text-red-600"
@@ -119,6 +141,10 @@ export function ZonaMaterial({ conceptoId, recursos, onActualizado }: Props): JS
           onConfirmar={confirmarEliminar}
           onCancelar={() => setAEliminar(null)}
         />
+      )}
+
+      {aVer && (
+        <VistaPreviaMaterial conceptoId={conceptoId} recurso={aVer} onCerrar={() => setAVer(null)} />
       )}
     </div>
   )

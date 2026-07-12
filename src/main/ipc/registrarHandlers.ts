@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { join } from 'node:path'
 
 import { CANALES } from '../../shared/canales'
@@ -96,6 +96,21 @@ export function registrarHandlersIpc(servicios: Servicios): void {
 
   ipcMain.handle(CANALES.materialEliminar, (_evento, conceptoId: string, recursoId: string) =>
     envolver(() => eliminarMaterial(servicios, conceptoId, recursoId))
+  )
+
+  ipcMain.handle(CANALES.materialAbrir, (_evento, conceptoId: string, archivo: string) =>
+    envolver(async () => {
+      const ruta = vault.rutaRecurso(conceptoId, archivo)
+      if (ruta === null || !vault.existeRecurso(conceptoId, archivo)) {
+        throw new ErrorDeDominio('No encontramos ese archivo.', 'Puede que se haya movido o eliminado.')
+      }
+      const error = await shell.openPath(ruta)
+      if (error) throw new ErrorDeDominio('No se pudo abrir el archivo.', error)
+    })
+  )
+
+  ipcMain.handle(CANALES.materialLeerTexto, (_evento, conceptoId: string, archivo: string) =>
+    envolver(() => vault.leerTextoRecurso(conceptoId, archivo))
   )
 
   ipcMain.handle(CANALES.asignaturasListar, () => envolver(() => repositorio.listarAsignaturas()))

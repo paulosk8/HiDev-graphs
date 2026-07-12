@@ -15,6 +15,8 @@ export const CANALES = {
   // Material
   materialAgregar: 'material:agregar',
   materialEliminar: 'material:eliminar',
+  materialAbrir: 'material:abrir',
+  materialLeerTexto: 'material:leer-texto',
 
   // Asignaturas
   asignaturasListar: 'asignaturas:listar',

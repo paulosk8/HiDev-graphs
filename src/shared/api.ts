@@ -38,6 +38,10 @@ export interface PedagoGraphApi {
   rutaDeArchivo(archivo: File): string
   agregarMaterial(conceptoId: string, rutas: string[]): Promise<Resultado<ResultadoMaterialDTO>>
   eliminarMaterial(conceptoId: string, recursoId: string): Promise<Resultado<ConceptoDTO>>
+  /** Abre un material con la aplicación predeterminada del sistema. */
+  abrirMaterial(conceptoId: string, archivo: string): Promise<Resultado<void>>
+  /** Lee el contenido de texto de un material (md/xml/html/txt) para previsualizar. */
+  leerTextoMaterial(conceptoId: string, archivo: string): Promise<Resultado<string>>
 
   // --- Asignaturas ---
   listarAsignaturas(): Promise<Resultado<ResumenAsignaturaDTO[]>>

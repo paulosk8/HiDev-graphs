@@ -40,6 +40,13 @@ export const api = {
     desenvolver(window.api.agregarMaterial(conceptoId, rutas)),
   eliminarMaterial: (conceptoId: string, recursoId: string) =>
     desenvolver(window.api.eliminarMaterial(conceptoId, recursoId)),
+  abrirMaterial: (conceptoId: string, archivo: string) =>
+    desenvolver(window.api.abrirMaterial(conceptoId, archivo)),
+  leerTextoMaterial: (conceptoId: string, archivo: string) =>
+    desenvolver(window.api.leerTextoMaterial(conceptoId, archivo)),
+  /** URL del protocolo local para previsualizar un material (PDF/HTML/imagen). */
+  urlRecurso: (conceptoId: string, archivo: string): string =>
+    `recurso://c/${encodeURIComponent(conceptoId)}/${encodeURIComponent(archivo)}`,
   listarAsignaturas: () => desenvolver(window.api.listarAsignaturas()),
   obtenerAsignatura: (id: string) => desenvolver(window.api.obtenerAsignatura(id)),
   crearAsignatura: (datos: DatosAsignaturaDTO) => desenvolver(window.api.crearAsignatura(datos)),

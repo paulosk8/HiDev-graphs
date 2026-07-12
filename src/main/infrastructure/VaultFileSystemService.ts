@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, rmSync, copyFileSync } from 'node:fs'
-import { basename, extname, join } from 'node:path'
+import { basename, extname, join, resolve, sep } from 'node:path'
 import yaml from 'js-yaml'
 
 import { crearAsignatura, crearComponente, type Asignatura } from '../domain/Asignatura'
@@ -118,6 +118,31 @@ export class VaultFileSystemService {
     const archivo = this.nombreArchivoLibre(conceptoId, basename(rutaOrigen))
     copyFileSync(rutaOrigen, join(this.carpetaConcepto(conceptoId), archivo))
     return { archivo, formato }
+  }
+
+  /**
+   * Ruta absoluta de un archivo de material, validada para que quede DENTRO de
+   * la carpeta de conceptos (evita salir del vault con "../"). Devuelve null si
+   * la ruta escapa del vault.
+   */
+  rutaRecurso(conceptoId: string, archivo: string): string | null {
+    const abs = resolve(this.carpetaConcepto(conceptoId), archivo)
+    const base = resolve(this.dirConceptos)
+    return abs === base || abs.startsWith(base + sep) ? abs : null
+  }
+
+  existeRecurso(conceptoId: string, archivo: string): boolean {
+    const ruta = this.rutaRecurso(conceptoId, archivo)
+    return ruta !== null && existsSync(ruta)
+  }
+
+  /** Lee el contenido de texto de un material (para previsualizar md/xml/html). */
+  leerTextoRecurso(conceptoId: string, archivo: string): string {
+    const ruta = this.rutaRecurso(conceptoId, archivo)
+    if (ruta === null || !existsSync(ruta)) {
+      throw new Error(`No se encontró el material: ${archivo}`)
+    }
+    return readFileSync(ruta, 'utf8')
   }
 
   /** Borra el archivo físico de un material dentro de la carpeta del concepto. */

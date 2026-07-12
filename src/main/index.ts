@@ -3,10 +3,17 @@ import { join } from 'path'
 import { inicializarServicios, type Servicios } from './servicios'
 import { registrarHandlersIpc } from './ipc/registrarHandlers'
 import { IndexSyncService } from './infrastructure/IndexSyncService'
+import {
+  habilitarProtocoloRecurso,
+  registrarEsquemaRecursoPrivilegiado
+} from './protocoloRecurso'
 import { CANALES } from '../shared/canales'
 
 // Nombre visible de la app (menú de macOS, avisos del sistema).
 app.setName('PedagoGraph')
+
+// El esquema recurso:// debe registrarse antes de que la app esté lista.
+registrarEsquemaRecursoPrivilegiado()
 
 let servicios: Servicios | null = null
 let sincronizador: IndexSyncService | null = null
@@ -54,6 +61,7 @@ app.whenReady().then(() => {
   // Inicializa el núcleo (vault + índice) y registra la API IPC antes de la ventana.
   servicios = inicializarServicios()
   registrarHandlersIpc(servicios)
+  habilitarProtocoloRecurso(servicios.vault)
 
   createWindow()
 

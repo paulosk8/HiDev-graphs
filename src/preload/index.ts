@@ -20,6 +20,9 @@ const api: PedagoGraphApi = {
     ipcRenderer.invoke(CANALES.materialAgregar, conceptoId, rutas),
   eliminarMaterial: (conceptoId, recursoId) =>
     ipcRenderer.invoke(CANALES.materialEliminar, conceptoId, recursoId),
+  abrirMaterial: (conceptoId, archivo) => ipcRenderer.invoke(CANALES.materialAbrir, conceptoId, archivo),
+  leerTextoMaterial: (conceptoId, archivo) =>
+    ipcRenderer.invoke(CANALES.materialLeerTexto, conceptoId, archivo),
   listarAsignaturas: () => ipcRenderer.invoke(CANALES.asignaturasListar),
   obtenerAsignatura: (id) => ipcRenderer.invoke(CANALES.asignaturaObtener, id),
   crearAsignatura: (datos) => ipcRenderer.invoke(CANALES.asignaturaCrear, datos),
