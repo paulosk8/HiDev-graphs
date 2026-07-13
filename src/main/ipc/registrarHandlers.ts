@@ -11,6 +11,7 @@ import type {
   DatosTareaDTO,
   DuplicarTareaDTO,
   McpInfoDTO,
+  SemanaPlanDTO,
   TipoRelacion
 } from '../../shared/dtos'
 import { conectarClienteMcp, detectarClientesMcp } from '../infrastructure/clientesMcp'
@@ -26,6 +27,7 @@ import { agregarMaterial } from '../application/AgregarMaterial'
 import { eliminarMaterial } from '../application/EliminarMaterial'
 import { crearAsignatura } from '../application/CrearAsignatura'
 import { obtenerAsignatura } from '../application/ObtenerAsignatura'
+import { guardarPlanificacion } from '../application/GuardarPlanificacion'
 import { eliminarAsignatura } from '../application/EliminarAsignatura'
 import {
   agregarPeriodoAsignatura,
@@ -185,6 +187,12 @@ export function registrarHandlersIpc(servicios: Servicios): void {
         totalTareas: tareasPorAsignatura.get(a.id) ?? 0
       }))
     })
+  )
+
+  ipcMain.handle(
+    CANALES.planificacionGuardar,
+    (_e, asignaturaId: string, periodo: string, semanas: SemanaPlanDTO[]) =>
+      envolver(() => guardarPlanificacion(servicios, asignaturaId, periodo, semanas))
   )
 
   ipcMain.handle(CANALES.asignaturaObtener, (_evento, id: string) =>

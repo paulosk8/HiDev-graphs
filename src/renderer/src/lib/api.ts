@@ -5,6 +5,7 @@ import type {
   DatosConceptoDTO,
   DatosTareaDTO,
   DuplicarTareaDTO,
+  SemanaPlanDTO,
   TipoRelacion
 } from '@shared/dtos'
 import type { ErrorAmigable, Resultado } from '@shared/resultado'
@@ -59,6 +60,8 @@ export const api = {
     `recurso://c/${encodeURIComponent(conceptoId)}/${encodeURIComponent(archivo)}`,
   listarAsignaturas: () => desenvolver(window.api.listarAsignaturas()),
   obtenerAsignatura: (id: string) => desenvolver(window.api.obtenerAsignatura(id)),
+  guardarPlanificacion: (asignaturaId: string, periodo: string, semanas: SemanaPlanDTO[]) =>
+    desenvolver(window.api.guardarPlanificacion(asignaturaId, periodo, semanas)),
   crearAsignatura: (datos: DatosAsignaturaDTO) => desenvolver(window.api.crearAsignatura(datos)),
   eliminarAsignatura: (id: string) => desenvolver(window.api.eliminarAsignatura(id)),
   agregarPeriodoAsignatura: (id: string, periodo: string) =>

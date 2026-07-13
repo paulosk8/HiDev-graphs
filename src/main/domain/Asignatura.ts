@@ -29,6 +29,18 @@ export function crearComponente(datos: { clave: string; nombre: string }): Compo
  * oferta en uno o varios períodos (`periodos`), como referencia, sin repetir el
  * contenido. Pertenece a la capa curricular.
  */
+/** Una semana de la planificación: su número y los temas que se tratan. */
+export interface SemanaPlan {
+  readonly numero: number
+  readonly temas: readonly string[]
+}
+
+/** Planificación semanal para un período concreto (el mismo tema puede ir en varias semanas). */
+export interface Planificacion {
+  readonly periodo: string
+  readonly semanas: readonly SemanaPlan[]
+}
+
 export interface Asignatura {
   readonly id: string
   readonly nombre: string
@@ -36,6 +48,8 @@ export interface Asignatura {
   readonly periodos: readonly string[]
   readonly componentes: readonly ComponenteAprendizaje[]
   readonly unidades: readonly Unidad[]
+  /** Planificación semanal por período (qué temas se tratan cada semana). */
+  readonly planificaciones: readonly Planificacion[]
 }
 
 export interface DatosAsignatura {
@@ -44,6 +58,26 @@ export interface DatosAsignatura {
   periodos: readonly string[]
   componentes?: readonly ComponenteAprendizaje[]
   unidades?: readonly Unidad[]
+  planificaciones?: readonly Planificacion[]
+}
+
+/**
+ * Reemplaza (o añade) la planificación de un período. Descarta semanas sin temas
+ * y temas duplicados dentro de una semana; ordena las semanas por número.
+ */
+export function establecerPlanificacion(
+  asignatura: Asignatura,
+  periodo: string,
+  semanas: readonly SemanaPlan[]
+): Asignatura {
+  const limpias = semanas
+    .map((s) => ({ numero: s.numero, temas: [...new Set(s.temas)] }))
+    .filter((s) => s.temas.length > 0)
+    .sort((a, b) => a.numero - b.numero)
+  const resto = asignatura.planificaciones.filter((p) => p.periodo !== periodo)
+  const planificaciones =
+    limpias.length > 0 ? [...resto, { periodo, semanas: limpias }] : resto
+  return { ...asignatura, planificaciones }
 }
 
 /** Normaliza períodos: recorta, descarta vacíos y elimina duplicados. */
@@ -89,7 +123,8 @@ export function crearAsignatura(datos: DatosAsignatura): Asignatura {
     nombre,
     periodos,
     componentes,
-    unidades: datos.unidades ?? []
+    unidades: datos.unidades ?? [],
+    planificaciones: datos.planificaciones ?? []
   }
 }
 

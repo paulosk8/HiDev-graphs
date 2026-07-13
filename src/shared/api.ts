@@ -1,6 +1,7 @@
 import type {
   ClienteMcpId,
   AsignaturaDTO,
+  SemanaPlanDTO,
   ConceptoDTO,
   TipoRelacion,
   CruceDTO,
@@ -58,6 +59,11 @@ export interface PedagoGraphApi {
   // --- Asignaturas ---
   listarAsignaturas(): Promise<Resultado<ResumenAsignaturaDTO[]>>
   obtenerAsignatura(id: string): Promise<Resultado<AsignaturaDTO>>
+  guardarPlanificacion(
+    asignaturaId: string,
+    periodo: string,
+    semanas: SemanaPlanDTO[]
+  ): Promise<Resultado<AsignaturaDTO>>
   crearAsignatura(datos: DatosAsignaturaDTO): Promise<Resultado<ResumenAsignaturaDTO>>
   eliminarAsignatura(id: string): Promise<Resultado<void>>
   agregarPeriodoAsignatura(id: string, periodo: string): Promise<Resultado<AsignaturaDTO>>

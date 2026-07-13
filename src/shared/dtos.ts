@@ -115,6 +115,18 @@ export interface UnidadDTO {
   temas: TemaDTO[]
 }
 
+/** Una semana de la planificación: número + temas que se tratan. */
+export interface SemanaPlanDTO {
+  numero: number
+  temas: string[]
+}
+
+/** Planificación semanal de un período. */
+export interface PlanificacionDTO {
+  periodo: string
+  semanas: SemanaPlanDTO[]
+}
+
 /** Detalle completo de una asignatura para su ficha. */
 export interface AsignaturaDTO {
   id: string
@@ -122,6 +134,8 @@ export interface AsignaturaDTO {
   periodos: string[]
   componentes: ComponenteDTO[]
   unidades: UnidadDTO[]
+  /** Planificación semanal por período. */
+  planificaciones: PlanificacionDTO[]
 }
 
 // --- Payload del asistente para crear una asignatura ---

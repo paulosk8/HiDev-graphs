@@ -211,6 +211,10 @@ export class VaultFileSystemService {
           subtemas: t.subtemas.map((s) => ({ id: s.id, titulo: s.titulo, orden: s.orden })),
           conceptos: [...t.conceptos]
         }))
+      })),
+      planificaciones: asignatura.planificaciones.map((p) => ({
+        periodo: p.periodo,
+        semanas: p.semanas.map((se) => ({ numero: se.numero, temas: [...se.temas] }))
       }))
     }
     writeFileSync(this.rutaAsignatura(asignatura.id), escribirYaml(plano, { lineWidth: 100 }), 'utf8')
@@ -435,12 +439,26 @@ function asignaturaDesdePlano(datos: Record<string, unknown>): Asignatura {
       ? [texto(datos.periodo)]
       : []
 
+  const planificaciones = lista(datos.planificaciones)
+    .map((p) => p as Record<string, unknown>)
+    .map((p) => ({
+      periodo: texto(p.periodo),
+      semanas: lista(p.semanas)
+        .map((se) => se as Record<string, unknown>)
+        .map((se) => ({
+          numero: numero(se.numero, 1),
+          temas: lista(se.temas).map((id) => texto(id)).filter((id) => id.length > 0)
+        }))
+    }))
+    .filter((p) => p.periodo.length > 0)
+
   return crearAsignatura({
     id: texto(datos.id),
     nombre: texto(datos.nombre),
     periodos,
     componentes,
-    unidades
+    unidades,
+    planificaciones
   })
 }
 

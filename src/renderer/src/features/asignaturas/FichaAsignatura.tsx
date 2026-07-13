@@ -219,7 +219,7 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
           </button>
         </div>
 
-        {vistaPlan && <PlanificacionSemanal asignatura={asig} />}
+        {vistaPlan && <PlanificacionSemanal asignatura={asig} onAbrirTarea={setTareaAbierta} />}
         {!vistaPlan && (
         <div className="space-y-4">
           {asignatura.unidades.map((unidad) => (

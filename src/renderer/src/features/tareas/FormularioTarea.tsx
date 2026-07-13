@@ -25,6 +25,7 @@ interface Props {
   asignatura: AsignaturaDTO
   tareaInicial?: TareaDTO
   temaPreseleccionado?: string
+  temasPreseleccionados?: string[]
   onCerrar: () => void
   onGuardada: (tarea: TareaDTO) => void
 }
@@ -33,6 +34,7 @@ export function FormularioTarea({
   asignatura,
   tareaInicial,
   temaPreseleccionado,
+  temasPreseleccionados,
   onCerrar,
   onGuardada
 }: Props): JSX.Element {
@@ -44,7 +46,12 @@ export function FormularioTarea({
   const [titulo, setTitulo] = useState(tareaInicial?.titulo ?? '')
   const [componente, setComponente] = useState<string>(tareaInicial?.componente ?? '')
   const [temas, setTemas] = useState<Set<string>>(
-    () => new Set(tareaInicial?.temas ?? (temaPreseleccionado ? [temaPreseleccionado] : []))
+    () =>
+      new Set(
+        tareaInicial?.temas ??
+          temasPreseleccionados ??
+          (temaPreseleccionado ? [temaPreseleccionado] : [])
+      )
   )
   const [instrucciones, setInstrucciones] = useState(tareaInicial?.instrucciones ?? '')
   const [formato, setFormato] = useState<FormatoInstrucciones>(tareaInicial?.formato ?? 'markdown')
