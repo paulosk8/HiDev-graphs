@@ -284,6 +284,14 @@ export interface RespaldoDTO {
   ruta?: string
 }
 
+/** Resultado de restaurar una copia de seguridad (o su cancelación). */
+export interface RestauracionDTO {
+  cancelado: boolean
+  conceptos?: number
+  asignaturas?: number
+  tareas?: number
+}
+
 /** Datos para configurar el servidor MCP (asistente IA) en un CLI externo. */
 export type ClienteMcpId = 'gemini' | 'claude'
 

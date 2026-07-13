@@ -6,6 +6,8 @@ interface Props {
   titulo: string
   mensaje: string
   textoConfirmar?: string
+  /** Texto del botón mientras la acción está en curso. */
+  textoOcupado?: string
   onConfirmar: () => void | Promise<void>
   onCancelar: () => void
 }
@@ -15,6 +17,7 @@ export function DialogoConfirmacion({
   titulo,
   mensaje,
   textoConfirmar = 'Eliminar',
+  textoOcupado = 'Eliminando…',
   onConfirmar,
   onCancelar
 }: Props): JSX.Element {
@@ -36,7 +39,7 @@ export function DialogoConfirmacion({
           Cancelar
         </Boton>
         <Boton variante="peligro" onClick={confirmar} disabled={ocupado}>
-          {ocupado ? 'Eliminando…' : textoConfirmar}
+          {ocupado ? textoOcupado : textoConfirmar}
         </Boton>
       </div>
     </Modal>

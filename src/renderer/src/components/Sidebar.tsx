@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { api } from '../lib/api'
+import { DialogoConfirmacion } from './DialogoConfirmacion'
 import { useAsignaturasStore } from '../stores/asignaturasStore'
 import { useConceptosStore } from '../stores/conceptosStore'
 import { useLayoutStore } from '../stores/layoutStore'
@@ -53,6 +54,8 @@ export function Sidebar(): JSX.Element {
   const alternarTema = useLayoutStore((s) => s.alternarTema)
   const [actualizando, setActualizando] = useState(false)
   const [respaldando, setRespaldando] = useState(false)
+  const [restaurando, setRestaurando] = useState(false)
+  const [confirmandoRestaurar, setConfirmandoRestaurar] = useState(false)
 
   const respaldar = async (): Promise<void> => {
     setRespaldando(true)
@@ -65,6 +68,25 @@ export function Sidebar(): JSX.Element {
       notificarError(error)
     } finally {
       setRespaldando(false)
+    }
+  }
+
+  const restaurar = async (): Promise<void> => {
+    setConfirmandoRestaurar(false)
+    setRestaurando(true)
+    try {
+      const r = await api.restaurar()
+      if (!r.cancelado) {
+        await Promise.all([cargarConceptos(), cargarAsignaturas()])
+        notificar({
+          tipo: 'exito',
+          mensaje: `Copia restaurada: ${r.conceptos ?? 0} ${r.conceptos === 1 ? 'concepto' : 'conceptos'}, ${r.asignaturas ?? 0} ${r.asignaturas === 1 ? 'asignatura' : 'asignaturas'} y ${r.tareas ?? 0} ${r.tareas === 1 ? 'tarea' : 'tareas'}.`
+        })
+      }
+    } catch (error) {
+      notificarError(error)
+    } finally {
+      setRestaurando(false)
     }
   }
 
@@ -160,8 +182,30 @@ export function Sidebar(): JSX.Element {
           <span aria-hidden>💾</span>
           {!colapsada && (respaldando ? 'Guardando…' : 'Copia de seguridad')}
         </button>
+        <button
+          onClick={() => setConfirmandoRestaurar(true)}
+          disabled={restaurando}
+          title="Recupera tu material y asignaturas desde un archivo de copia de seguridad"
+          className={`flex w-full items-center rounded-md text-sm text-slate-500 transition hover:bg-slate-100 disabled:opacity-50 ${
+            colapsada ? 'justify-center px-0 py-2.5' : 'gap-2 px-3 py-2'
+          }`}
+        >
+          <span aria-hidden>♻️</span>
+          {!colapsada && (restaurando ? 'Restaurando…' : 'Restaurar copia')}
+        </button>
         {!colapsada && <div className="px-2 text-xs text-slate-400">PedagoGraph · versión 0.1.0</div>}
       </div>
+
+      {confirmandoRestaurar && (
+        <DialogoConfirmacion
+          titulo="Restaurar copia de seguridad"
+          mensaje="Elige tu archivo de copia (.zip). Su contenido se combinará con lo que ya tienes: los elementos con el mismo nombre se reemplazan y el resto se conserva."
+          textoConfirmar="Elegir archivo…"
+          textoOcupado="Restaurando…"
+          onConfirmar={restaurar}
+          onCancelar={() => setConfirmandoRestaurar(false)}
+        />
+      )}
     </aside>
   )
 }

@@ -97,5 +97,6 @@ export const api = {
   conectarMcp: (cli: ClienteMcpId) => desenvolver(window.api.conectarMcp(cli)),
   reindexar: () => desenvolver(window.api.reindexar()),
   respaldar: () => desenvolver(window.api.respaldar()),
+  restaurar: () => desenvolver(window.api.restaurar()),
   onVaultCambiado: (callback: () => void): (() => void) => window.api.onVaultCambiado(callback)
 }

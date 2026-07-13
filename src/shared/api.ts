@@ -15,6 +15,7 @@ import type {
   GrafoDTO,
   McpInfoDTO,
   RespaldoDTO,
+  RestauracionDTO,
   ResultadoAdjuntoDTO,
   ResultadoMaterialDTO,
   ResultadoReindexadoDTO,
@@ -107,6 +108,7 @@ export interface PedagoGraphApi {
   // --- Sistema ---
   reindexar(): Promise<Resultado<ResultadoReindexadoDTO>>
   respaldar(): Promise<Resultado<RespaldoDTO>>
+  restaurar(): Promise<Resultado<RestauracionDTO>>
 
   /**
    * Se suscribe a los cambios del vault detectados en segundo plano.

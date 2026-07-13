@@ -55,7 +55,8 @@ import {
 import { obtenerGrafo } from '../application/ObtenerGrafo'
 import { reindexarVault } from '../application/ReindexarVault'
 import { respaldarVault } from '../application/RespaldarVault'
-import type { RespaldoDTO } from '../../shared/dtos'
+import { restaurarVault } from '../application/RestaurarVault'
+import type { RespaldoDTO, RestauracionDTO } from '../../shared/dtos'
 import type { Servicios } from '../servicios'
 
 /** Nombre de archivo sugerido para el respaldo, con la fecha de hoy. */
@@ -326,6 +327,25 @@ export function registrarHandlersIpc(servicios: Servicios): void {
 
       await respaldarVault(servicios, seleccion.filePath)
       return { cancelado: false, ruta: seleccion.filePath }
+    })
+  )
+
+  ipcMain.handle(CANALES.restaurar, (evento) =>
+    envolver<RestauracionDTO>(async () => {
+      const ventana = BrowserWindow.fromWebContents(evento.sender)
+      const opciones = {
+        title: 'Restaurar copia de seguridad',
+        properties: ['openFile' as const],
+        filters: [{ name: 'Archivo comprimido', extensions: ['zip'] }]
+      }
+      const seleccion = ventana
+        ? await dialog.showOpenDialog(ventana, opciones)
+        : await dialog.showOpenDialog(opciones)
+
+      if (seleccion.canceled || seleccion.filePaths.length === 0) return { cancelado: true }
+
+      const r = await restaurarVault(servicios, seleccion.filePaths[0])
+      return { cancelado: false, ...r }
     })
   )
 }

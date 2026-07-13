@@ -58,6 +58,7 @@ export const CANALES = {
   // Sistema
   reindexar: 'sistema:reindexar',
   respaldar: 'sistema:respaldar',
+  restaurar: 'sistema:restaurar',
 
   // Terminal embebida
   terminalCrear: 'terminal:crear',

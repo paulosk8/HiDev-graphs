@@ -62,6 +62,7 @@ const api: PedagoGraphApi = {
   conectarMcp: (cli) => ipcRenderer.invoke(CANALES.mcpConectar, cli),
   reindexar: () => ipcRenderer.invoke(CANALES.reindexar),
   respaldar: () => ipcRenderer.invoke(CANALES.respaldar),
+  restaurar: () => ipcRenderer.invoke(CANALES.restaurar),
   onVaultCambiado: (callback) => {
     const oyente = (): void => callback()
     ipcRenderer.on(CANALES.vaultCambiado, oyente)
