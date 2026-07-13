@@ -285,6 +285,8 @@ export function GrafoPage(): JSX.Element {
   const [tipos, setTipos] = useState<Set<TipoAristaGrafo>>(() => new Set(TIPOS_ARISTA.map((t) => t.tipo)))
   const [mostrarTareas, setMostrarTareas] = useState(true)
   const [asignaturasFiltro, setAsignaturasFiltro] = useState<Set<string>>(new Set())
+  const [filtroAsigAbierto, setFiltroAsigAbierto] = useState(false)
+  const [busquedaAsig, setBusquedaAsig] = useState('')
   const [tareasCombinar, setTareasCombinar] = useState<string[]>([])
   const [dialogoCombinar, setDialogoCombinar] = useState(false)
   const [modalAnalisis, setModalAnalisis] = useState(false)
@@ -626,7 +628,7 @@ export function GrafoPage(): JSX.Element {
           </button>
         </div>
 
-        {asignaturasGrafo.length > 0 && (
+        {asignaturasGrafo.length > 0 && asignaturasGrafo.length <= 6 && (
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             <span className="mr-1 text-xs font-medium text-slate-400">Asignatura:</span>
             <button
@@ -653,6 +655,63 @@ export function GrafoPage(): JSX.Element {
                 {truncar(a.etiqueta, 26)}
               </button>
             ))}
+          </div>
+        )}
+
+        {/* Muchas asignaturas: desplegable con búsqueda (multi-selección). */}
+        {asignaturasGrafo.length > 6 && (
+          <div className="relative mt-2 inline-flex items-center gap-2">
+            <span className="text-xs font-medium text-slate-400">Asignatura:</span>
+            <button
+              onClick={() => setFiltroAsigAbierto((v) => !v)}
+              className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs text-slate-700 transition hover:bg-slate-50"
+            >
+              {asignaturasFiltro.size === 0
+                ? 'Todas'
+                : asignaturasFiltro.size === 1
+                  ? truncar(asignaturasGrafo.find((a) => asignaturasFiltro.has(a.id))?.etiqueta ?? '', 22)
+                  : `${asignaturasFiltro.size} seleccionadas`}
+              <span className="text-slate-400">▾</span>
+            </button>
+            {asignaturasFiltro.size > 0 && (
+              <button onClick={() => setAsignaturasFiltro(new Set())} className="text-xs text-marca-600 hover:underline">
+                Limpiar
+              </button>
+            )}
+            {filtroAsigAbierto && (
+              <>
+                <button
+                  aria-hidden
+                  onClick={() => setFiltroAsigAbierto(false)}
+                  className="fixed inset-0 z-10 cursor-default"
+                />
+                <div className="absolute left-16 top-7 z-20 w-72 rounded-lg border border-slate-200 bg-white p-2 shadow-lg">
+                  <input
+                    value={busquedaAsig}
+                    onChange={(e) => setBusquedaAsig(e.target.value)}
+                    placeholder="Buscar asignatura…"
+                    className="mb-2 w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-xs outline-none focus:border-marca-500 focus:ring-2 focus:ring-marca-100"
+                  />
+                  <div className="max-h-64 space-y-0.5 overflow-y-auto">
+                    {asignaturasGrafo
+                      .filter((a) => a.etiqueta.toLowerCase().includes(busquedaAsig.trim().toLowerCase()))
+                      .map((a) => (
+                        <label
+                          key={a.id}
+                          className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-xs text-slate-700 hover:bg-slate-50"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={asignaturasFiltro.has(a.id)}
+                            onChange={() => alternarAsignaturaFiltro(a.id)}
+                          />
+                          <span className="truncate">{a.etiqueta}</span>
+                        </label>
+                      ))}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
       </header>
