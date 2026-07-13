@@ -57,8 +57,8 @@ export function Sidebar(): JSX.Element {
   const sincronizando = useAuthStore((s) => s.sincronizando)
 
   const sincronizarNube = async (): Promise<void> => {
-    const r = await sincronizar()
-    if (r) {
+    try {
+      const r = await sincronizar()
       notificar({
         tipo: 'exito',
         mensaje:
@@ -66,12 +66,9 @@ export function Sidebar(): JSX.Element {
             ? 'Todo está sincronizado con la nube.'
             : `Sincronizado: ${r.subidos} subidos, ${r.bajados} bajados.`
       })
-    } else {
-      notificar({
-        tipo: 'error',
-        mensaje: 'No se pudo sincronizar con la nube.',
-        sugerencia: 'Revisa tu conexión a internet e inténtalo de nuevo.'
-      })
+    } catch (error) {
+      // Muestra la causa real (mensaje + detalle de Supabase) para poder diagnosticar.
+      notificarError(error)
     }
   }
   const tema = useLayoutStore((s) => s.tema)

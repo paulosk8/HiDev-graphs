@@ -16,8 +16,8 @@ interface AuthState {
   cargar: () => Promise<void>
   iniciar: () => Promise<void>
   cerrar: () => Promise<void>
-  /** Sincroniza con la nube y recarga las vistas. Devuelve el resumen o null si falló. */
-  sincronizar: () => Promise<SincronizacionDTO | null>
+  /** Sincroniza con la nube y recarga las vistas. Lanza si falla (para mostrar el error). */
+  sincronizar: () => Promise<SincronizacionDTO>
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -30,8 +30,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const sesion = await api.sesionActual()
       set({ sesion, cargando: false })
-      // Al arrancar con sesión, sincroniza en segundo plano (no bloquea la app).
-      if (sesion) void get().sincronizar()
+      // Al arrancar con sesión, sincroniza en segundo plano (los errores no molestan).
+      if (sesion) void get().sincronizar().catch(() => undefined)
     } catch {
       set({ sesion: null, cargando: false })
     }
@@ -42,7 +42,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const sesion = await api.iniciarSesion()
       set({ sesion, iniciando: false })
-      void get().sincronizar()
+      void get().sincronizar().catch(() => undefined)
     } catch (error) {
       set({ iniciando: false })
       throw error
@@ -66,9 +66,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         ])
       }
       return resumen
-    } catch {
-      // Sin conexión u otro problema: la app sigue con la copia local.
-      return null
     } finally {
       set({ sincronizando: false })
     }

@@ -1,6 +1,15 @@
+import type { PostgrestError } from '@supabase/supabase-js'
+
 import type { SupabaseAuthService } from './SupabaseAuthService'
 import type { TablaAgregado } from './sincronizacion'
 import { ErrorDeDominio } from '../domain/errores'
+
+/** Resume un error de Supabase (mensaje + código/pista) para poder diagnosticar. */
+function detalle(error: PostgrestError): string {
+  return [error.message, error.details, error.hint, error.code]
+    .filter((x) => x)
+    .join(' · ')
+}
 
 /** Un agregado tal cual viaja a/desde la nube: su id, documento y marca de tiempo. */
 export interface AgregadoNube {
@@ -27,7 +36,7 @@ export class SupabaseDataService {
     const cliente = await this.auth.obtenerClienteAutenticado()
     const { data, error } = await cliente.from(tabla).select('id, datos, actualizado_en')
     if (error) {
-      throw new ErrorDeDominio('No se pudieron leer tus datos de la nube.', error.message)
+      throw new ErrorDeDominio('No se pudieron leer tus datos de la nube.', detalle(error))
     }
     return (data ?? []).map((fila) => {
       const f = fila as { id: unknown; datos: unknown; actualizado_en: unknown }
@@ -46,7 +55,7 @@ export class SupabaseDataService {
       .from(tabla)
       .upsert({ id, datos }, { onConflict: 'user_id,id' })
     if (error) {
-      throw new ErrorDeDominio('No se pudieron guardar tus datos en la nube.', error.message)
+      throw new ErrorDeDominio('No se pudieron guardar tus datos en la nube.', detalle(error))
     }
   }
 
@@ -55,7 +64,7 @@ export class SupabaseDataService {
     const cliente = await this.auth.obtenerClienteAutenticado()
     const { error } = await cliente.from(tabla).delete().eq('id', id)
     if (error) {
-      throw new ErrorDeDominio('No se pudo eliminar en la nube.', error.message)
+      throw new ErrorDeDominio('No se pudo eliminar en la nube.', detalle(error))
     }
   }
 }
