@@ -70,17 +70,33 @@ app.whenReady().then(() => {
   const auth = new SupabaseAuthService()
   registrarHandlersAuth(auth)
   const datosNube = new SupabaseDataService(auth)
-  registrarHandlersNube(new SyncService(servicios.vault, servicios.repositorio, datosNube))
+  const sync = new SyncService(servicios.vault, servicios.repositorio, datosNube)
+  registrarHandlersNube(sync)
   registrarHandlersTerminal(servicios.vault.raiz)
   habilitarProtocoloRecurso(servicios.vault)
 
   createWindow()
+
+  // Auto-sincronización: tras cada cambio local (con debounce), sube a la nube.
+  // El planificador hace no-op cuando el contenido ya coincide, así el ciclo
+  // "bajar → escribir → detectar cambio → sincronizar" se corta solo.
+  let temporizadorSync: ReturnType<typeof setTimeout> | null = null
+  const programarAutoSync = (): void => {
+    if (!auth.configurado || !auth.haySesionGuardada()) return
+    if (temporizadorSync) clearTimeout(temporizadorSync)
+    temporizadorSync = setTimeout(() => {
+      void sync.sincronizar().catch(() => {
+        /* sin conexión: la app sigue con la copia local */
+      })
+    }, 2000)
+  }
 
   // Mantiene el índice sincronizado con el vault y avisa al renderer.
   sincronizador = new IndexSyncService(servicios.vault, servicios.repositorio, () => {
     if (ventanaPrincipal && !ventanaPrincipal.isDestroyed()) {
       ventanaPrincipal.webContents.send(CANALES.vaultCambiado)
     }
+    programarAutoSync()
   })
   sincronizador.iniciar()
 

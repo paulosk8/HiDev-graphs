@@ -23,13 +23,40 @@ const TABLAS: readonly TablaAgregado[] = ['conceptos', 'asignaturas', 'tareas']
  * funcionando con la copia local.
  */
 export class SyncService {
+  private enCurso = false
+  /** Si llega una petición de sync mientras hay una en curso, se repite al terminar. */
+  private repetir = false
+
   constructor(
     private readonly vault: VaultFileSystemService,
     private readonly repositorio: IGraphRepository,
     private readonly datos: SupabaseDataService
   ) {}
 
+  /**
+   * Sincroniza, serializando llamadas concurrentes: si ya hay una en curso,
+   * marca que debe repetirse al terminar (así los cambios que llegan mientras
+   * sincroniza no se pierden) y devuelve un resultado vacío.
+   */
   async sincronizar(): Promise<ResultadoSync> {
+    if (this.enCurso) {
+      this.repetir = true
+      return { subidos: 0, bajados: 0 }
+    }
+    this.enCurso = true
+    let resultado: ResultadoSync = { subidos: 0, bajados: 0 }
+    try {
+      do {
+        this.repetir = false
+        resultado = await this.ejecutar()
+      } while (this.repetir)
+    } finally {
+      this.enCurso = false
+    }
+    return resultado
+  }
+
+  private async ejecutar(): Promise<ResultadoSync> {
     let subidos = 0
     let bajados = 0
 

@@ -36,6 +36,11 @@ export class SupabaseAuthService {
     return obtenerConfigSupabase() !== null
   }
 
+  /** Comprobación barata (sin red) de si hay una sesión guardada localmente. */
+  haySesionGuardada(): boolean {
+    return existsSync(this.rutaTokens)
+  }
+
   private get rutaTokens(): string {
     return join(app.getPath('userData'), 'sesion.dat')
   }
