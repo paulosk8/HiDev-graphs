@@ -1,4 +1,5 @@
 import { exigir, ErrorDeDominio } from './errores'
+import type { TipoAsignatura } from './tipos'
 import type { Unidad } from './Unidad'
 
 /**
@@ -44,6 +45,8 @@ export interface Planificacion {
 export interface Asignatura {
   readonly id: string
   readonly nombre: string
+  /** Docencia (asignatura) o aprendizaje (workspace para aprender un tema). */
+  readonly tipo: TipoAsignatura
   /** Períodos en los que se dicta esta asignatura (ej. ["2026A", "2026B"]). */
   readonly periodos: readonly string[]
   readonly componentes: readonly ComponenteAprendizaje[]
@@ -55,6 +58,7 @@ export interface Asignatura {
 export interface DatosAsignatura {
   id: string
   nombre: string
+  tipo?: TipoAsignatura
   periodos: readonly string[]
   componentes?: readonly ComponenteAprendizaje[]
   unidades?: readonly Unidad[]
@@ -96,6 +100,7 @@ export function normalizarPeriodos(periodos: readonly string[]): string[] {
 
 export function crearAsignatura(datos: DatosAsignatura): Asignatura {
   const nombre = datos.nombre.trim()
+  const tipo: TipoAsignatura = datos.tipo ?? 'docencia'
   const periodos = normalizarPeriodos(datos.periodos)
   exigir(datos.id.trim().length > 0, 'La asignatura no tiene identificador.')
   exigir(
@@ -103,8 +108,9 @@ export function crearAsignatura(datos: DatosAsignatura): Asignatura {
     'La asignatura necesita un nombre.',
     "Escribe un nombre, por ejemplo 'Algoritmos'."
   )
+  // Los espacios de aprendizaje no se dictan en períodos: no se les exige.
   exigir(
-    periodos.length > 0,
+    tipo === 'aprendizaje' || periodos.length > 0,
     'La asignatura necesita al menos un período.',
     "Indica el período, por ejemplo '2026A'."
   )
@@ -121,6 +127,7 @@ export function crearAsignatura(datos: DatosAsignatura): Asignatura {
   return {
     id: datos.id.trim(),
     nombre,
+    tipo,
     periodos,
     componentes,
     unidades: datos.unidades ?? [],

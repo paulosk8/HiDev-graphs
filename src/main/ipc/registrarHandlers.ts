@@ -12,6 +12,7 @@ import type {
   DuplicarTareaDTO,
   McpInfoDTO,
   SemanaPlanDTO,
+  TipoAsignatura,
   TipoRelacion
 } from '../../shared/dtos'
 import { conectarClienteMcp, detectarClientesMcp } from '../infrastructure/clientesMcp'
@@ -183,8 +184,14 @@ export function registrarHandlersIpc(servicios: Servicios): void {
       for (const t of vault.leerTodasTareas()) {
         tareasPorAsignatura.set(t.asignaturaId, (tareasPorAsignatura.get(t.asignaturaId) ?? 0) + 1)
       }
+      // El tipo (docencia/aprendizaje) tampoco está en el índice: se lee del vault.
+      const tipoPorAsignatura = new Map<string, TipoAsignatura>()
+      for (const a of vault.leerTodasAsignaturas()) {
+        tipoPorAsignatura.set(a.id, a.tipo)
+      }
       return repositorio.listarAsignaturas().map((a) => ({
         ...a,
+        tipo: tipoPorAsignatura.get(a.id) ?? 'docencia',
         totalTareas: tareasPorAsignatura.get(a.id) ?? 0
       }))
     })

@@ -197,6 +197,7 @@ export class VaultFileSystemService {
     const plano = {
       id: asignatura.id,
       nombre: asignatura.nombre,
+      tipo: asignatura.tipo,
       periodos: [...asignatura.periodos],
       componentes: asignatura.componentes.map((c) => ({ clave: c.clave, nombre: c.nombre })),
       unidades: asignatura.unidades.map((u) => ({
@@ -452,9 +453,13 @@ function asignaturaDesdePlano(datos: Record<string, unknown>): Asignatura {
     }))
     .filter((p) => p.periodo.length > 0)
 
+  // Compatibilidad: asignaturas antiguas sin `tipo` son de docencia.
+  const tipo = texto(datos.tipo) === 'aprendizaje' ? 'aprendizaje' : 'docencia'
+
   return crearAsignatura({
     id: texto(datos.id),
     nombre: texto(datos.nombre),
+    tipo,
     periodos,
     componentes,
     unidades,

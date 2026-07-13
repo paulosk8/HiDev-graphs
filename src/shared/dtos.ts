@@ -8,6 +8,9 @@
 
 export type TipoRelacion = 'prerequisito_de' | 'relacionado_con' | 'profundiza'
 
+/** Un espacio es de DOCENCIA (asignatura) o de APRENDIZAJE (workspace para aprender). */
+export type TipoAsignatura = 'docencia' | 'aprendizaje'
+
 export type FormatoRecurso =
   | 'pptx'
   | 'pdf'
@@ -88,6 +91,7 @@ export interface ResultadoMaterialDTO {
 export interface ResumenAsignaturaDTO {
   id: string
   nombre: string
+  tipo: TipoAsignatura
   periodos: string[]
   totalUnidades: number
   totalTemas: number
@@ -138,6 +142,7 @@ export interface PlanificacionDTO {
 export interface AsignaturaDTO {
   id: string
   nombre: string
+  tipo: TipoAsignatura
   periodos: string[]
   componentes: ComponenteDTO[]
   unidades: UnidadDTO[]
@@ -160,6 +165,8 @@ export interface DatosUnidadDTO {
 
 export interface DatosAsignaturaDTO {
   nombre: string
+  /** Docencia por defecto; 'aprendizaje' para un workspace de estudio. */
+  tipo?: TipoAsignatura
   periodos: string[]
   componentes: ComponenteDTO[]
   unidades: DatosUnidadDTO[]

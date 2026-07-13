@@ -24,6 +24,13 @@ export function esTipoRelacion(valor: string): valor is TipoRelacion {
 /** Formato de las instrucciones de una tarea: Markdown o HTML (con CSS/JS embebidos). */
 export type FormatoInstrucciones = 'markdown' | 'html'
 
+/**
+ * Tipo de "espacio": una asignatura para DOCENCIA o un workspace de APRENDIZAJE.
+ * Comparten el mismo modelo (temas/subtemas/conceptos/material/tareas/plan); solo
+ * cambia el encuadre y el lenguaje de la interfaz.
+ */
+export type TipoAsignatura = 'docencia' | 'aprendizaje'
+
 export type FormatoRecurso =
   | 'pptx'
   | 'pdf'

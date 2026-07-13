@@ -113,6 +113,7 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
   }
 
   const asig = asignatura
+  const esAprendizaje = asig.tipo === 'aprendizaje'
   const gruposTareas = [
     ...asig.componentes.map((c) => ({
       etiqueta: `${c.clave} · ${c.nombre}`,
@@ -127,17 +128,25 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
         onClick={() => volver(null)}
         className="mb-5 text-sm text-slate-500 transition hover:text-slate-800"
       >
-        ← Mis asignaturas
+        ← Volver
       </button>
 
       <header className="mb-4 flex items-start justify-between gap-4">
-        <h1 className="text-2xl font-semibold text-slate-900">{asignatura.nombre}</h1>
+        <h1 className="flex items-center gap-2 text-2xl font-semibold text-slate-900">
+          {asignatura.nombre}
+          {esAprendizaje && (
+            <span className="rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-medium text-sky-700">
+              Aprendizaje
+            </span>
+          )}
+        </h1>
         <Boton variante="fantasma" onClick={() => setConfirmando(true)}>
           Eliminar
         </Boton>
       </header>
 
-      {/* Períodos en que se dicta */}
+      {/* Períodos en que se dicta (solo docencia) */}
+      {!esAprendizaje && (
       <section className="mb-8">
         <div className="flex flex-wrap items-center gap-2">
           {asignatura.periodos.map((p) => (
@@ -176,6 +185,7 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
           La misma asignatura se dicta en estos períodos, sin duplicar su contenido.
         </p>
       </section>
+      )}
 
       {/* Componentes */}
       {asignatura.componentes.length > 0 && (
@@ -209,23 +219,29 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
           >
             Contenido
           </button>
-          <button
-            onClick={() => setVistaPlan(true)}
-            className={`-mb-px border-b-2 pb-2 font-medium transition ${
-              vistaPlan ? 'border-marca-600 text-marca-700' : 'border-transparent text-slate-400 hover:text-slate-600'
-            }`}
-          >
-            Planificación semanal
-          </button>
+          {!esAprendizaje && (
+            <button
+              onClick={() => setVistaPlan(true)}
+              className={`-mb-px border-b-2 pb-2 font-medium transition ${
+                vistaPlan ? 'border-marca-600 text-marca-700' : 'border-transparent text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              Planificación semanal
+            </button>
+          )}
         </div>
 
-        {vistaPlan && <PlanificacionSemanal asignatura={asig} onAbrirTarea={setTareaAbierta} />}
+        {vistaPlan && !esAprendizaje && (
+          <PlanificacionSemanal asignatura={asig} onAbrirTarea={setTareaAbierta} />
+        )}
         {!vistaPlan && (
         <div className="space-y-4">
           {asignatura.unidades.map((unidad) => (
             <div key={unidad.id} className="rounded-xl border border-slate-200 p-4">
               <h3 className="mb-2 font-medium text-slate-800">
-                <span className="text-slate-400">Unidad {unidad.orden}. </span>
+                <span className="text-slate-400">
+                  {esAprendizaje ? 'Bloque' : 'Unidad'} {unidad.orden}.{' '}
+                </span>
                 {unidad.titulo}
               </h3>
               {unidad.temas.length === 0 ? (
@@ -280,7 +296,7 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
                       {tareas.filter((t) => t.temas.includes(tema.id)).length > 0 && (
                         <div className="mt-1.5 flex flex-wrap items-center gap-1.5 pl-5">
                           <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-                            Tareas:
+                            {esAprendizaje ? 'Prácticas:' : 'Tareas:'}
                           </span>
                           {tareas
                             .filter((t) => t.temas.includes(tema.id))
@@ -309,15 +325,19 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
       {/* Tareas */}
       <section className="mt-8">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Tareas</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
+            {esAprendizaje ? 'Prácticas' : 'Tareas'}
+          </h2>
           <Boton variante="secundario" onClick={() => setCreandoTarea(true)}>
-            + Nueva tarea
+            {esAprendizaje ? '+ Nueva práctica' : '+ Nueva tarea'}
           </Boton>
         </div>
 
         {tareas.length === 0 ? (
           <p className="rounded-xl border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-400">
-            Aún no hay tareas. Crea una para un tema y, opcionalmente, un componente.
+            {esAprendizaje
+              ? 'Aún no hay prácticas. Crea una para poner en práctica lo que aprendes.'
+              : 'Aún no hay tareas. Crea una para un tema y, opcionalmente, un componente.'}
           </p>
         ) : (
           <div className="space-y-4">

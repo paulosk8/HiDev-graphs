@@ -49,6 +49,7 @@ export function crearAsignatura(
   const asignatura = nuevaAsignatura({
     id,
     nombre: datos.nombre,
+    tipo: datos.tipo ?? 'docencia',
     periodos: datos.periodos,
     componentes,
     unidades

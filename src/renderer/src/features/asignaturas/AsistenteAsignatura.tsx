@@ -1,5 +1,10 @@
 import { useState } from 'react'
-import { COMPONENTES_SUGERIDOS, type ComponenteDTO, type DatosAsignaturaDTO } from '@shared/dtos'
+import {
+  COMPONENTES_SUGERIDOS,
+  type ComponenteDTO,
+  type DatosAsignaturaDTO,
+  type TipoAsignatura
+} from '@shared/dtos'
 import { Boton } from '../../components/Boton'
 import { CampoTexto } from '../../components/Campos'
 import { Modal } from '../../components/Modal'
@@ -19,14 +24,17 @@ interface UnidadBorrador {
 }
 
 interface Props {
+  /** 'docencia' (asignatura) o 'aprendizaje' (workspace de estudio). */
+  tipo?: TipoAsignatura
   onCerrar: () => void
   onCreada: (id: string) => void
 }
 
-const PASOS = ['Datos', 'Componentes', 'Contenido']
-
-export function AsistenteAsignatura({ onCerrar, onCreada }: Props): JSX.Element {
+export function AsistenteAsignatura({ tipo = 'docencia', onCerrar, onCreada }: Props): JSX.Element {
   const crear = useAsignaturasStore((s) => s.crear)
+  const esAprendizaje = tipo === 'aprendizaje'
+  // Aprendizaje: sin períodos ni componentes → dos pasos.
+  const PASOS = esAprendizaje ? ['Qué aprender', 'Temas'] : ['Datos', 'Componentes', 'Contenido']
 
   const [paso, setPaso] = useState(1)
   const [ocupado, setOcupado] = useState(false)
@@ -34,7 +42,9 @@ export function AsistenteAsignatura({ onCerrar, onCreada }: Props): JSX.Element 
   const [nombre, setNombre] = useState('')
   const [periodos, setPeriodos] = useState<string[]>([])
   const [periodoNuevo, setPeriodoNuevo] = useState('')
-  const [componentes, setComponentes] = useState<ComponenteDTO[]>([...COMPONENTES_SUGERIDOS])
+  const [componentes, setComponentes] = useState<ComponenteDTO[]>(
+    esAprendizaje ? [] : [...COMPONENTES_SUGERIDOS]
+  )
   const [claveNueva, setClaveNueva] = useState('')
   const [nombreNuevo, setNombreNuevo] = useState('')
   const [unidades, setUnidades] = useState<UnidadBorrador[]>([
@@ -82,12 +92,13 @@ export function AsistenteAsignatura({ onCerrar, onCreada }: Props): JSX.Element 
   }
   const quitarPeriodo = (p: string): void => setPeriodos((prev) => prev.filter((x) => x !== p))
 
-  const datosCompletos = nombre.trim().length > 0 && periodos.length > 0
+  const datosCompletos = nombre.trim().length > 0 && (esAprendizaje || periodos.length > 0)
   const hayContenido = unidades.some((u) => u.titulo.trim().length > 0)
 
   const finalizar = async (): Promise<void> => {
     const datos: DatosAsignaturaDTO = {
       nombre: nombre.trim(),
+      tipo,
       periodos,
       componentes,
       unidades: unidades
@@ -112,7 +123,11 @@ export function AsistenteAsignatura({ onCerrar, onCreada }: Props): JSX.Element 
   }
 
   return (
-    <Modal titulo="Nueva asignatura" ancho="xl" onCerrar={onCerrar}>
+    <Modal
+      titulo={esAprendizaje ? 'Nuevo espacio para aprender' : 'Nueva asignatura'}
+      ancho="xl"
+      onCerrar={onCerrar}
+    >
       {/* Indicador de pasos */}
       <ol className="mb-6 flex items-center gap-2 text-xs">
         {PASOS.map((etiqueta, i) => {
@@ -145,13 +160,19 @@ export function AsistenteAsignatura({ onCerrar, onCreada }: Props): JSX.Element 
       {paso === 1 && (
         <div className="space-y-4">
           <CampoTexto
-            etiqueta="Nombre de la asignatura"
-            placeholder="Ej. Algoritmos"
+            etiqueta={esAprendizaje ? '¿Qué quieres aprender?' : 'Nombre de la asignatura'}
+            placeholder={esAprendizaje ? 'Ej. Programar en React' : 'Ej. Algoritmos'}
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
             autoFocus
           />
-          <div>
+          {esAprendizaje && (
+            <p className="text-sm text-slate-500">
+              Registra el tema que quieres aprender. Luego organizas sus subtemas y les
+              agregas material de estudio.
+            </p>
+          )}
+          <div className={esAprendizaje ? 'hidden' : undefined}>
             <span className="mb-1.5 block text-sm font-medium text-slate-700">Períodos</span>
             <div className="flex gap-2">
               <input
@@ -196,8 +217,8 @@ export function AsistenteAsignatura({ onCerrar, onCreada }: Props): JSX.Element 
         </div>
       )}
 
-      {/* Paso 2: Componentes */}
-      {paso === 2 && (
+      {/* Paso 2: Componentes (solo docencia) */}
+      {!esAprendizaje && paso === 2 && (
         <div className="space-y-4">
           <p className="text-sm text-slate-500">
             Los componentes de aprendizaje de esta asignatura (ej. contacto docente,
@@ -269,30 +290,38 @@ export function AsistenteAsignatura({ onCerrar, onCreada }: Props): JSX.Element 
         </div>
       )}
 
-      {/* Paso 3: Unidades y temas */}
-      {paso === 3 && (
+      {/* Último paso: Unidades y temas */}
+      {paso === PASOS.length && (
         <div className="space-y-4">
           <p className="text-sm text-slate-500">
-            Organiza el contenido en unidades y temas.
+            {esAprendizaje
+              ? 'Organiza lo que vas a aprender en bloques y temas. Podrás añadir subtemas y material después.'
+              : 'Organiza el contenido en unidades y temas.'}
           </p>
 
           {unidades.map((unidad, i) => (
             <div key={unidad.id} className="rounded-xl border border-slate-200 p-4">
               <div className="mb-3 flex items-center gap-2">
-                <span className="text-xs font-semibold text-slate-400">Unidad {i + 1}</span>
+                <span className="text-xs font-semibold text-slate-400">
+                  {esAprendizaje ? 'Bloque' : 'Unidad'} {i + 1}
+                </span>
                 {unidades.length > 1 && (
                   <button
                     onClick={() => quitarUnidad(unidad.id)}
                     className="ml-auto text-xs text-slate-400 hover:text-red-600"
                   >
-                    Quitar unidad
+                    {esAprendizaje ? 'Quitar bloque' : 'Quitar unidad'}
                   </button>
                 )}
               </div>
               <input
                 value={unidad.titulo}
                 onChange={(e) => modificarUnidad(unidad.id, { titulo: e.target.value })}
-                placeholder="Título de la unidad (ej. Fundamentos)"
+                placeholder={
+                  esAprendizaje
+                    ? 'Título del bloque (ej. Fundamentos de React)'
+                    : 'Título de la unidad (ej. Fundamentos)'
+                }
                 className="mb-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-marca-500 focus:ring-2 focus:ring-marca-100"
               />
 
@@ -330,7 +359,7 @@ export function AsistenteAsignatura({ onCerrar, onCreada }: Props): JSX.Element 
             onClick={agregarUnidad}
             className="w-full rounded-xl border border-dashed border-slate-300 py-2.5 text-sm text-slate-500 hover:border-marca-300 hover:text-marca-700"
           >
-            + Agregar unidad
+            {esAprendizaje ? '+ Agregar bloque' : '+ Agregar unidad'}
           </button>
         </div>
       )}
@@ -346,7 +375,7 @@ export function AsistenteAsignatura({ onCerrar, onCreada }: Props): JSX.Element 
               Atrás
             </Boton>
           )}
-          {paso < 3 ? (
+          {paso < PASOS.length ? (
             <Boton
               variante="primario"
               onClick={() => setPaso((p) => p + 1)}
@@ -356,7 +385,11 @@ export function AsistenteAsignatura({ onCerrar, onCreada }: Props): JSX.Element 
             </Boton>
           ) : (
             <Boton variante="primario" onClick={finalizar} disabled={ocupado || !hayContenido}>
-              {ocupado ? 'Creando…' : 'Crear asignatura'}
+              {ocupado
+                ? 'Creando…'
+                : esAprendizaje
+                  ? 'Crear espacio'
+                  : 'Crear asignatura'}
             </Boton>
           )}
         </div>

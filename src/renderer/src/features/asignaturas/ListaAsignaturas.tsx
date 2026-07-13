@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import type { ResumenAsignaturaDTO, TipoAsignatura } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
 import { EstadoVacio } from '../../components/EstadoVacio'
 import { useAsignaturasStore } from '../../stores/asignaturasStore'
@@ -9,7 +10,7 @@ export function ListaAsignaturas(): JSX.Element {
   const lista = useAsignaturasStore((s) => s.lista)
   const cargando = useAsignaturasStore((s) => s.cargando)
   const seleccionar = useUiStore((s) => s.seleccionarAsignatura)
-  const [creando, setCreando] = useState(false)
+  const [creando, setCreando] = useState<TipoAsignatura | null>(null)
   const [busqueda, setBusqueda] = useState('')
   const [periodoFiltro, setPeriodoFiltro] = useState('')
 
@@ -20,17 +21,26 @@ export function ListaAsignaturas(): JSX.Element {
       a.nombre.toLowerCase().includes(busqueda.trim().toLowerCase()) &&
       (periodoFiltro === '' || a.periodos.includes(periodoFiltro))
   )
+  const docencia = filtradas.filter((a) => a.tipo !== 'aprendizaje')
+  const aprendizaje = filtradas.filter((a) => a.tipo === 'aprendizaje')
 
   return (
     <div className="mx-auto max-w-4xl px-8 py-8">
-      <header className="mb-6 flex items-end justify-between">
+      <header className="mb-6 flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Mis asignaturas</h1>
-          <p className="mt-1 text-sm text-slate-500">La misma asignatura puede dictarse en varios períodos.</p>
+          <h1 className="text-2xl font-semibold text-slate-900">Mis asignaturas y aprendizajes</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Prepara clases o abre un espacio para aprender algo nuevo.
+          </p>
         </div>
-        <Boton variante="primario" onClick={() => setCreando(true)}>
-          + Nueva asignatura
-        </Boton>
+        <div className="flex shrink-0 gap-2">
+          <Boton variante="secundario" onClick={() => setCreando('aprendizaje')}>
+            + Aprender algo
+          </Boton>
+          <Boton variante="primario" onClick={() => setCreando('docencia')}>
+            + Nueva asignatura
+          </Boton>
+        </div>
       </header>
 
       {cargando ? (
@@ -38,12 +48,17 @@ export function ListaAsignaturas(): JSX.Element {
       ) : lista.length === 0 ? (
         <EstadoVacio
           icono="🎓"
-          titulo="Todavía no tienes asignaturas"
-          descripcion="Crea tu primera asignatura con el asistente: nombre, períodos, componentes, y sus unidades y temas."
+          titulo="Todavía no tienes nada aquí"
+          descripcion="Crea una asignatura para dar clases, o un espacio para aprender un tema nuevo con sus recursos."
         >
-          <Boton variante="primario" onClick={() => setCreando(true)}>
-            + Crear mi primera asignatura
-          </Boton>
+          <div className="flex gap-2">
+            <Boton variante="primario" onClick={() => setCreando('docencia')}>
+              + Crear mi primera asignatura
+            </Boton>
+            <Boton variante="secundario" onClick={() => setCreando('aprendizaje')}>
+              + Aprender algo
+            </Boton>
+          </div>
         </EstadoVacio>
       ) : (
         <>
@@ -52,7 +67,7 @@ export function ListaAsignaturas(): JSX.Element {
             <input
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Buscar asignatura por nombre…"
+              placeholder="Buscar por nombre…"
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-marca-500 focus:ring-2 focus:ring-marca-100"
             />
             {periodosDisponibles.length > 1 && (
@@ -76,39 +91,98 @@ export function ListaAsignaturas(): JSX.Element {
 
           {filtradas.length === 0 ? (
             <p className="rounded-xl border border-dashed border-slate-200 px-4 py-10 text-center text-sm text-slate-400">
-              Ninguna asignatura coincide con la búsqueda.
+              Nada coincide con la búsqueda.
             </p>
           ) : (
-            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {filtradas.map((asig) => (
-                <li key={asig.id}>
-                  <button
-                    onClick={() => seleccionar(asig.id)}
-                    className="flex w-full flex-col items-start rounded-xl border border-slate-200 bg-white p-4 text-left transition hover:border-marca-300 hover:shadow-sm"
-                  >
-                    <span className="flex items-baseline gap-2">
-                      <span className="font-medium text-slate-800">{asig.nombre}</span>
-                      <span className="text-xs font-medium text-marca-600">
-                        {asig.periodos.join(', ')}
-                      </span>
-                    </span>
-                    <span className="mt-1 text-xs text-slate-400">
-                      {asig.totalUnidades} {asig.totalUnidades === 1 ? 'unidad' : 'unidades'} ·{' '}
-                      {asig.totalTemas} {asig.totalTemas === 1 ? 'tema' : 'temas'} ·{' '}
-                      {asig.totalTareas} {asig.totalTareas === 1 ? 'tarea' : 'tareas'}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <div className="space-y-6">
+              <Seccion
+                titulo="Docencia"
+                icono="🎓"
+                items={docencia}
+                mostrarTitulo={aprendizaje.length > 0}
+                onSeleccionar={seleccionar}
+              />
+              <Seccion
+                titulo="Aprendizaje"
+                icono="📘"
+                items={aprendizaje}
+                mostrarTitulo={docencia.length > 0}
+                onSeleccionar={seleccionar}
+              />
+            </div>
           )}
         </>
       )}
 
       {creando && (
-        <AsistenteAsignatura onCerrar={() => setCreando(false)} onCreada={(id) => seleccionar(id)} />
+        <AsistenteAsignatura
+          tipo={creando}
+          onCerrar={() => setCreando(null)}
+          onCreada={(id) => seleccionar(id)}
+        />
       )}
     </div>
+  )
+}
+
+function Seccion({
+  titulo,
+  icono,
+  items,
+  mostrarTitulo,
+  onSeleccionar
+}: {
+  titulo: string
+  icono: string
+  items: ResumenAsignaturaDTO[]
+  mostrarTitulo: boolean
+  onSeleccionar: (id: string) => void
+}): JSX.Element | null {
+  if (items.length === 0) return null
+  return (
+    <section>
+      {mostrarTitulo && (
+        <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-slate-500">
+          <span>{icono}</span>
+          {titulo}
+        </h2>
+      )}
+      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {items.map((asig) => (
+          <li key={asig.id}>
+            <button
+              onClick={() => onSeleccionar(asig.id)}
+              className="flex w-full flex-col items-start rounded-xl border border-slate-200 bg-white p-4 text-left transition hover:border-marca-300 hover:shadow-sm"
+            >
+              <span className="flex items-baseline gap-2">
+                <span className="font-medium text-slate-800">{asig.nombre}</span>
+                {asig.tipo === 'aprendizaje' ? (
+                  <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-medium text-sky-700">
+                    Aprendizaje
+                  </span>
+                ) : (
+                  <span className="text-xs font-medium text-marca-600">
+                    {asig.periodos.join(', ')}
+                  </span>
+                )}
+              </span>
+              <span className="mt-1 text-xs text-slate-400">
+                {asig.totalUnidades} {asig.totalUnidades === 1 ? 'unidad' : 'unidades'} ·{' '}
+                {asig.totalTemas} {asig.totalTemas === 1 ? 'tema' : 'temas'} ·{' '}
+                {asig.totalTareas}{' '}
+                {asig.tipo === 'aprendizaje'
+                  ? asig.totalTareas === 1
+                    ? 'práctica'
+                    : 'prácticas'
+                  : asig.totalTareas === 1
+                    ? 'tarea'
+                    : 'tareas'}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }
 
