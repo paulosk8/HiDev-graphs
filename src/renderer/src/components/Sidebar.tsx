@@ -199,7 +199,12 @@ export function Sidebar(): JSX.Element {
         {usuario && (
           <div className={`mt-1 flex items-center border-t border-slate-100 pt-2 ${colapsada ? 'justify-center' : 'gap-2 px-1'}`}>
             {usuario.foto ? (
-              <img src={usuario.foto} alt="" className="h-7 w-7 shrink-0 rounded-full" />
+              <img
+                src={usuario.foto}
+                alt=""
+                referrerPolicy="no-referrer"
+                className="h-7 w-7 shrink-0 rounded-full"
+              />
             ) : (
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-marca-100 text-xs font-semibold text-marca-700">
                 {usuario.nombre.charAt(0).toUpperCase()}
