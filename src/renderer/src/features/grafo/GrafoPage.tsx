@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import cytoscape from 'cytoscape'
 import fcose from 'cytoscape-fcose'
 import {
@@ -318,9 +318,17 @@ export function GrafoPage(): JSX.Element {
   const alternarTerminal = useLayoutStore((s) => s.alternarTerminal)
   const tema = useLayoutStore((s) => s.tema)
 
-  useEffect(() => {
+  const recargarGrafo = useCallback(() => {
     api.obtenerGrafo().then(setGrafo).catch((e) => notificarError(e))
   }, [notificarError])
+
+  useEffect(() => {
+    recargarGrafo()
+  }, [recargarGrafo])
+
+  // Refresca el grafo cuando el vault cambia (p. ej. la IA crea una tarea desde
+  // la terminal): así el nuevo nodo aparece sin recargar la app.
+  useEffect(() => api.onVaultCambiado(recargarGrafo), [recargarGrafo])
 
   const elementos = useMemo(
     () => (grafo ? elementosVisibles(grafo, tipos, mostrarTareas, asignaturasFiltro) : []),
