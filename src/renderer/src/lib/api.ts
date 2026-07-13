@@ -98,5 +98,8 @@ export const api = {
   reindexar: () => desenvolver(window.api.reindexar()),
   respaldar: () => desenvolver(window.api.respaldar()),
   restaurar: () => desenvolver(window.api.restaurar()),
+  iniciarSesion: () => desenvolver(window.api.iniciarSesion()),
+  cerrarSesion: () => desenvolver(window.api.cerrarSesion()),
+  sesionActual: () => desenvolver(window.api.sesionActual()),
   onVaultCambiado: (callback: () => void): (() => void) => window.api.onVaultCambiado(callback)
 }

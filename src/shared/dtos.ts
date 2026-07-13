@@ -292,6 +292,19 @@ export interface RestauracionDTO {
   tareas?: number
 }
 
+/** Usuario autenticado (datos públicos de su cuenta de Google). */
+export interface UsuarioDTO {
+  id: string
+  email: string
+  nombre: string
+  foto?: string
+}
+
+/** Sesión activa: quién inició sesión. `null` = nadie ha iniciado sesión. */
+export interface SesionDTO {
+  usuario: UsuarioDTO
+}
+
 /** Datos para configurar el servidor MCP (asistente IA) en un CLI externo. */
 export type ClienteMcpId = 'gemini' | 'claude'
 

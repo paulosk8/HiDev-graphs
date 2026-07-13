@@ -22,6 +22,7 @@ import type {
   ResumenAsignaturaDTO,
   ResumenConceptoDTO,
   ResumenTareaDTO,
+  SesionDTO,
   TareaDTO,
   UsoDeConceptoDTO
 } from './dtos'
@@ -104,6 +105,13 @@ export interface PedagoGraphApi {
   // --- Asistente IA (MCP) ---
   obtenerInfoMcp(): Promise<Resultado<McpInfoDTO>>
   conectarMcp(cli: ClienteMcpId): Promise<Resultado<McpInfoDTO>>
+
+  // --- Autenticación ---
+  /** Abre el navegador para iniciar sesión con Google. Resuelve con la sesión creada. */
+  iniciarSesion(): Promise<Resultado<SesionDTO>>
+  cerrarSesion(): Promise<Resultado<null>>
+  /** Sesión activa (o null si nadie ha iniciado sesión). */
+  sesionActual(): Promise<Resultado<SesionDTO | null>>
 
   // --- Sistema ---
   reindexar(): Promise<Resultado<ResultadoReindexadoDTO>>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { api } from '../lib/api'
 import { DialogoConfirmacion } from './DialogoConfirmacion'
+import { useAuthStore } from '../stores/authStore'
 import { useAsignaturasStore } from '../stores/asignaturasStore'
 import { useConceptosStore } from '../stores/conceptosStore'
 import { useLayoutStore } from '../stores/layoutStore'
@@ -50,6 +51,8 @@ export function Sidebar(): JSX.Element {
   const notificarError = useUiStore((s) => s.notificarError)
   const colapsada = useLayoutStore((s) => s.sidebarColapsada)
   const alternar = useLayoutStore((s) => s.alternarSidebar)
+  const usuario = useAuthStore((s) => s.sesion?.usuario)
+  const cerrarSesion = useAuthStore((s) => s.cerrar)
   const tema = useLayoutStore((s) => s.tema)
   const alternarTema = useLayoutStore((s) => s.alternarTema)
   const [actualizando, setActualizando] = useState(false)
@@ -193,6 +196,31 @@ export function Sidebar(): JSX.Element {
           <span aria-hidden>♻️</span>
           {!colapsada && (restaurando ? 'Restaurando…' : 'Restaurar copia')}
         </button>
+        {usuario && (
+          <div className={`mt-1 flex items-center border-t border-slate-100 pt-2 ${colapsada ? 'justify-center' : 'gap-2 px-1'}`}>
+            {usuario.foto ? (
+              <img src={usuario.foto} alt="" className="h-7 w-7 shrink-0 rounded-full" />
+            ) : (
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-marca-100 text-xs font-semibold text-marca-700">
+                {usuario.nombre.charAt(0).toUpperCase()}
+              </span>
+            )}
+            {!colapsada && (
+              <>
+                <span className="min-w-0 flex-1 truncate text-xs text-slate-500" title={usuario.email}>
+                  {usuario.nombre}
+                </span>
+                <button
+                  onClick={() => void cerrarSesion()}
+                  title="Cerrar sesión"
+                  className="shrink-0 rounded-md px-1.5 py-1 text-xs text-slate-400 transition hover:bg-slate-100 hover:text-red-600"
+                >
+                  Salir
+                </button>
+              </>
+            )}
+          </div>
+        )}
         {!colapsada && <div className="px-2 text-xs text-slate-400">PedagoGraph · versión 0.1.0</div>}
       </div>
 

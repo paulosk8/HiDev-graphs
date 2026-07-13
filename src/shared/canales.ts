@@ -60,6 +60,11 @@ export const CANALES = {
   respaldar: 'sistema:respaldar',
   restaurar: 'sistema:restaurar',
 
+  // Autenticación (Supabase)
+  authIniciar: 'auth:iniciar',
+  authCerrar: 'auth:cerrar',
+  authSesion: 'auth:sesion',
+
   // Terminal embebida
   terminalCrear: 'terminal:crear',
   terminalEscribir: 'terminal:escribir',

@@ -75,7 +75,7 @@ function nombreRespaldo(): string {
  * - Cualquier otro error -> mensaje genérico amable (y se registra en consola).
  * Nada cruza el puente como excepción: el renderer siempre recibe un Resultado.
  */
-async function envolver<T>(fn: () => T | Promise<T>): Promise<Resultado<T>> {
+export async function envolver<T>(fn: () => T | Promise<T>): Promise<Resultado<T>> {
   try {
     return { ok: true, valor: await fn() }
   } catch (error) {

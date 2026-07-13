@@ -10,9 +10,11 @@ import { GrafoPage } from './features/grafo/GrafoPage'
 import { AsistentePage } from './features/asistente/AsistentePage'
 import { TerminalPage } from './features/terminal/TerminalPage'
 import { useAsignaturasStore } from './stores/asignaturasStore'
+import { useAuthStore } from './stores/authStore'
 import { useConceptosStore } from './stores/conceptosStore'
 import { useLayoutStore } from './stores/layoutStore'
 import { useUiStore } from './stores/uiStore'
+import { PantallaLogin } from './features/auth/PantallaLogin'
 
 function Contenido(): JSX.Element {
   const seccion = useUiStore((s) => s.seccion)
@@ -50,11 +52,19 @@ function App(): JSX.Element {
   const cargarConceptos = useConceptosStore((s) => s.cargar)
   const cargarAsignaturas = useAsignaturasStore((s) => s.cargar)
   const tema = useLayoutStore((s) => s.tema)
+  const sesion = useAuthStore((s) => s.sesion)
+  const cargandoSesion = useAuthStore((s) => s.cargando)
+  const cargarSesion = useAuthStore((s) => s.cargar)
 
   // Aplica el tema (claro/oscuro) a la raíz del documento.
   useEffect(() => {
     document.documentElement.classList.toggle('dark', tema === 'oscuro')
   }, [tema])
+
+  // Comprueba si hay sesión iniciada al arrancar (login obligatorio).
+  useEffect(() => {
+    void cargarSesion()
+  }, [cargarSesion])
 
   useEffect(() => {
     void cargarConceptos()
@@ -79,6 +89,23 @@ function App(): JSX.Element {
       window.removeEventListener('drop', prevenir)
     }
   }, [])
+
+  if (cargandoSesion) {
+    return (
+      <div className="flex h-full items-center justify-center bg-slate-50 text-sm text-slate-400">
+        Cargando…
+      </div>
+    )
+  }
+
+  if (!sesion) {
+    return (
+      <>
+        <PantallaLogin />
+        <Avisos />
+      </>
+    )
+  }
 
   return (
     <div className="flex h-full text-slate-800">

@@ -2,7 +2,9 @@ import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { inicializarServicios, type Servicios } from './servicios'
 import { registrarHandlersIpc } from './ipc/registrarHandlers'
+import { registrarHandlersAuth } from './ipc/registrarHandlersAuth'
 import { registrarHandlersTerminal, cerrarTerminal } from './ipc/terminal'
+import { SupabaseAuthService } from './infrastructure/SupabaseAuthService'
 import { IndexSyncService } from './infrastructure/IndexSyncService'
 import {
   habilitarProtocoloRecurso,
@@ -62,6 +64,7 @@ app.whenReady().then(() => {
   // Inicializa el núcleo (vault + índice) y registra la API IPC antes de la ventana.
   servicios = inicializarServicios()
   registrarHandlersIpc(servicios)
+  registrarHandlersAuth(new SupabaseAuthService())
   registrarHandlersTerminal(servicios.vault.raiz)
   habilitarProtocoloRecurso(servicios.vault)
 

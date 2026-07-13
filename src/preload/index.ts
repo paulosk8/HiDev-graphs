@@ -63,6 +63,9 @@ const api: PedagoGraphApi = {
   reindexar: () => ipcRenderer.invoke(CANALES.reindexar),
   respaldar: () => ipcRenderer.invoke(CANALES.respaldar),
   restaurar: () => ipcRenderer.invoke(CANALES.restaurar),
+  iniciarSesion: () => ipcRenderer.invoke(CANALES.authIniciar),
+  cerrarSesion: () => ipcRenderer.invoke(CANALES.authCerrar),
+  sesionActual: () => ipcRenderer.invoke(CANALES.authSesion),
   onVaultCambiado: (callback) => {
     const oyente = (): void => callback()
     ipcRenderer.on(CANALES.vaultCambiado, oyente)
