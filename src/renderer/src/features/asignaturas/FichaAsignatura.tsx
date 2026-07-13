@@ -275,6 +275,27 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
                           )}
                         </span>
                       </div>
+
+                      {/* Tareas asociadas a este tema */}
+                      {tareas.filter((t) => t.temas.includes(tema.id)).length > 0 && (
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 pl-5">
+                          <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                            Tareas:
+                          </span>
+                          {tareas
+                            .filter((t) => t.temas.includes(tema.id))
+                            .map((t) => (
+                              <button
+                                key={t.id}
+                                onClick={() => setTareaAbierta(t.id)}
+                                title="Abrir la tarea"
+                                className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs text-amber-800 hover:bg-amber-100"
+                              >
+                                {t.titulo}
+                              </button>
+                            ))}
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>
