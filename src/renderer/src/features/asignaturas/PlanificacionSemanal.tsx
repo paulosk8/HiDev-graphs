@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { AsignaturaDTO, ResumenTareaDTO, SemanaPlanDTO } from '@shared/dtos'
+import type { AsignaturaDTO, RecursoDTO, ResumenTareaDTO, SemanaPlanDTO } from '@shared/dtos'
 import { api } from '../../lib/api'
 import { useConceptosStore } from '../../stores/conceptosStore'
 import { useUiStore } from '../../stores/uiStore'
 import { FormularioTarea } from '../tareas/FormularioTarea'
+import { VistaPreviaMaterial } from '../conceptos/VistaPreviaMaterial'
 
 interface Props {
   asignatura: AsignaturaDTO
@@ -33,6 +34,9 @@ export function PlanificacionSemanal({ asignatura, onAbrirTarea }: Props): JSX.E
   const [tareas, setTareas] = useState<ResumenTareaDTO[]>([])
   const [creandoEn, setCreandoEn] = useState<string[] | null>(null)
   const [sobre, setSobre] = useState<number | null>(null)
+  // Material (recursos) por concepto, para preparar la clase de la semana.
+  const [materialPorConcepto, setMaterialPorConcepto] = useState<Map<string, RecursoDTO[]>>(new Map())
+  const [previa, setPrevia] = useState<{ conceptoId: string; recurso: RecursoDTO } | null>(null)
 
   const temas = useMemo(
     () =>
@@ -53,6 +57,22 @@ export function PlanificacionSemanal({ asignatura, onAbrirTarea }: Props): JSX.E
   useEffect(() => {
     void cargarTareas()
   }, [cargarTareas])
+
+  // Carga el material (recursos) de todos los conceptos de la asignatura una vez.
+  useEffect(() => {
+    const ids = [...new Set(temas.flatMap((t) => t.conceptos))]
+    if (ids.length === 0) return
+    api
+      .obtenerMaterialDeConceptos(ids)
+      .then((mats) => setMaterialPorConcepto(new Map(mats.map((m) => [m.conceptoId, m.recursos]))))
+      .catch((e) => notificarError(e))
+  }, [temas, notificarError])
+
+  /** Recursos (con su concepto) de todos los conceptos de un tema. */
+  const materialDeTema = (temaConceptos: readonly string[]): { conceptoId: string; recurso: RecursoDTO }[] =>
+    temaConceptos.flatMap((cid) =>
+      (materialPorConcepto.get(cid) ?? []).map((recurso) => ({ conceptoId: cid, recurso }))
+    )
 
   useEffect(() => {
     setSemanas(planDe(periodo))
@@ -204,6 +224,23 @@ export function PlanificacionSemanal({ asignatura, onAbrirTarea }: Props): JSX.E
                             })}
                           </div>
                         )}
+                        {materialDeTema(tema.conceptos).length > 0 && (
+                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                            <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                              Material:
+                            </span>
+                            {materialDeTema(tema.conceptos).map(({ conceptoId, recurso }) => (
+                              <button
+                                key={`${conceptoId}-${recurso.id}`}
+                                onClick={() => setPrevia({ conceptoId, recurso })}
+                                title={`Abrir ${recurso.nombre} (${recurso.formato})`}
+                                className="flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-600 hover:bg-slate-50"
+                              >
+                                📄 {recurso.nombre}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </li>
                     )
                   })}
@@ -256,6 +293,14 @@ export function PlanificacionSemanal({ asignatura, onAbrirTarea }: Props): JSX.E
             setCreandoEn(null)
             void cargarTareas()
           }}
+        />
+      )}
+
+      {previa && (
+        <VistaPreviaMaterial
+          conceptoId={previa.conceptoId}
+          recurso={previa.recurso}
+          onCerrar={() => setPrevia(null)}
         />
       )}
     </div>

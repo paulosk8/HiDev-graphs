@@ -44,6 +44,13 @@ export interface RecursoDTO {
   formato: FormatoRecurso
 }
 
+/** Material (recursos) de un concepto, para preparar la clase por semana. */
+export interface MaterialConceptoDTO {
+  conceptoId: string
+  nombre: string
+  recursos: RecursoDTO[]
+}
+
 export interface RelacionDTO {
   destino: string
   tipo: TipoRelacion

@@ -28,6 +28,7 @@ import { eliminarMaterial } from '../application/EliminarMaterial'
 import { crearAsignatura } from '../application/CrearAsignatura'
 import { obtenerAsignatura } from '../application/ObtenerAsignatura'
 import { guardarPlanificacion } from '../application/GuardarPlanificacion'
+import { obtenerMaterialDeConceptos } from '../application/ObtenerMaterialDeConceptos'
 import { eliminarAsignatura } from '../application/EliminarAsignatura'
 import {
   agregarPeriodoAsignatura,
@@ -193,6 +194,10 @@ export function registrarHandlersIpc(servicios: Servicios): void {
     CANALES.planificacionGuardar,
     (_e, asignaturaId: string, periodo: string, semanas: SemanaPlanDTO[]) =>
       envolver(() => guardarPlanificacion(servicios, asignaturaId, periodo, semanas))
+  )
+
+  ipcMain.handle(CANALES.materialDeConceptos, (_e, conceptoIds: string[]) =>
+    envolver(() => obtenerMaterialDeConceptos(servicios, conceptoIds))
   )
 
   ipcMain.handle(CANALES.asignaturaObtener, (_evento, id: string) =>

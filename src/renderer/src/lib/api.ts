@@ -62,6 +62,8 @@ export const api = {
   obtenerAsignatura: (id: string) => desenvolver(window.api.obtenerAsignatura(id)),
   guardarPlanificacion: (asignaturaId: string, periodo: string, semanas: SemanaPlanDTO[]) =>
     desenvolver(window.api.guardarPlanificacion(asignaturaId, periodo, semanas)),
+  obtenerMaterialDeConceptos: (conceptoIds: string[]) =>
+    desenvolver(window.api.obtenerMaterialDeConceptos(conceptoIds)),
   crearAsignatura: (datos: DatosAsignaturaDTO) => desenvolver(window.api.crearAsignatura(datos)),
   eliminarAsignatura: (id: string) => desenvolver(window.api.eliminarAsignatura(id)),
   agregarPeriodoAsignatura: (id: string, periodo: string) =>
