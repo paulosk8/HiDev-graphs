@@ -409,6 +409,40 @@ export class VaultFileSystemService {
     return { id, datos, mtimeMs: statSync(ruta).mtimeMs }
   }
 
+  /** Elimina un agregado local (su carpeta) por tabla e id. */
+  eliminarAgregadoLocal(tabla: TablaAgregado, id: string): void {
+    if (tabla === 'conceptos') this.eliminarConcepto(id)
+    else if (tabla === 'asignaturas') this.eliminarAsignatura(id)
+    else this.eliminarTarea(id)
+  }
+
+  private get rutaBaseSync(): string {
+    return join(this.dirIndice, 'sync-base.json')
+  }
+
+  /** Ids que existían en la última sincronización, por tabla (para detectar borrados). */
+  leerBaseSync(): Record<TablaAgregado, string[]> {
+    const vacio = { conceptos: [], asignaturas: [], tareas: [] }
+    try {
+      if (!existsSync(this.rutaBaseSync)) return vacio
+      const o = JSON.parse(readFileSync(this.rutaBaseSync, 'utf8')) as Partial<
+        Record<TablaAgregado, string[]>
+      >
+      return {
+        conceptos: o.conceptos ?? [],
+        asignaturas: o.asignaturas ?? [],
+        tareas: o.tareas ?? []
+      }
+    } catch {
+      return vacio
+    }
+  }
+
+  guardarBaseSync(base: Record<TablaAgregado, string[]>): void {
+    mkdirSync(this.dirIndice, { recursive: true })
+    writeFileSync(this.rutaBaseSync, JSON.stringify(base), 'utf8')
+  }
+
   // ---------------------------------------------------------------------------
   // Utilidades
   // ---------------------------------------------------------------------------

@@ -305,10 +305,11 @@ export interface SesionDTO {
   usuario: UsuarioDTO
 }
 
-/** Resultado de sincronizar con la nube: cuántos agregados subieron y bajaron. */
+/** Resultado de sincronizar con la nube: qué subió, bajó y se borró de la nube. */
 export interface SincronizacionDTO {
   subidos: number
   bajados: number
+  borradosNube: number
 }
 
 /** Datos para configurar el servidor MCP (asistente IA) en un CLI externo. */

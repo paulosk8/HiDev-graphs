@@ -9,8 +9,9 @@ import type { VaultFileSystemService } from './VaultFileSystemService'
  * los cambios con chokidar. Ante cualquier cambio reconstruye el índice de forma
  * debounced y avisa (para que el renderer refresque sus vistas).
  *
- * Solo observa conceptos/ y asignaturas/ (NO .index/), evitando reaccionar a las
- * escrituras del propio SQLite.
+ * Observa conceptos/, asignaturas/ y tareas/ (NO .index/), evitando reaccionar a
+ * las escrituras del propio SQLite. Vigilar tareas/ permite que su auto-sync con
+ * la nube también se dispare.
  */
 export class IndexSyncService {
   private observador?: FSWatcher
@@ -23,10 +24,13 @@ export class IndexSyncService {
   ) {}
 
   iniciar(): void {
-    this.observador = chokidar.watch([this.vault.dirConceptos, this.vault.dirAsignaturas], {
-      ignoreInitial: true,
-      awaitWriteFinish: { stabilityThreshold: 300, pollInterval: 100 }
-    })
+    this.observador = chokidar.watch(
+      [this.vault.dirConceptos, this.vault.dirAsignaturas, this.vault.dirTareas],
+      {
+        ignoreInitial: true,
+        awaitWriteFinish: { stabilityThreshold: 300, pollInterval: 100 }
+      }
+    )
 
     const alCambiar = (): void => this.programarSincronizacion()
     this.observador

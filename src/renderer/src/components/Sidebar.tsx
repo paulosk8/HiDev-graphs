@@ -59,12 +59,15 @@ export function Sidebar(): JSX.Element {
   const sincronizarNube = async (): Promise<void> => {
     try {
       const r = await sincronizar()
+      const total = r.subidos + r.bajados + r.borradosNube
+      const partes = [
+        r.subidos ? `${r.subidos} subidos` : '',
+        r.bajados ? `${r.bajados} bajados` : '',
+        r.borradosNube ? `${r.borradosNube} borrados en la nube` : ''
+      ].filter(Boolean)
       notificar({
         tipo: 'exito',
-        mensaje:
-          r.subidos + r.bajados === 0
-            ? 'Todo está sincronizado con la nube.'
-            : `Sincronizado: ${r.subidos} subidos, ${r.bajados} bajados.`
+        mensaje: total === 0 ? 'Todo está sincronizado con la nube.' : `Sincronizado: ${partes.join(', ')}.`
       })
     } catch (error) {
       // Muestra la causa real (mensaje + detalle de Supabase) para poder diagnosticar.

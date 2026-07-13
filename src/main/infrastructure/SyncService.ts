@@ -4,10 +4,11 @@ import type { SupabaseDataService } from './SupabaseDataService'
 import type { VaultFileSystemService } from './VaultFileSystemService'
 import { planificarSincronizacion, type ItemRemoto, type TablaAgregado } from './sincronizacion'
 
-/** Resultado de una sincronización: cuántos agregados se subieron y bajaron. */
+/** Resultado de una sincronización: qué se subió, bajó y borró de la nube. */
 export interface ResultadoSync {
   subidos: number
   bajados: number
+  borradosNube: number
 }
 
 const TABLAS: readonly TablaAgregado[] = ['conceptos', 'asignaturas', 'tareas']
@@ -41,10 +42,10 @@ export class SyncService {
   async sincronizar(): Promise<ResultadoSync> {
     if (this.enCurso) {
       this.repetir = true
-      return { subidos: 0, bajados: 0 }
+      return { subidos: 0, bajados: 0, borradosNube: 0 }
     }
     this.enCurso = true
-    let resultado: ResultadoSync = { subidos: 0, bajados: 0 }
+    let resultado: ResultadoSync = { subidos: 0, bajados: 0, borradosNube: 0 }
     try {
       do {
         this.repetir = false
@@ -59,6 +60,10 @@ export class SyncService {
   private async ejecutar(): Promise<ResultadoSync> {
     let subidos = 0
     let bajados = 0
+    let borradosNube = 0
+
+    const base = this.vault.leerBaseSync()
+    const baseNueva: Record<TablaAgregado, string[]> = { conceptos: [], asignaturas: [], tareas: [] }
 
     for (const tabla of TABLAS) {
       const locales = this.vault.leerAgregadosLocales(tabla)
@@ -68,7 +73,7 @@ export class SyncService {
         actualizadoEnMs: r.actualizadoEnMs
       }))
 
-      const plan = planificarSincronizacion(locales, remotos)
+      const plan = planificarSincronizacion(locales, remotos, base[tabla])
       for (const item of plan.subir) {
         await this.datos.guardar(tabla, item.id, item.datos)
         subidos++
@@ -77,11 +82,19 @@ export class SyncService {
         this.vault.escribirAgregadoLocal(tabla, item.id, item.datos)
         bajados++
       }
+      for (const id of plan.borrarRemoto) {
+        await this.datos.eliminar(tabla, id)
+        borradosNube++
+      }
+      baseNueva[tabla] = plan.baseFinal
     }
+
+    // Guarda la nueva base (qué queda sincronizado) para detectar futuros borrados.
+    this.vault.guardarBaseSync(baseNueva)
 
     // Si bajaron datos de la nube, el índice local debe reflejarlos.
     if (bajados > 0) reindexarVault(this.vault, this.repositorio)
 
-    return { subidos, bajados }
+    return { subidos, bajados, borradosNube }
   }
 }
