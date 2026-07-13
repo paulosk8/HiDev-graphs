@@ -126,18 +126,37 @@ export function ListaConceptos(): JSX.Element {
                       <li key={c.id}>
                         <button
                           onClick={() => seleccionar(c.id)}
-                          className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition hover:bg-slate-50"
+                          className="flex w-full flex-col items-start gap-1.5 px-4 py-2.5 text-left transition hover:bg-slate-50"
                         >
-                          <span className="min-w-0 flex-1 truncate font-medium text-slate-800">
-                            {c.nombre}
-                          </span>
-                          <span className="shrink-0 text-xs text-slate-400">
-                            {c.totalRecursos === 0
-                              ? 'Sin material'
-                              : `${c.totalRecursos} ${c.totalRecursos === 1 ? 'material' : 'materiales'}`}
-                            {c.temas.length > 0 &&
-                              ` · ${c.temas.length} ${c.temas.length === 1 ? 'tema' : 'temas'}`}
-                          </span>
+                          <div className="flex w-full items-center gap-3">
+                            <span className="min-w-0 flex-1 truncate font-medium text-slate-800">
+                              {c.nombre}
+                            </span>
+                            <span className="shrink-0 text-xs text-slate-400">
+                              {c.totalRecursos === 0
+                                ? 'Sin material'
+                                : `${c.totalRecursos} ${c.totalRecursos === 1 ? 'material' : 'materiales'}`}
+                            </span>
+                          </div>
+                          {c.temas.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {c.temas.slice(0, 5).map((t) => (
+                                <span
+                                  key={t}
+                                  className="rounded-full bg-marca-50 px-2 py-0.5 text-[11px] text-marca-700"
+                                >
+                                  {t}
+                                </span>
+                              ))}
+                              {c.temas.length > 5 && (
+                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">
+                                  +{c.temas.length - 5}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-[11px] italic text-slate-400">Sin tema asignado</span>
+                          )}
                         </button>
                       </li>
                     ))}

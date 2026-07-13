@@ -31,7 +31,8 @@ interface UiState {
 let secuenciaAviso = 0
 
 export const useUiStore = create<UiState>((set) => ({
-  seccion: 'conceptos',
+  // Al arrancar (tras iniciar sesión) se muestra "Mis asignaturas".
+  seccion: 'asignaturas',
   conceptoSeleccionadoId: null,
   asignaturaSeleccionadaId: null,
   avisos: [],
