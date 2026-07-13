@@ -46,6 +46,16 @@ Historial de lo construido, con las decisiones no obvias. Complementa `SKILL.md`
 - **Restauración** (`RestaurarVault`, `jszip` vía `await import`): elige el `.zip` → descomprime esas carpetas sobre el vault (**combina**: reemplaza los del mismo nombre, conserva el resto), con guarda anti *zip-slip*, y reindexa. Canal `sistema:restaurar`, `RestauracionDTO`. Botón "Restaurar copia" (♻️) en el Sidebar con confirmación.
 - Portable entre SO (material por nombre relativo). Verificado por smoke de ida y vuelta (respaldar vault A → restaurar en vault B vacío: material byte-idéntico, índice rehecho).
 
+## Autenticación / nube (Fase A — en curso)
+
+Dirección SaaS aprobada por el usuario: **login con Google OBLIGATORIO** + backend en **Supabase**. Decisión de datos: **solo los archivos (material) son locales; el resto (conceptos, relaciones, asignaturas, temas, tareas) va a Postgres**. Sin Supabase Storage (para no gastar la capa gratuita). Reutilizable para la futura web.
+
+- **Fase A (hecha)** `feat/auth-login-supabase`: login como compuerta. `SupabaseAuthService` (main, `@supabase/supabase-js`): OAuth de escritorio → abre el navegador del sistema (`shell.openExternal`), captura la redirección en un servidor HTTP efímero en `127.0.0.1` (flujo **PKCE**, `exchangeCodeForSession`); sesión persistida cifrada con `safeStorage` en `userData/sesion.dat`. Config vía `MAIN_VITE_SUPABASE_URL`/`MAIN_VITE_SUPABASE_ANON_KEY` (`.env`, leído en `configSupabase.ts`). Canales `auth:iniciar|cerrar|sesion` (`registrarHandlersAuth`; `envolver` exportado). Renderer: `authStore` + `PantallaLogin` (compuerta en `App`) + chip de usuario con "Salir" en Sidebar. DTOs `SesionDTO`/`UsuarioDTO`. Smoke seam: `PEDAGOGRAPH_AUTH_FAKE=1` hace que `obtenerSesion` devuelva una sesión ficticia (verificado por smoke de render). **Falta probar el OAuth real** tras configurar Supabase+Google (manual, requiere las credenciales del usuario).
+- **Fase B (pendiente)**: esquema Postgres espejo del dominio + RLS por usuario.
+- **Fase C (pendiente)**: capa de datos online-first (al iniciar sesión, los datos vienen de la nube en vez del vault local). Es el gran refactor de persistencia.
+- **Fase D (pendiente)**: migrar el vault local existente → la cuenta del usuario.
+- Nota UX: login obligatorio + nube ⇒ la app necesita internet/cuenta para arrancar (rompe el "cero configuración"); añadir modo offline/caché más adelante.
+
 ## Decisiones de producto registradas
 
 - La IA **no** analiza automáticamente al agregar un concepto (razonamiento on-demand vía CLI/MCP; el dato es local). Al vincular se valida estructuralmente, no semánticamente.
