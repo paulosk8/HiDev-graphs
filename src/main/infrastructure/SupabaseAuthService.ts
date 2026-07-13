@@ -96,6 +96,25 @@ export class SupabaseAuthService {
     }
   }
 
+  /**
+   * Cliente Supabase con la sesión del usuario ya aplicada (para operar sobre
+   * sus datos respetando Row-Level Security). Lanza si no hay sesión activa.
+   */
+  async obtenerClienteAutenticado(): Promise<SupabaseClient> {
+    const cliente = this.obtenerCliente()
+    const { data } = await cliente.auth.getSession()
+    if (data.session) return cliente
+    // No hay sesión cargada en el cliente: intenta reanudar desde los tokens.
+    const sesion = await this.obtenerSesion()
+    if (!sesion) {
+      throw new ErrorDeDominio(
+        'Necesitas iniciar sesión para usar la nube.',
+        'Inicia sesión con Google y vuelve a intentarlo.'
+      )
+    }
+    return cliente
+  }
+
   async cerrarSesion(): Promise<void> {
     try {
       await this.obtenerCliente().auth.signOut()
