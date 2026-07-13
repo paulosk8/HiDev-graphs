@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as R
 import cytoscape from 'cytoscape'
 import fcose from 'cytoscape-fcose'
 import {
-  ETIQUETAS_RELACION,
   type FichaConceptoDTO,
   type GrafoDTO,
   type NodoGrafoDTO,
@@ -21,38 +20,89 @@ import { useLayoutStore } from '../../stores/layoutStore'
 
 cytoscape.use(fcose)
 
-const TIPOS_ARISTA: { tipo: TipoAristaGrafo; etiqueta: string; color: string; ayuda: string }[] = [
+type EstiloLinea = 'solid' | 'dashed' | 'dotted'
+interface TipoArista {
+  tipo: TipoAristaGrafo
+  etiqueta: string
+  color: string
+  estilo: EstiloLinea
+  /** true si la línea lleva flecha (relación con dirección/orden). */
+  flecha: boolean
+  ayuda: string
+}
+
+const TIPOS_ARISTA: TipoArista[] = [
+  {
+    tipo: 'usado_en',
+    etiqueta: 'Se usa en la asignatura',
+    color: '#94a3b8',
+    estilo: 'solid',
+    flecha: false,
+    ayuda: 'El concepto forma parte de esa asignatura.'
+  },
+  {
+    tipo: 'prerequisito_de',
+    etiqueta: 'Se aprende antes',
+    color: '#ef4444',
+    estilo: 'solid',
+    flecha: true,
+    ayuda: 'Conviene dominar un concepto antes que el otro (la flecha marca el orden).'
+  },
+  {
+    tipo: 'profundiza',
+    etiqueta: 'Profundiza en',
+    color: '#10b981',
+    estilo: 'solid',
+    flecha: true,
+    ayuda: 'Un concepto amplía o profundiza en el otro (la flecha marca hacia dónde).'
+  },
+  {
+    tipo: 'relacionado_con',
+    etiqueta: 'Relacionado',
+    color: '#64748b',
+    estilo: 'solid',
+    flecha: false,
+    ayuda: 'Conceptos vinculados, sin un orden ni jerarquía.'
+  },
   {
     tipo: 'coocurre',
     etiqueta: 'Se enseñan juntos',
     color: '#818cf8',
-    ayuda: 'Dos conceptos que aparecen en el mismo tema (co-ocurren).'
-  },
-  {
-    tipo: 'usado_en',
-    etiqueta: 'Usado en',
-    color: '#cbd5e1',
-    ayuda: 'Conecta un concepto con la asignatura donde se usa.'
-  },
-  {
-    tipo: 'prerequisito_de',
-    etiqueta: ETIQUETAS_RELACION.prerequisito_de,
-    color: '#ef4444',
-    ayuda: 'Un concepto que conviene dominar ANTES que el otro.'
-  },
-  {
-    tipo: 'relacionado_con',
-    etiqueta: ETIQUETAS_RELACION.relacionado_con,
-    color: '#64748b',
-    ayuda: 'Conceptos vinculados, sin un orden o jerarquía.'
-  },
-  {
-    tipo: 'profundiza',
-    etiqueta: ETIQUETAS_RELACION.profundiza,
-    color: '#10b981',
-    ayuda: 'Un concepto que amplía o profundiza en otro.'
+    estilo: 'dashed',
+    flecha: false,
+    ayuda: 'Aparecen en el mismo tema (relación sugerida por la app).'
   }
 ]
+
+const COLOR_TAREA = '#f59e0b'
+
+/** Muestra visual de una línea del grafo (color, estilo y flecha). */
+function MuestraLinea({
+  color,
+  estilo,
+  flecha
+}: {
+  color: string
+  estilo: EstiloLinea
+  flecha: boolean
+}): JSX.Element {
+  const dash = estilo === 'dashed' ? '5,3' : estilo === 'dotted' ? '1.5,3' : undefined
+  return (
+    <svg width="32" height="12" viewBox="0 0 32 12" aria-hidden className="shrink-0">
+      <line
+        x1="2"
+        y1="6"
+        x2={flecha ? 23 : 30}
+        y2="6"
+        stroke={color}
+        strokeWidth="2.2"
+        strokeDasharray={dash}
+        strokeLinecap="round"
+      />
+      {flecha && <path d="M23 1.5 L30 6 L23 10.5 Z" fill={color} />}
+    </svg>
+  )
+}
 const ETIQUETA_ARISTA: Record<string, string> = Object.fromEntries(TIPOS_ARISTA.map((t) => [t.tipo, t.etiqueta]))
 
 /** Paleta para colorear los conceptos relacionados con el seleccionado. */
@@ -103,7 +153,7 @@ const ESTILO: cytoscape.StylesheetStyle[] = [
       height: 16
     }
   },
-  { selector: 'edge', style: { 'curve-style': 'bezier', width: 1.5, 'line-color': '#cbd5e1' } },
+  { selector: 'edge', style: { 'curve-style': 'bezier', width: 1.5, 'line-color': '#94a3b8' } },
   { selector: 'edge[tipo="coocurre"]', style: { 'line-color': '#818cf8', 'line-style': 'dashed' } },
   { selector: 'edge[tipo="tarea_concepto"]', style: { 'line-color': '#f59e0b', 'line-style': 'dotted', width: 1 } },
   { selector: 'edge[tipo="prerequisito_de"]', style: { 'line-color': '#ef4444', 'target-arrow-shape': 'triangle', 'target-arrow-color': '#ef4444' } },
@@ -284,6 +334,7 @@ export function GrafoPage(): JSX.Element {
   const [grafo, setGrafo] = useState<GrafoDTO | null>(null)
   const [tipos, setTipos] = useState<Set<TipoAristaGrafo>>(() => new Set(TIPOS_ARISTA.map((t) => t.tipo)))
   const [mostrarTareas, setMostrarTareas] = useState(true)
+  const [leyendaColapsada, setLeyendaColapsada] = useState(false)
   const [asignaturasFiltro, setAsignaturasFiltro] = useState<Set<string>>(new Set())
   const [filtroAsigAbierto, setFiltroAsigAbierto] = useState(false)
   const [busquedaAsig, setBusquedaAsig] = useState('')
@@ -610,32 +661,6 @@ export function GrafoPage(): JSX.Element {
             )}
           </button>
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-1.5">
-          {TIPOS_ARISTA.map((t) => (
-            <button
-              key={t.tipo}
-              onClick={() => alternarTipo(t.tipo)}
-              title={`${t.ayuda} Clic para mostrar u ocultar.`}
-              className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition ${
-                tipos.has(t.tipo) ? 'border-slate-300 bg-white text-slate-700' : 'border-slate-200 bg-slate-50 text-slate-300'
-              }`}
-            >
-              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: t.color }} />
-              {t.etiqueta}
-            </button>
-          ))}
-          <button
-            onClick={() => setMostrarTareas((v) => !v)}
-            title="Muestra las tareas como nodos, unidas a los conceptos que cubren. Clic para mostrar u ocultar."
-            className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition ${
-              mostrarTareas ? 'border-slate-300 bg-white text-slate-700' : 'border-slate-200 bg-slate-50 text-slate-300'
-            }`}
-          >
-            <span className="h-2 w-2 rotate-45" style={{ backgroundColor: '#f59e0b' }} />
-            Tareas
-          </button>
-        </div>
-
         {asignaturasGrafo.length > 0 && asignaturasGrafo.length <= 6 && (
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             <span className="mr-1 text-xs font-medium text-slate-400">Asignatura:</span>
@@ -750,6 +775,60 @@ export function GrafoPage(): JSX.Element {
                   {tooltip.texto}
                 </div>
               )}
+
+              {/* Leyenda-filtro: qué significa cada línea; clic para mostrar/ocultar. */}
+              <div className="absolute bottom-3 right-3 z-20 w-64 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-md">
+                <button
+                  onClick={() => setLeyendaColapsada((v) => !v)}
+                  className="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+                >
+                  <span>Tipos de conexión</span>
+                  <span className="text-slate-400">{leyendaColapsada ? '▸' : '▾'}</span>
+                </button>
+                {!leyendaColapsada && (
+                  <ul className="border-t border-slate-100 p-1.5">
+                    {TIPOS_ARISTA.map((t) => (
+                      <li key={t.tipo}>
+                        <button
+                          onClick={() => alternarTipo(t.tipo)}
+                          title="Clic para mostrar u ocultar este tipo de línea"
+                          className={`flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left transition hover:bg-slate-50 ${
+                            tipos.has(t.tipo) ? '' : 'opacity-40'
+                          }`}
+                        >
+                          <span className="mt-0.5">
+                            <MuestraLinea color={t.color} estilo={t.estilo} flecha={t.flecha} />
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block text-xs font-medium text-slate-700">{t.etiqueta}</span>
+                            <span className="block text-[11px] leading-snug text-slate-400">{t.ayuda}</span>
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                    <li>
+                      <button
+                        onClick={() => setMostrarTareas((v) => !v)}
+                        title="Clic para mostrar u ocultar las tareas"
+                        className={`flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left transition hover:bg-slate-50 ${
+                          mostrarTareas ? '' : 'opacity-40'
+                        }`}
+                      >
+                        <span className="mt-0.5">
+                          <MuestraLinea color={COLOR_TAREA} estilo="dotted" flecha={false} />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-xs font-medium text-slate-700">Tareas</span>
+                          <span className="block text-[11px] leading-snug text-slate-400">
+                            Une una tarea con los conceptos que cubre.
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  </ul>
+                )}
+              </div>
+
               {/* Barra de combinación de tareas (aparece al seleccionar nodos-tarea). */}
               {mostrarTareas && tareasCombinar.length > 0 && (
                 <div className="absolute bottom-4 left-4 z-20 flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-md">
