@@ -65,6 +65,9 @@ export const CANALES = {
   authCerrar: 'auth:cerrar',
   authSesion: 'auth:sesion',
 
+  // Nube (sincronización)
+  nubeSincronizar: 'nube:sincronizar',
+
   // Terminal embebida
   terminalCrear: 'terminal:crear',
   terminalEscribir: 'terminal:escribir',

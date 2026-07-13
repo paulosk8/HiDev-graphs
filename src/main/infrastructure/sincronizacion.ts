@@ -13,6 +13,9 @@
  * usuario con varios equipos). No propaga borrados en esta primera versión.
  */
 
+/** Tablas de agregados que se sincronizan (una por tipo de dato). */
+export type TablaAgregado = 'conceptos' | 'asignaturas' | 'tareas'
+
 export interface ItemLocal {
   id: string
   datos: Record<string, unknown>

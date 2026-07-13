@@ -53,6 +53,27 @@ export function Sidebar(): JSX.Element {
   const alternar = useLayoutStore((s) => s.alternarSidebar)
   const usuario = useAuthStore((s) => s.sesion?.usuario)
   const cerrarSesion = useAuthStore((s) => s.cerrar)
+  const sincronizar = useAuthStore((s) => s.sincronizar)
+  const sincronizando = useAuthStore((s) => s.sincronizando)
+
+  const sincronizarNube = async (): Promise<void> => {
+    const r = await sincronizar()
+    if (r) {
+      notificar({
+        tipo: 'exito',
+        mensaje:
+          r.subidos + r.bajados === 0
+            ? 'Todo está sincronizado con la nube.'
+            : `Sincronizado: ${r.subidos} subidos, ${r.bajados} bajados.`
+      })
+    } else {
+      notificar({
+        tipo: 'error',
+        mensaje: 'No se pudo sincronizar con la nube.',
+        sugerencia: 'Revisa tu conexión a internet e inténtalo de nuevo.'
+      })
+    }
+  }
   const tema = useLayoutStore((s) => s.tema)
   const alternarTema = useLayoutStore((s) => s.alternarTema)
   const [actualizando, setActualizando] = useState(false)
@@ -160,6 +181,19 @@ export function Sidebar(): JSX.Element {
         >
           <span aria-hidden>{tema === 'oscuro' ? '☀️' : '🌙'}</span>
           {!colapsada && (tema === 'oscuro' ? 'Modo claro' : 'Modo oscuro')}
+        </button>
+        <button
+          onClick={() => void sincronizarNube()}
+          disabled={sincronizando}
+          title="Sube y baja tus cambios entre este equipo y la nube"
+          className={`flex w-full items-center rounded-md text-sm text-slate-500 transition hover:bg-slate-100 disabled:opacity-50 ${
+            colapsada ? 'justify-center px-0 py-2.5' : 'gap-2 px-3 py-2'
+          }`}
+        >
+          <span aria-hidden className={sincronizando ? 'animate-spin' : ''}>
+            ☁
+          </span>
+          {!colapsada && (sincronizando ? 'Sincronizando…' : 'Sincronizar')}
         </button>
         <button
           onClick={() => void actualizar()}

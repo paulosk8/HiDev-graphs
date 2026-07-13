@@ -305,6 +305,12 @@ export interface SesionDTO {
   usuario: UsuarioDTO
 }
 
+/** Resultado de sincronizar con la nube: cuántos agregados subieron y bajaron. */
+export interface SincronizacionDTO {
+  subidos: number
+  bajados: number
+}
+
 /** Datos para configurar el servidor MCP (asistente IA) en un CLI externo. */
 export type ClienteMcpId = 'gemini' | 'claude'
 

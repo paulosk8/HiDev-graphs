@@ -23,6 +23,7 @@ import type {
   ResumenConceptoDTO,
   ResumenTareaDTO,
   SesionDTO,
+  SincronizacionDTO,
   TareaDTO,
   UsoDeConceptoDTO
 } from './dtos'
@@ -112,6 +113,8 @@ export interface PedagoGraphApi {
   cerrarSesion(): Promise<Resultado<null>>
   /** Sesión activa (o null si nadie ha iniciado sesión). */
   sesionActual(): Promise<Resultado<SesionDTO | null>>
+  /** Sincroniza el vault local con la nube (dos vías). */
+  sincronizarNube(): Promise<Resultado<SincronizacionDTO>>
 
   // --- Sistema ---
   reindexar(): Promise<Resultado<ResultadoReindexadoDTO>>

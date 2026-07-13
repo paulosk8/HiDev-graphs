@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, rmSync, copyFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, rmSync, copyFileSync, statSync } from 'node:fs'
 import { basename, extname, join, resolve, sep } from 'node:path'
 import { load as leerYaml, dump as escribirYaml } from 'js-yaml'
 
@@ -10,6 +10,7 @@ import { crearSubtema } from '../domain/Subtema'
 import { crearTarea, type Tarea } from '../domain/Tarea'
 import { crearTema, type Tema } from '../domain/Tema'
 import { crearUnidad, type Unidad } from '../domain/Unidad'
+import type { ItemLocal, TablaAgregado } from './sincronizacion'
 import {
   esTipoRelacion,
   formatoDesdeNombreArchivo,
@@ -347,6 +348,65 @@ export class VaultFileSystemService {
     const abs = resolve(this.carpetaTarea(tareaId), archivo)
     const base = resolve(this.dirTareas)
     return abs === base || abs.startsWith(base + sep) ? abs : null
+  }
+
+  // ---------------------------------------------------------------------------
+  // Sincronización con la nube: leer/escribir agregados como JSON autocontenido
+  // (misma forma que el `datos jsonb` de Postgres). Las tareas pliegan sus
+  // instrucciones (que viven en archivo aparte) dentro del JSON.
+  // ---------------------------------------------------------------------------
+
+  /** Lee todos los agregados locales de una tabla, con su marca de tiempo. */
+  leerAgregadosLocales(tabla: TablaAgregado): ItemLocal[] {
+    if (tabla === 'conceptos') {
+      return this.listarIdsConceptos().map((id) => this.agregadoConMtime(id, this.rutaConcepto(id)))
+    }
+    if (tabla === 'asignaturas') {
+      return this.listarIdsAsignaturas().map((id) =>
+        this.agregadoConMtime(id, this.rutaAsignatura(id))
+      )
+    }
+    return this.listarIdsTareas().map((id) => {
+      const ruta = this.rutaTarea(id)
+      const plano = leerYaml(readFileSync(ruta, 'utf8')) as Record<string, unknown>
+      const formato = plano.formato === 'html' ? 'html' : 'markdown'
+      const rutaInstr = this.rutaInstrucciones(id, formato)
+      const rutaOtro = this.rutaInstrucciones(id, formato === 'html' ? 'markdown' : 'html')
+      const rutaLeer = existsSync(rutaInstr) ? rutaInstr : existsSync(rutaOtro) ? rutaOtro : null
+      const instrucciones = rutaLeer ? readFileSync(rutaLeer, 'utf8') : ''
+      return { id, datos: { ...plano, instrucciones }, mtimeMs: statSync(ruta).mtimeMs }
+    })
+  }
+
+  /** Escribe un agregado (JSON autocontenido, venido de la nube) en el vault. */
+  escribirAgregadoLocal(tabla: TablaAgregado, id: string, datos: Record<string, unknown>): void {
+    if (tabla === 'conceptos') {
+      mkdirSync(this.carpetaConcepto(id), { recursive: true })
+      writeFileSync(this.rutaConcepto(id), escribirYaml(datos, { lineWidth: 100 }), 'utf8')
+      return
+    }
+    if (tabla === 'asignaturas') {
+      mkdirSync(this.carpetaAsignatura(id), { recursive: true })
+      writeFileSync(this.rutaAsignatura(id), escribirYaml(datos, { lineWidth: 100 }), 'utf8')
+      return
+    }
+    // Tarea: separar las instrucciones de vuelta a su propio archivo.
+    mkdirSync(this.carpetaTarea(id), { recursive: true })
+    const { instrucciones, ...plano } = datos as { instrucciones?: unknown } & Record<string, unknown>
+    const formato = plano.formato === 'html' ? 'html' : 'markdown'
+    writeFileSync(this.rutaTarea(id), escribirYaml(plano, { lineWidth: 100 }), 'utf8')
+    writeFileSync(
+      this.rutaInstrucciones(id, formato),
+      typeof instrucciones === 'string' ? instrucciones : '',
+      'utf8'
+    )
+    const otro = this.rutaInstrucciones(id, formato === 'html' ? 'markdown' : 'html')
+    if (existsSync(otro)) rmSync(otro, { force: true })
+  }
+
+  private agregadoConMtime(id: string, ruta: string): ItemLocal {
+    const datos = leerYaml(readFileSync(ruta, 'utf8')) as Record<string, unknown>
+    return { id, datos, mtimeMs: statSync(ruta).mtimeMs }
   }
 
   // ---------------------------------------------------------------------------

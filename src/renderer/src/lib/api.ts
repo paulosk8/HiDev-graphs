@@ -101,5 +101,6 @@ export const api = {
   iniciarSesion: () => desenvolver(window.api.iniciarSesion()),
   cerrarSesion: () => desenvolver(window.api.cerrarSesion()),
   sesionActual: () => desenvolver(window.api.sesionActual()),
+  sincronizarNube: () => desenvolver(window.api.sincronizarNube()),
   onVaultCambiado: (callback: () => void): (() => void) => window.api.onVaultCambiado(callback)
 }

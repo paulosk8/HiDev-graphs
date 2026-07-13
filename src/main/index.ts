@@ -3,8 +3,11 @@ import { join } from 'path'
 import { inicializarServicios, type Servicios } from './servicios'
 import { registrarHandlersIpc } from './ipc/registrarHandlers'
 import { registrarHandlersAuth } from './ipc/registrarHandlersAuth'
+import { registrarHandlersNube } from './ipc/registrarHandlersNube'
 import { registrarHandlersTerminal, cerrarTerminal } from './ipc/terminal'
 import { SupabaseAuthService } from './infrastructure/SupabaseAuthService'
+import { SupabaseDataService } from './infrastructure/SupabaseDataService'
+import { SyncService } from './infrastructure/SyncService'
 import { IndexSyncService } from './infrastructure/IndexSyncService'
 import {
   habilitarProtocoloRecurso,
@@ -64,7 +67,10 @@ app.whenReady().then(() => {
   // Inicializa el núcleo (vault + índice) y registra la API IPC antes de la ventana.
   servicios = inicializarServicios()
   registrarHandlersIpc(servicios)
-  registrarHandlersAuth(new SupabaseAuthService())
+  const auth = new SupabaseAuthService()
+  registrarHandlersAuth(auth)
+  const datosNube = new SupabaseDataService(auth)
+  registrarHandlersNube(new SyncService(servicios.vault, servicios.repositorio, datosNube))
   registrarHandlersTerminal(servicios.vault.raiz)
   habilitarProtocoloRecurso(servicios.vault)
 

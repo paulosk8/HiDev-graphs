@@ -1,13 +1,12 @@
 import type { SupabaseAuthService } from './SupabaseAuthService'
+import type { TablaAgregado } from './sincronizacion'
 import { ErrorDeDominio } from '../domain/errores'
 
-/** Tablas de agregados en la nube (una por tipo de dato). */
-export type TablaAgregado = 'conceptos' | 'asignaturas' | 'tareas'
-
-/** Un agregado tal cual viaja a/desde la nube: su id + el documento completo. */
+/** Un agregado tal cual viaja a/desde la nube: su id, documento y marca de tiempo. */
 export interface AgregadoNube {
   id: string
   datos: Record<string, unknown>
+  actualizadoEnMs: number
 }
 
 /**
@@ -26,14 +25,18 @@ export class SupabaseDataService {
   /** Devuelve todos los agregados del usuario en una tabla. */
   async listar(tabla: TablaAgregado): Promise<AgregadoNube[]> {
     const cliente = await this.auth.obtenerClienteAutenticado()
-    const { data, error } = await cliente.from(tabla).select('id, datos')
+    const { data, error } = await cliente.from(tabla).select('id, datos, actualizado_en')
     if (error) {
       throw new ErrorDeDominio('No se pudieron leer tus datos de la nube.', error.message)
     }
-    return (data ?? []).map((fila) => ({
-      id: String((fila as { id: unknown }).id),
-      datos: ((fila as { datos: unknown }).datos ?? {}) as Record<string, unknown>
-    }))
+    return (data ?? []).map((fila) => {
+      const f = fila as { id: unknown; datos: unknown; actualizado_en: unknown }
+      return {
+        id: String(f.id),
+        datos: (f.datos ?? {}) as Record<string, unknown>,
+        actualizadoEnMs: Date.parse(String(f.actualizado_en)) || 0
+      }
+    })
   }
 
   /** Crea o actualiza un agregado (por su id). `user_id` lo pone la base de datos. */
