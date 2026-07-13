@@ -187,26 +187,6 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
       </section>
       )}
 
-      {/* Componentes */}
-      {asignatura.componentes.length > 0 && (
-        <section className="mb-8">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">
-            Componentes de aprendizaje
-          </h2>
-          <ul className="flex flex-wrap gap-2">
-            {asignatura.componentes.map((c) => (
-              <li
-                key={c.clave}
-                className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm"
-                title={c.nombre}
-              >
-                <span className="font-semibold text-slate-700">{c.clave}</span>
-                <span className="text-slate-500"> · {c.nombre}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
 
       {/* Contenido / Planificación semanal */}
       <section>
@@ -332,6 +312,30 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
             {esAprendizaje ? '+ Nueva práctica' : '+ Nueva tarea'}
           </Boton>
         </div>
+
+        {/* Componentes de aprendizaje: aquí, junto a las tareas que clasifican. */}
+        {asignatura.componentes.length > 0 && (
+          <div className="mb-4 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5">
+            <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-slate-400">
+              Componentes de aprendizaje
+            </p>
+            <ul className="flex flex-wrap gap-1.5">
+              {asignatura.componentes.map((c) => (
+                <li
+                  key={c.clave}
+                  className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-xs"
+                  title={c.nombre}
+                >
+                  <span className="font-semibold text-slate-700">{c.clave}</span>
+                  <span className="text-slate-500"> · {c.nombre}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-1.5 text-[11px] text-slate-400">
+              Las tareas de abajo se agrupan por estos componentes.
+            </p>
+          </div>
+        )}
 
         {tareas.length === 0 ? (
           <p className="rounded-xl border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-400">
