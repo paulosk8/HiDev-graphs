@@ -2,8 +2,9 @@ import { useMemo, useState } from 'react'
 import type { CalidadRepaso, ResumenConceptoDTO } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
 import { EstadoVacio } from '../../components/EstadoVacio'
+import { useAsignaturasStore } from '../../stores/asignaturasStore'
 import { useConceptosStore } from '../../stores/conceptosStore'
-import { colorDominio, etiquetaDominio, pendientesHoy } from '../../lib/repaso'
+import { colorDominio, conceptosDeAprendizaje, etiquetaDominio, pendientesHoy } from '../../lib/repaso'
 
 type Fase = 'inicio' | 'sesion' | 'fin'
 
@@ -15,8 +16,15 @@ const VALORACIONES: { calidad: CalidadRepaso; etiqueta: string; ayuda: string; c
 ]
 
 export function ModoEstudioPage(): JSX.Element {
-  const lista = useConceptosStore((s) => s.lista)
+  const listaTodos = useConceptosStore((s) => s.lista)
+  const asignaturas = useAsignaturasStore((s) => s.lista)
   const repasar = useConceptosStore((s) => s.repasar)
+
+  // El repaso es de la capa de aprendizaje: solo sus conceptos.
+  const lista = useMemo(
+    () => conceptosDeAprendizaje(listaTodos, asignaturas),
+    [listaTodos, asignaturas]
+  )
 
   const [fase, setFase] = useState<Fase>('inicio')
   const [cola, setCola] = useState<ResumenConceptoDTO[]>([])
@@ -72,8 +80,8 @@ export function ModoEstudioPage(): JSX.Element {
         ) : lista.length === 0 ? (
           <EstadoVacio
             icono="🎯"
-            titulo="Aún no tienes conceptos"
-            descripcion="Crea conceptos y agrégales material; luego podrás repasarlos aquí para no olvidarlos."
+            titulo="Aún no hay nada que repasar"
+            descripcion="Crea un espacio de aprendizaje (en «Aprendizaje › Espacios»), vincula conceptos a sus temas y aquí podrás repasarlos para no olvidarlos."
           />
         ) : (
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-8 text-center">
@@ -219,8 +227,8 @@ function Cabecera(): JSX.Element {
     <header className="mb-6">
       <h1 className="text-2xl font-semibold text-slate-900">Repaso</h1>
       <p className="mt-1 text-sm text-slate-500">
-        Refuerza tus conceptos con repaso espaciado: recuerda, valora y el sistema decide cuándo
-        volver a mostrártelos.
+        Refuerza los conceptos de tus espacios de aprendizaje con repaso espaciado: recuerda,
+        valora y el sistema decide cuándo volver a mostrártelos.
       </p>
     </header>
   )

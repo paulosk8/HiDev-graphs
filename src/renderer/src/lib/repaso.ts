@@ -1,4 +1,4 @@
-import type { ResumenConceptoDTO } from '@shared/dtos'
+import type { ResumenAsignaturaDTO, ResumenConceptoDTO } from '@shared/dtos'
 
 /** Estado mínimo de repaso que necesitan los cálculos de esta utilidad. */
 interface ConDominio {
@@ -9,6 +9,22 @@ interface ConDominio {
 /** Fecha de hoy en ISO de día (YYYY-MM-DD), comparable como texto. */
 export function hoyISO(): string {
   return new Date().toISOString().slice(0, 10)
+}
+
+/**
+ * Conceptos que pertenecen a la capa de Aprendizaje: los usados en algún espacio
+ * de aprendizaje. El repaso vive en esa capa (aprender ≠ enseñar), aunque el pool
+ * de conceptos sea único.
+ */
+export function conceptosDeAprendizaje(
+  conceptos: ResumenConceptoDTO[],
+  asignaturas: ResumenAsignaturaDTO[]
+): ResumenConceptoDTO[] {
+  const nombres = new Set(
+    asignaturas.filter((a) => a.tipo === 'aprendizaje').map((a) => a.nombre)
+  )
+  if (nombres.size === 0) return []
+  return conceptos.filter((c) => c.asignaturas.some((a) => nombres.has(a)))
 }
 
 /** ¿Toca repasar hoy? Nunca repasado o con la fecha ya vencida. */

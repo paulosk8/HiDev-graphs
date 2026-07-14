@@ -3,7 +3,7 @@ import { useAsignaturasStore } from '../stores/asignaturasStore'
 import { useConceptosStore } from '../stores/conceptosStore'
 import { useLayoutStore } from '../stores/layoutStore'
 import { useUiStore, type Contexto, type Seccion } from '../stores/uiStore'
-import { pendientesHoy } from '../lib/repaso'
+import { conceptosDeAprendizaje, pendientesHoy } from '../lib/repaso'
 
 interface ItemProps {
   seccion: Seccion
@@ -76,7 +76,8 @@ export function Sidebar(): JSX.Element {
   const totalDocencia = asignaturas.filter((a) => a.tipo !== 'aprendizaje').length
   const totalAprendizaje = asignaturas.filter((a) => a.tipo === 'aprendizaje').length
   const conceptos = useConceptosStore((s) => s.lista)
-  const pendientesRepaso = pendientesHoy(conceptos).length
+  // El repaso pertenece a la capa de Aprendizaje: solo cuenta sus conceptos.
+  const pendientesRepaso = pendientesHoy(conceptosDeAprendizaje(conceptos, asignaturas)).length
   const colapsada = useLayoutStore((s) => s.sidebarColapsada)
   const alternar = useLayoutStore((s) => s.alternarSidebar)
   const docenciaColapsada = useLayoutStore((s) => s.docenciaColapsada)
@@ -158,20 +159,18 @@ export function Sidebar(): JSX.Element {
             <Item seccion="asignaturas" contexto="aprendizaje" etiqueta="Espacios" cuenta={colapsada ? undefined : totalAprendizaje} icono="📘" colapsada={colapsada} sangrado />
             <Item seccion="conceptos" contexto="aprendizaje" etiqueta="Conceptos" icono="💡" colapsada={colapsada} sangrado />
             <Item seccion="grafo" contexto="aprendizaje" etiqueta="Mapa" icono="🕸️" colapsada={colapsada} sangrado />
+            {/* El repaso es una actividad de aprendizaje: vive en esta capa. */}
+            <Item
+              seccion="estudio"
+              contexto="aprendizaje"
+              etiqueta="Repaso"
+              icono="🎯"
+              colapsada={colapsada}
+              cuenta={colapsada || pendientesRepaso === 0 ? undefined : pendientesRepaso}
+              sangrado
+            />
           </>
         )}
-
-        {/* Repaso: transversal (repasas conceptos de docencia y de aprendizaje). */}
-        <div className="pt-2">
-          {colapsada && <div className="mx-auto mb-1.5 h-px w-6 bg-slate-200" />}
-          <Item
-            seccion="estudio"
-            etiqueta="Repaso"
-            icono="🎯"
-            colapsada={colapsada}
-            cuenta={colapsada || pendientesRepaso === 0 ? undefined : pendientesRepaso}
-          />
-        </div>
       </nav>
 
       <div className="mt-auto w-full space-y-2 border-t border-slate-100 pt-3">
