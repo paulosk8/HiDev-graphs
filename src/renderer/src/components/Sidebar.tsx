@@ -75,8 +75,6 @@ export function Sidebar(): JSX.Element {
   const totalAprendizaje = asignaturas.filter((a) => a.tipo === 'aprendizaje').length
   const colapsada = useLayoutStore((s) => s.sidebarColapsada)
   const alternar = useLayoutStore((s) => s.alternarSidebar)
-  const tema = useLayoutStore((s) => s.tema)
-  const alternarTema = useLayoutStore((s) => s.alternarTema)
   const docenciaColapsada = useLayoutStore((s) => s.docenciaColapsada)
   const aprendizajeColapsada = useLayoutStore((s) => s.aprendizajeColapsada)
   const alternarGrupo = useLayoutStore((s) => s.alternarGrupo)
@@ -161,19 +159,7 @@ export function Sidebar(): JSX.Element {
       </nav>
 
       <div className="mt-auto w-full space-y-2 border-t border-slate-100 pt-3">
-        {/* Acceso rápido al tema (el control completo vive en Configuración › Apariencia). */}
-        <button
-          onClick={alternarTema}
-          title={tema === 'oscuro' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-          className={`flex w-full items-center rounded-md text-sm text-slate-500 transition hover:bg-slate-100 ${
-            colapsada ? 'justify-center px-0 py-2.5' : 'gap-2 px-3 py-2'
-          }`}
-        >
-          <span aria-hidden>{tema === 'oscuro' ? '☀️' : '🌙'}</span>
-          {!colapsada && (tema === 'oscuro' ? 'Modo claro' : 'Modo oscuro')}
-        </button>
-
-        {/* Configuración: agrupa Apariencia, Asistente IA, Datos y copias, Cuenta. */}
+        {/* Configuración: agrupa Apariencia (modo oscuro), Asistente IA, Datos y copias, Cuenta. */}
         <Item seccion="configuracion" etiqueta="Configuración" icono="⚙️" colapsada={colapsada} />
 
         {usuario && (

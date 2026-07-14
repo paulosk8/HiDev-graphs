@@ -9,13 +9,12 @@ import { useLayoutStore } from '../../stores/layoutStore'
 import { useUiStore } from '../../stores/uiStore'
 import { AsistentePage } from '../asistente/AsistentePage'
 
-type SeccionConfig = 'apariencia' | 'asistente' | 'datos' | 'cuenta'
+type SeccionConfig = 'apariencia' | 'asistente' | 'datos'
 
 const MENU: { clave: SeccionConfig; etiqueta: string; icono: string }[] = [
   { clave: 'apariencia', etiqueta: 'Apariencia', icono: '🎨' },
   { clave: 'asistente', etiqueta: 'Asistente IA', icono: '🤖' },
-  { clave: 'datos', etiqueta: 'Datos y copias', icono: '☁️' },
-  { clave: 'cuenta', etiqueta: 'Cuenta', icono: '👤' }
+  { clave: 'datos', etiqueta: 'Datos y copias', icono: '☁️' }
 ]
 
 export function ConfiguracionPage(): JSX.Element {
@@ -54,7 +53,6 @@ export function ConfiguracionPage(): JSX.Element {
         {seccion === 'apariencia' && <Apariencia />}
         {seccion === 'asistente' && <AsistentePage />}
         {seccion === 'datos' && <DatosYCopias />}
-        {seccion === 'cuenta' && <Cuenta />}
       </div>
     </div>
   )
@@ -295,34 +293,3 @@ function Fila({
   )
 }
 
-// --- Cuenta ---
-
-function Cuenta(): JSX.Element {
-  const usuario = useAuthStore((s) => s.sesion?.usuario)
-  const cerrarSesion = useAuthStore((s) => s.cerrar)
-
-  return (
-    <Seccion titulo="Cuenta" descripcion="Tu sesión en PedagoGraph.">
-      {usuario ? (
-        <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-4">
-          {usuario.foto ? (
-            <img src={usuario.foto} alt="" referrerPolicy="no-referrer" className="h-12 w-12 shrink-0 rounded-full" />
-          ) : (
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-marca-100 text-lg font-semibold text-marca-700">
-              {usuario.nombre.charAt(0).toUpperCase()}
-            </span>
-          )}
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-slate-800">{usuario.nombre}</p>
-            <p className="truncate text-xs text-slate-500">{usuario.email}</p>
-          </div>
-          <Boton variante="secundario" onClick={() => void cerrarSesion()}>
-            Cerrar sesión
-          </Boton>
-        </div>
-      ) : (
-        <p className="text-sm text-slate-400">No hay ninguna sesión iniciada.</p>
-      )}
-    </Seccion>
-  )
-}
