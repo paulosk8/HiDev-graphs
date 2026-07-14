@@ -30,6 +30,8 @@ export function ListaConceptos({ contexto }: Props): JSX.Element {
   const [creando, setCreando] = useState(false)
   const [busqueda, setBusqueda] = useState('')
   const [colapsados, setColapsados] = useState<Set<string>>(new Set())
+  // Conceptos cuyos temas están desplegados (colapsados por defecto para no saturar).
+  const [temasAbiertos, setTemasAbiertos] = useState<Set<string>>(new Set())
 
   const esAprendizaje = contexto === 'aprendizaje'
 
@@ -90,6 +92,13 @@ export function ListaConceptos({ contexto }: Props): JSX.Element {
     setColapsados((prev) => {
       const s = new Set(prev)
       s.has(nombre) ? s.delete(nombre) : s.add(nombre)
+      return s
+    })
+
+  const alternarTemas = (id: string): void =>
+    setTemasAbiertos((prev) => {
+      const s = new Set(prev)
+      s.has(id) ? s.delete(id) : s.add(id)
       return s
     })
 
@@ -159,25 +168,42 @@ export function ListaConceptos({ contexto }: Props): JSX.Element {
                 </button>
                 {!cerrado && (
                   <ul className="divide-y divide-slate-100 border-t border-slate-100">
-                    {conceptos.map((c) => (
-                      <li key={c.id}>
-                        <button
-                          onClick={() => seleccionar(c.id)}
-                          className="flex w-full flex-col items-start gap-1.5 px-4 py-2.5 text-left transition hover:bg-slate-50"
-                        >
-                          <div className="flex w-full items-center gap-3">
-                            <span className="min-w-0 flex-1 truncate font-medium text-slate-800">
+                    {conceptos.map((c) => {
+                      const temasVisibles = temasAbiertos.has(c.id)
+                      return (
+                        <li key={c.id}>
+                          {/* Fila compacta: nombre (abre la ficha) + estadísticas + desplegar temas */}
+                          <div className="flex items-center gap-3 px-4 py-2.5 transition hover:bg-slate-50">
+                            <button
+                              onClick={() => seleccionar(c.id)}
+                              className="min-w-0 flex-1 truncate text-left font-medium text-slate-800 hover:text-marca-700"
+                            >
                               {c.nombre}
-                            </span>
+                            </button>
                             <span className="shrink-0 text-xs text-slate-400">
+                              {c.temas.length === 0
+                                ? 'Sin temas'
+                                : `${c.temas.length} ${c.temas.length === 1 ? 'tema' : 'temas'}`}
+                              {' · '}
                               {c.totalRecursos === 0
-                                ? 'Sin material'
+                                ? 'sin material'
                                 : `${c.totalRecursos} ${c.totalRecursos === 1 ? 'material' : 'materiales'}`}
                             </span>
+                            {c.temas.length > 0 && (
+                              <button
+                                onClick={() => alternarTemas(c.id)}
+                                title={temasVisibles ? 'Ocultar temas' : 'Ver temas'}
+                                aria-label={temasVisibles ? 'Ocultar temas' : 'Ver temas'}
+                                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-xs text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                              >
+                                {temasVisibles ? '▾' : '▸'}
+                              </button>
+                            )}
                           </div>
-                          {c.temas.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
-                              {c.temas.slice(0, 5).map((t) => (
+                          {/* Temas del concepto: solo si se despliegan */}
+                          {temasVisibles && c.temas.length > 0 && (
+                            <div className="flex flex-wrap gap-1 px-4 pb-2.5">
+                              {c.temas.map((t) => (
                                 <span
                                   key={t}
                                   className="rounded-full bg-marca-50 px-2 py-0.5 text-[11px] text-marca-700"
@@ -185,18 +211,11 @@ export function ListaConceptos({ contexto }: Props): JSX.Element {
                                   {t}
                                 </span>
                               ))}
-                              {c.temas.length > 5 && (
-                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">
-                                  +{c.temas.length - 5}
-                                </span>
-                              )}
                             </div>
-                          ) : (
-                            <span className="text-[11px] italic text-slate-400">Sin tema asignado</span>
                           )}
-                        </button>
-                      </li>
-                    ))}
+                        </li>
+                      )
+                    })}
                   </ul>
                 )}
               </section>
