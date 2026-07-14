@@ -9,6 +9,12 @@ Historial de lo construido, con las decisiones no obvias. Complementa `SKILL.md`
 - **Fase 2**: completa. Mapa de conceptos (Cytoscape + fcose, filtros por asignatura/relación) y planificación semanal con semáforo de cobertura de material.
 - **Fase 3**: pendiente (generar tareas por componente exportables a Moodle). El CRUD manual de tareas ya existe; faltaría la exportación GIFT/Moodle.
 
+## Navegación por contexto (Docencia / Aprendizaje)
+
+- El sidebar se organiza en **dos grupos**: **Docencia** y **Aprendizaje**, cada uno con sus sub-ítems **Asignaturas/Espacios**, **Conceptos** y **Mapa**. El **Asistente IA** es transversal. Estado en `uiStore`: `contexto: 'docencia' | 'aprendizaje'` (default docencia); `irASeccion(seccion, contexto?)`.
+- Los **conceptos siguen siendo un único pool compartido**: el contexto solo **filtra la vista**. `ListaConceptos` muestra los conceptos usados en asignaturas de ese contexto **más los aún sin usar** (disponibles en ambos); crear un concepto lo deja visible en los dos. El **mapa** (`GrafoPage`) se acota a las asignaturas del contexto activo (`elementosVisibles` recibe el conjunto permitido = asignaturas del contexto ∩ filtro por asignatura). `ListaAsignaturas` recibe `contexto` y muestra solo ese tipo.
+- **Editar asignatura**: botón "Editar" en la ficha reabre el `AsistenteAsignatura` en **modo edición** (prop `asignaturaExistente`). Caso de uso `EditarAsignatura` (canal `asignatura:editar`): conserva los **ids de unidades y temas** existentes (para no romper vínculos tema↔concepto, tareas ni planificación); los temas borrados se limpian de la planificación y los períodos quitados descartan su plan; no cambia el `tipo` ni los subtemas. Verificado por smoke (preservación de ids/vínculos + depuración de planificación) y smoke de GUI del menú por contexto.
+
 ## Modelo de dominio (dos capas + puente)
 
 - **Conocimiento**: `Concepto` (relaciones tipadas prerequisito_de/relacionado_con/profundiza; posee `Recurso`s = material). El material pertenece al **concepto**, nunca a la asignatura.
