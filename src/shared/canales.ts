@@ -24,6 +24,7 @@ export const CANALES = {
   planificacionGuardar: 'planificacion:guardar',
   materialDeConceptos: 'material:de-conceptos',
   asignaturaCrear: 'asignatura:crear',
+  asignaturaEditar: 'asignatura:editar',
   asignaturaEliminar: 'asignatura:eliminar',
   asignaturaAgregarPeriodo: 'asignatura:agregar-periodo',
   asignaturaQuitarPeriodo: 'asignatura:quitar-periodo',

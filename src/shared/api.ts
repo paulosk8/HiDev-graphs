@@ -7,6 +7,7 @@ import type {
   TipoRelacion,
   CruceDTO,
   DatosAsignaturaDTO,
+  DatosAsignaturaEdicionDTO,
   DatosConceptoDTO,
   DatosTareaDTO,
   CombinarTareasDTO,
@@ -70,6 +71,11 @@ export interface PedagoGraphApi {
   ): Promise<Resultado<AsignaturaDTO>>
   obtenerMaterialDeConceptos(conceptoIds: string[]): Promise<Resultado<MaterialConceptoDTO[]>>
   crearAsignatura(datos: DatosAsignaturaDTO): Promise<Resultado<ResumenAsignaturaDTO>>
+  /** Edita nombre, períodos, componentes y estructura (conserva ids de temas). */
+  editarAsignatura(
+    id: string,
+    datos: DatosAsignaturaEdicionDTO
+  ): Promise<Resultado<AsignaturaDTO>>
   eliminarAsignatura(id: string): Promise<Resultado<void>>
   agregarPeriodoAsignatura(id: string, periodo: string): Promise<Resultado<AsignaturaDTO>>
   quitarPeriodoAsignatura(id: string, periodo: string): Promise<Resultado<AsignaturaDTO>>

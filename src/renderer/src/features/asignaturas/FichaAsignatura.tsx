@@ -10,6 +10,7 @@ import { BuscadorConceptos } from '../vinculos/BuscadorConceptos'
 import { FormularioTarea } from '../tareas/FormularioTarea'
 import { FichaTarea } from '../tareas/FichaTarea'
 import { PlanificacionSemanal } from './PlanificacionSemanal'
+import { AsistenteAsignatura } from './AsistenteAsignatura'
 
 interface Props {
   asignaturaId: string
@@ -19,6 +20,7 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
   const [asignatura, setAsignatura] = useState<AsignaturaDTO | null>(null)
   const [cargando, setCargando] = useState(true)
   const [confirmando, setConfirmando] = useState(false)
+  const [editando, setEditando] = useState(false)
   const [temaBuscador, setTemaBuscador] = useState<string | null>(null)
   const [periodoNuevo, setPeriodoNuevo] = useState('')
   const [tareas, setTareas] = useState<ResumenTareaDTO[]>([])
@@ -140,9 +142,14 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
             </span>
           )}
         </h1>
-        <Boton variante="fantasma" onClick={() => setConfirmando(true)}>
-          Eliminar
-        </Boton>
+        <div className="flex shrink-0 gap-2">
+          <Boton variante="secundario" onClick={() => setEditando(true)}>
+            Editar
+          </Boton>
+          <Boton variante="fantasma" onClick={() => setConfirmando(true)}>
+            Eliminar
+          </Boton>
+        </div>
       </header>
 
       {/* Períodos en que se dicta (solo docencia) */}
@@ -386,6 +393,17 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
           tareaId={tareaAbierta}
           onCerrar={() => setTareaAbierta(null)}
           onCambiada={() => void cargarTareas()}
+        />
+      )}
+
+      {editando && (
+        <AsistenteAsignatura
+          asignaturaExistente={asig}
+          onCerrar={() => setEditando(false)}
+          onCreada={() => {
+            void cargar()
+            void cargarTareas()
+          }}
         />
       )}
 

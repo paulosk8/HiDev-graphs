@@ -7,6 +7,7 @@ import type {
   ClienteMcpId,
   CombinarTareasDTO,
   DatosAsignaturaDTO,
+  DatosAsignaturaEdicionDTO,
   DatosConceptoDTO,
   DatosTareaDTO,
   DuplicarTareaDTO,
@@ -27,6 +28,7 @@ import { obtenerFichaConcepto } from '../application/ObtenerFichaConcepto'
 import { agregarMaterial } from '../application/AgregarMaterial'
 import { eliminarMaterial } from '../application/EliminarMaterial'
 import { crearAsignatura } from '../application/CrearAsignatura'
+import { editarAsignatura } from '../application/EditarAsignatura'
 import { obtenerAsignatura } from '../application/ObtenerAsignatura'
 import { guardarPlanificacion } from '../application/GuardarPlanificacion'
 import { obtenerMaterialDeConceptos } from '../application/ObtenerMaterialDeConceptos'
@@ -214,6 +216,12 @@ export function registrarHandlersIpc(servicios: Servicios): void {
 
   ipcMain.handle(CANALES.asignaturaCrear, (_evento, datos: DatosAsignaturaDTO) =>
     envolver(() => crearAsignatura(servicios, datos))
+  )
+
+  ipcMain.handle(
+    CANALES.asignaturaEditar,
+    (_evento, id: string, datos: DatosAsignaturaEdicionDTO) =>
+      envolver(() => editarAsignatura(servicios, id, datos))
   )
 
   ipcMain.handle(CANALES.asignaturaEliminar, (_evento, id: string) =>

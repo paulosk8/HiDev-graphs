@@ -1,5 +1,10 @@
 import { create } from 'zustand'
-import type { DatosAsignaturaDTO, ResumenAsignaturaDTO } from '@shared/dtos'
+import type {
+  AsignaturaDTO,
+  DatosAsignaturaDTO,
+  DatosAsignaturaEdicionDTO,
+  ResumenAsignaturaDTO
+} from '@shared/dtos'
 import { api } from '../lib/api'
 import { useUiStore } from './uiStore'
 
@@ -15,6 +20,7 @@ interface AsignaturasState {
 
   cargar: () => Promise<void>
   crear: (datos: DatosAsignaturaDTO) => Promise<ResumenAsignaturaDTO | null>
+  editar: (id: string, datos: DatosAsignaturaEdicionDTO) => Promise<AsignaturaDTO | null>
   eliminar: (id: string, nombre: string) => Promise<boolean>
 }
 
@@ -38,6 +44,32 @@ export const useAsignaturasStore = create<AsignaturasState>((set) => ({
       set((estado) => ({ lista: ordenar([...estado.lista, creada]) }))
       ui().notificar({ tipo: 'exito', mensaje: `Asignatura «${creada.nombre}» creada.` })
       return creada
+    } catch (error) {
+      ui().notificarError(error)
+      return null
+    }
+  },
+
+  editar: async (id, datos) => {
+    try {
+      const editada = await api.editarAsignatura(id, datos)
+      set((estado) => ({
+        lista: ordenar(
+          estado.lista.map((a) =>
+            a.id === id
+              ? {
+                  ...a,
+                  nombre: editada.nombre,
+                  periodos: editada.periodos,
+                  totalUnidades: editada.unidades.length,
+                  totalTemas: editada.unidades.reduce((n, u) => n + u.temas.length, 0)
+                }
+              : a
+          )
+        )
+      }))
+      ui().notificar({ tipo: 'exito', mensaje: `Cambios guardados en «${editada.nombre}».` })
+      return editada
     } catch (error) {
       ui().notificarError(error)
       return null

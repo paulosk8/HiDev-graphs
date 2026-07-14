@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import {
   COMPONENTES_SUGERIDOS,
+  type AsignaturaDTO,
   type ComponenteDTO,
   type DatosAsignaturaDTO,
+  type DatosAsignaturaEdicionDTO,
   type TipoAsignatura
 } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
@@ -24,32 +26,74 @@ interface UnidadBorrador {
 }
 
 interface Props {
-  /** 'docencia' (asignatura) o 'aprendizaje' (workspace de estudio). */
+  /** 'docencia' (asignatura) o 'aprendizaje' (workspace de estudio). Se ignora al editar. */
   tipo?: TipoAsignatura
+  /** Si se pasa, el asistente edita esa asignatura en vez de crear una nueva. */
+  asignaturaExistente?: AsignaturaDTO
   onCerrar: () => void
+  /** Se llama con el id tras crear o guardar. */
   onCreada: (id: string) => void
 }
 
-export function AsistenteAsignatura({ tipo = 'docencia', onCerrar, onCreada }: Props): JSX.Element {
+/** Convierte las unidades de una asignatura existente al borrador del asistente. */
+function borradorDesde(asig: AsignaturaDTO): UnidadBorrador[] {
+  if (asig.unidades.length === 0) {
+    return [{ id: nuevoId(), titulo: '', temas: [{ id: nuevoId(), titulo: '' }] }]
+  }
+  return asig.unidades.map((u) => ({
+    id: u.id,
+    titulo: u.titulo,
+    temas:
+      u.temas.length > 0
+        ? u.temas.map((t) => ({ id: t.id, titulo: t.titulo }))
+        : [{ id: nuevoId(), titulo: '' }]
+  }))
+}
+
+export function AsistenteAsignatura({
+  tipo = 'docencia',
+  asignaturaExistente,
+  onCerrar,
+  onCreada
+}: Props): JSX.Element {
   const crear = useAsignaturasStore((s) => s.crear)
-  const esAprendizaje = tipo === 'aprendizaje'
+  const editar = useAsignaturasStore((s) => s.editar)
+  const modoEdicion = !!asignaturaExistente
+  const esAprendizaje = (asignaturaExistente?.tipo ?? tipo) === 'aprendizaje'
   // Aprendizaje: sin períodos ni componentes → dos pasos.
   const PASOS = esAprendizaje ? ['Qué aprender', 'Temas'] : ['Datos', 'Componentes', 'Contenido']
+
+  // Ids reales de las unidades/temas que ya existían: al editar, distinguen lo
+  // que se conserva (mantiene sus vínculos) de lo nuevo.
+  const [idsExistentes] = useState<Set<string>>(() => {
+    const s = new Set<string>()
+    for (const u of asignaturaExistente?.unidades ?? []) {
+      s.add(u.id)
+      for (const t of u.temas) s.add(t.id)
+    }
+    return s
+  })
 
   const [paso, setPaso] = useState(1)
   const [ocupado, setOcupado] = useState(false)
 
-  const [nombre, setNombre] = useState('')
-  const [periodos, setPeriodos] = useState<string[]>([])
+  const [nombre, setNombre] = useState(asignaturaExistente?.nombre ?? '')
+  const [periodos, setPeriodos] = useState<string[]>(asignaturaExistente?.periodos ?? [])
   const [periodoNuevo, setPeriodoNuevo] = useState('')
   const [componentes, setComponentes] = useState<ComponenteDTO[]>(
-    esAprendizaje ? [] : [...COMPONENTES_SUGERIDOS]
+    asignaturaExistente
+      ? asignaturaExistente.componentes.map((c) => ({ clave: c.clave, nombre: c.nombre }))
+      : esAprendizaje
+        ? []
+        : [...COMPONENTES_SUGERIDOS]
   )
   const [claveNueva, setClaveNueva] = useState('')
   const [nombreNuevo, setNombreNuevo] = useState('')
-  const [unidades, setUnidades] = useState<UnidadBorrador[]>([
-    { id: nuevoId(), titulo: '', temas: [{ id: nuevoId(), titulo: '' }] }
-  ])
+  const [unidades, setUnidades] = useState<UnidadBorrador[]>(() =>
+    asignaturaExistente
+      ? borradorDesde(asignaturaExistente)
+      : [{ id: nuevoId(), titulo: '', temas: [{ id: nuevoId(), titulo: '' }] }]
+  )
 
   // --- Componentes ---
   const quitarComponente = (clave: string): void =>
@@ -96,24 +140,51 @@ export function AsistenteAsignatura({ tipo = 'docencia', onCerrar, onCreada }: P
   const hayContenido = unidades.some((u) => u.titulo.trim().length > 0)
 
   const finalizar = async (): Promise<void> => {
+    const unidadesLlenas = unidades.filter((u) => u.titulo.trim().length > 0)
+    setOcupado(true)
+
+    if (modoEdicion && asignaturaExistente) {
+      // Al editar, conserva los ids de las unidades/temas que ya existían para
+      // no romper sus vínculos; los nuevos van sin id.
+      const datos: DatosAsignaturaEdicionDTO = {
+        nombre: nombre.trim(),
+        periodos,
+        componentes,
+        unidades: unidadesLlenas.map((u) => ({
+          ...(idsExistentes.has(u.id) ? { id: u.id } : {}),
+          titulo: u.titulo.trim(),
+          temas: u.temas
+            .filter((t) => t.titulo.trim().length > 0)
+            .map((t) => ({
+              ...(idsExistentes.has(t.id) ? { id: t.id } : {}),
+              titulo: t.titulo.trim()
+            }))
+        }))
+      }
+      const editada = await editar(asignaturaExistente.id, datos)
+      setOcupado(false)
+      if (editada) {
+        onCreada(editada.id)
+        onCerrar()
+      }
+      return
+    }
+
     const datos: DatosAsignaturaDTO = {
       nombre: nombre.trim(),
       tipo,
       periodos,
       componentes,
-      unidades: unidades
-        .filter((u) => u.titulo.trim().length > 0)
-        .map((u) => ({
-          titulo: u.titulo.trim(),
-          temas: u.temas
-            .filter((t) => t.titulo.trim().length > 0)
-            .map((t) => ({
-              titulo: t.titulo.trim(),
-              semana: null
-            }))
-        }))
+      unidades: unidadesLlenas.map((u) => ({
+        titulo: u.titulo.trim(),
+        temas: u.temas
+          .filter((t) => t.titulo.trim().length > 0)
+          .map((t) => ({
+            titulo: t.titulo.trim(),
+            semana: null
+          }))
+      }))
     }
-    setOcupado(true)
     const creada = await crear(datos)
     setOcupado(false)
     if (creada) {
@@ -124,7 +195,15 @@ export function AsistenteAsignatura({ tipo = 'docencia', onCerrar, onCreada }: P
 
   return (
     <Modal
-      titulo={esAprendizaje ? 'Nuevo espacio para aprender' : 'Nueva asignatura'}
+      titulo={
+        modoEdicion
+          ? esAprendizaje
+            ? 'Editar espacio de aprendizaje'
+            : 'Editar asignatura'
+          : esAprendizaje
+            ? 'Nuevo espacio para aprender'
+            : 'Nueva asignatura'
+      }
       ancho="xl"
       onCerrar={onCerrar}
     >
@@ -386,10 +465,14 @@ export function AsistenteAsignatura({ tipo = 'docencia', onCerrar, onCreada }: P
           ) : (
             <Boton variante="primario" onClick={finalizar} disabled={ocupado || !hayContenido}>
               {ocupado
-                ? 'Creando…'
-                : esAprendizaje
-                  ? 'Crear espacio'
-                  : 'Crear asignatura'}
+                ? modoEdicion
+                  ? 'Guardando…'
+                  : 'Creando…'
+                : modoEdicion
+                  ? 'Guardar cambios'
+                  : esAprendizaje
+                    ? 'Crear espacio'
+                    : 'Crear asignatura'}
             </Boton>
           )}
         </div>

@@ -2,6 +2,7 @@ import type {
   ClienteMcpId,
   CombinarTareasDTO,
   DatosAsignaturaDTO,
+  DatosAsignaturaEdicionDTO,
   DatosConceptoDTO,
   DatosTareaDTO,
   DuplicarTareaDTO,
@@ -65,6 +66,8 @@ export const api = {
   obtenerMaterialDeConceptos: (conceptoIds: string[]) =>
     desenvolver(window.api.obtenerMaterialDeConceptos(conceptoIds)),
   crearAsignatura: (datos: DatosAsignaturaDTO) => desenvolver(window.api.crearAsignatura(datos)),
+  editarAsignatura: (id: string, datos: DatosAsignaturaEdicionDTO) =>
+    desenvolver(window.api.editarAsignatura(id, datos)),
   eliminarAsignatura: (id: string) => desenvolver(window.api.eliminarAsignatura(id)),
   agregarPeriodoAsignatura: (id: string, periodo: string) =>
     desenvolver(window.api.agregarPeriodoAsignatura(id, periodo)),

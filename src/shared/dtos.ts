@@ -172,6 +172,34 @@ export interface DatosAsignaturaDTO {
   unidades: DatosUnidadDTO[]
 }
 
+// --- Payload para EDITAR una asignatura existente ---
+//
+// A diferencia de crearla, la edición conserva la identidad de las unidades y
+// temas que ya existían: cada uno lleva su `id`. Los que llegan SIN `id` son
+// nuevos. Los que ya no aparecen se eliminan (y la app limpia sus vínculos a
+// conceptos, tareas y planificación). Los subtemas de un tema existente se
+// conservan intactos (el asistente no los edita).
+
+export interface DatosTemaEdicionDTO {
+  /** Id del tema existente; ausente si es un tema nuevo. */
+  id?: string
+  titulo: string
+}
+
+export interface DatosUnidadEdicionDTO {
+  /** Id de la unidad existente; ausente si es una unidad nueva. */
+  id?: string
+  titulo: string
+  temas: DatosTemaEdicionDTO[]
+}
+
+export interface DatosAsignaturaEdicionDTO {
+  nombre: string
+  periodos: string[]
+  componentes: ComponenteDTO[]
+  unidades: DatosUnidadEdicionDTO[]
+}
+
 // --- Tareas (capa transversal) ---
 
 /** Formato de las instrucciones de una tarea: Markdown o HTML (con CSS/JS). */
