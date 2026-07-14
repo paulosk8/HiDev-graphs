@@ -200,18 +200,16 @@ export function ListaConceptos({ contexto }: Props): JSX.Element {
                               </button>
                             )}
                           </div>
-                          {/* Temas del concepto: solo si se despliegan */}
+                          {/* Temas del concepto: como lista vertical, solo al desplegar */}
                           {temasVisibles && c.temas.length > 0 && (
-                            <div className="flex flex-wrap gap-1 px-4 pb-2.5">
+                            <ul className="space-y-0.5 border-t border-slate-50 bg-slate-50/50 px-4 py-2 pl-6">
                               {c.temas.map((t) => (
-                                <span
-                                  key={t}
-                                  className="rounded-full bg-marca-50 px-2 py-0.5 text-[11px] text-marca-700"
-                                >
-                                  {t}
-                                </span>
+                                <li key={t} className="flex items-start gap-2 text-xs text-slate-600">
+                                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-marca-400" />
+                                  <span>{t}</span>
+                                </li>
                               ))}
-                            </div>
+                            </ul>
                           )}
                         </li>
                       )
