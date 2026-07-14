@@ -17,6 +17,11 @@ Historial de lo construido, con las decisiones no obvias. Complementa `SKILL.md`
 - **Página de Configuración** (`ConfiguracionPage`, sección `configuracion`): sub-navegación vertical a la izquierda + contenido a la derecha. Agrupa lo que antes colgaba del pie del sidebar: **Apariencia** (modo claro/oscuro, único control del tema), **Asistente IA** (la antigua `AsistentePage`, embebida tal cual) y **Datos y copias** (Sincronizar, Actualizar, Copia de seguridad, Restaurar — cada uno con descripción). El pie del sidebar queda con la entrada ⚙️ Configuración y el chip de usuario (avatar + Salir). El modo oscuro vive **solo** en Apariencia (sin acceso rápido en el sidebar); la cuenta vive **solo** en el pie del menú. Verificado por smoke de GUI.
 - **Editar asignatura**: botón "Editar" en la ficha reabre el `AsistenteAsignatura` en **modo edición** (prop `asignaturaExistente`). Caso de uso `EditarAsignatura` (canal `asignatura:editar`): conserva los **ids de unidades y temas** existentes (para no romper vínculos tema↔concepto, tareas ni planificación); los temas borrados se limpian de la planificación y los períodos quitados descartan su plan; no cambia el `tipo` ni los subtemas. Verificado por smoke (preservación de ids/vínculos + depuración de planificación) y smoke de GUI del menú por contexto.
 
+## Panel de salud de la asignatura
+
+- Pestaña **«Estado»** en la ficha de asignatura (junto a Contenido y Planificación), componente `SaludAsignatura`. Se calcula **en el cliente** desde datos que la ficha ya tiene (asignatura + tareas + `conceptosStore` para el nº de material por concepto); **sin backend ni IPC nuevos**.
+- Chequeos con semáforo verde/ámbar: **temas sin concepto vinculado**, **conceptos sin material** (chips que abren la ficha del concepto para agregarlo), **temas sin tarea/práctica** y —solo docencia— **temas sin asignar a ninguna semana**. Arriba, cifras clave (temas, conceptos, con material X/Y, tareas) y un resumen (todo en orden / N puntos por revisar). Verificado por smoke de GUI.
+
 ## Modelo de dominio (dos capas + puente)
 
 - **Conocimiento**: `Concepto` (relaciones tipadas prerequisito_de/relacionado_con/profundiza; posee `Recurso`s = material). El material pertenece al **concepto**, nunca a la asignatura.

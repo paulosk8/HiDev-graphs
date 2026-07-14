@@ -11,6 +11,7 @@ import { FormularioTarea } from '../tareas/FormularioTarea'
 import { FichaTarea } from '../tareas/FichaTarea'
 import { PlanificacionSemanal } from './PlanificacionSemanal'
 import { AsistenteAsignatura } from './AsistenteAsignatura'
+import { SaludAsignatura } from './SaludAsignatura'
 
 interface Props {
   asignaturaId: string
@@ -26,7 +27,7 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
   const [tareas, setTareas] = useState<ResumenTareaDTO[]>([])
   const [creandoTarea, setCreandoTarea] = useState(false)
   const [tareaAbierta, setTareaAbierta] = useState<string | null>(null)
-  const [vistaPlan, setVistaPlan] = useState(false)
+  const [vista, setVista] = useState<'contenido' | 'plan' | 'salud'>('contenido')
 
   const cargarTareas = useCallback(async () => {
     try {
@@ -195,33 +196,35 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
       )}
 
 
-      {/* Contenido / Planificación semanal */}
+      {/* Contenido / Planificación semanal / Estado */}
       <section>
         <div className="mb-4 flex gap-5 border-b border-slate-100 text-sm">
-          <button
-            onClick={() => setVistaPlan(false)}
-            className={`-mb-px border-b-2 pb-2 font-medium transition ${
-              !vistaPlan ? 'border-marca-600 text-marca-700' : 'border-transparent text-slate-400 hover:text-slate-600'
-            }`}
-          >
-            Contenido
-          </button>
-          {!esAprendizaje && (
+          {(
+            [
+              { clave: 'contenido', etiqueta: 'Contenido' },
+              ...(!esAprendizaje ? [{ clave: 'plan', etiqueta: 'Planificación semanal' }] : []),
+              { clave: 'salud', etiqueta: 'Estado' }
+            ] as { clave: 'contenido' | 'plan' | 'salud'; etiqueta: string }[]
+          ).map((t) => (
             <button
-              onClick={() => setVistaPlan(true)}
+              key={t.clave}
+              onClick={() => setVista(t.clave)}
               className={`-mb-px border-b-2 pb-2 font-medium transition ${
-                vistaPlan ? 'border-marca-600 text-marca-700' : 'border-transparent text-slate-400 hover:text-slate-600'
+                vista === t.clave
+                  ? 'border-marca-600 text-marca-700'
+                  : 'border-transparent text-slate-400 hover:text-slate-600'
               }`}
             >
-              Planificación semanal
+              {t.etiqueta}
             </button>
-          )}
+          ))}
         </div>
 
-        {vistaPlan && !esAprendizaje && (
+        {vista === 'salud' && <SaludAsignatura asignatura={asig} tareas={tareas} />}
+        {vista === 'plan' && !esAprendizaje && (
           <PlanificacionSemanal asignatura={asig} onAbrirTarea={setTareaAbierta} />
         )}
-        {!vistaPlan && (
+        {vista === 'contenido' && (
         <div className="space-y-4">
           {asignatura.unidades.map((unidad) => (
             <div key={unidad.id} className="rounded-xl border border-slate-200 p-4">
