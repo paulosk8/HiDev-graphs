@@ -18,11 +18,12 @@ import { PantallaLogin } from './features/auth/PantallaLogin'
 
 function Contenido(): JSX.Element {
   const seccion = useUiStore((s) => s.seccion)
+  const contexto = useUiStore((s) => s.contexto)
   const conceptoSeleccionadoId = useUiStore((s) => s.conceptoSeleccionadoId)
   const asignaturaSeleccionadaId = useUiStore((s) => s.asignaturaSeleccionadaId)
 
   if (seccion === 'grafo') {
-    return <GrafoPage />
+    return <GrafoPage contexto={contexto} />
   }
 
   if (seccion === 'asistente') {
@@ -37,14 +38,14 @@ function Contenido(): JSX.Element {
     return asignaturaSeleccionadaId ? (
       <FichaAsignatura asignaturaId={asignaturaSeleccionadaId} />
     ) : (
-      <ListaAsignaturas />
+      <ListaAsignaturas contexto={contexto} />
     )
   }
 
   return conceptoSeleccionadoId ? (
     <FichaConcepto conceptoId={conceptoSeleccionadoId} />
   ) : (
-    <ListaConceptos />
+    <ListaConceptos contexto={contexto} />
   )
 }
 

@@ -3,6 +3,14 @@ import { ErrorAmigableError } from '../lib/api'
 
 export type Seccion = 'conceptos' | 'asignaturas' | 'grafo' | 'asistente' | 'terminal'
 
+/**
+ * Contexto de trabajo: separa la capa de docencia (asignaturas) de la de
+ * aprendizaje (espacios de estudio). Las secciones asignaturas/conceptos/grafo
+ * se filtran según el contexto activo; 'asistente' es transversal. Los conceptos
+ * siguen siendo un único pool compartido: el contexto solo filtra qué se ve.
+ */
+export type Contexto = 'docencia' | 'aprendizaje'
+
 export type TipoAviso = 'exito' | 'error' | 'info'
 
 export interface Aviso {
@@ -14,11 +22,13 @@ export interface Aviso {
 
 interface UiState {
   seccion: Seccion
+  contexto: Contexto
   conceptoSeleccionadoId: string | null
   asignaturaSeleccionadaId: string | null
   avisos: Aviso[]
 
-  irASeccion: (seccion: Seccion) => void
+  /** Navega a una sección; si se indica, cambia también el contexto (docencia/aprendizaje). */
+  irASeccion: (seccion: Seccion, contexto?: Contexto) => void
   seleccionarConcepto: (id: string | null) => void
   seleccionarAsignatura: (id: string | null) => void
 
@@ -31,14 +41,20 @@ interface UiState {
 let secuenciaAviso = 0
 
 export const useUiStore = create<UiState>((set) => ({
-  // Al arrancar (tras iniciar sesión) se muestra "Mis asignaturas".
+  // Al arrancar (tras iniciar sesión) se muestran las asignaturas de docencia.
   seccion: 'asignaturas',
+  contexto: 'docencia',
   conceptoSeleccionadoId: null,
   asignaturaSeleccionadaId: null,
   avisos: [],
 
-  irASeccion: (seccion) =>
-    set({ seccion, conceptoSeleccionadoId: null, asignaturaSeleccionadaId: null }),
+  irASeccion: (seccion, contexto) =>
+    set((estado) => ({
+      seccion,
+      contexto: contexto ?? estado.contexto,
+      conceptoSeleccionadoId: null,
+      asignaturaSeleccionadaId: null
+    })),
   seleccionarConcepto: (id) => set({ conceptoSeleccionadoId: id }),
   seleccionarAsignatura: (id) => set({ asignaturaSeleccionadaId: id }),
 

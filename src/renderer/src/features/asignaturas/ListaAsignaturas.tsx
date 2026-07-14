@@ -1,68 +1,82 @@
 import { useState, type ReactNode } from 'react'
-import type { ResumenAsignaturaDTO, TipoAsignatura } from '@shared/dtos'
+import type { TipoAsignatura } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
 import { EstadoVacio } from '../../components/EstadoVacio'
 import { useAsignaturasStore } from '../../stores/asignaturasStore'
-import { useUiStore } from '../../stores/uiStore'
+import { useUiStore, type Contexto } from '../../stores/uiStore'
 import { AsistenteAsignatura } from './AsistenteAsignatura'
 
-export function ListaAsignaturas(): JSX.Element {
+interface Props {
+  contexto: Contexto
+}
+
+export function ListaAsignaturas({ contexto }: Props): JSX.Element {
   const lista = useAsignaturasStore((s) => s.lista)
   const cargando = useAsignaturasStore((s) => s.cargando)
   const seleccionar = useUiStore((s) => s.seleccionarAsignatura)
-  const [creando, setCreando] = useState<TipoAsignatura | null>(null)
+  const [creando, setCreando] = useState(false)
   const [busqueda, setBusqueda] = useState('')
   const [periodoFiltro, setPeriodoFiltro] = useState('')
 
-  const periodosDisponibles = [...new Set(lista.flatMap((a) => a.periodos))].sort()
+  const esAprendizaje = contexto === 'aprendizaje'
+  const tipo: TipoAsignatura = contexto
 
-  const filtradas = lista.filter(
+  // Solo las de este contexto (docencia o aprendizaje).
+  const delContexto = lista.filter((a) =>
+    esAprendizaje ? a.tipo === 'aprendizaje' : a.tipo !== 'aprendizaje'
+  )
+
+  const periodosDisponibles = [...new Set(delContexto.flatMap((a) => a.periodos))].sort()
+
+  const filtradas = delContexto.filter(
     (a) =>
       a.nombre.toLowerCase().includes(busqueda.trim().toLowerCase()) &&
       (periodoFiltro === '' || a.periodos.includes(periodoFiltro))
   )
-  const docencia = filtradas.filter((a) => a.tipo !== 'aprendizaje')
-  const aprendizaje = filtradas.filter((a) => a.tipo === 'aprendizaje')
+
+  const textos = esAprendizaje
+    ? {
+        titulo: 'Aprendizaje',
+        subtitulo: 'Abre un espacio para aprender algo nuevo con sus recursos.',
+        crear: '+ Aprender algo',
+        icono: '📘',
+        vacioTitulo: 'Todavía no tienes espacios de aprendizaje',
+        vacioDesc: 'Crea un espacio para aprender un tema nuevo y organizar su material.',
+        vacioCrear: '+ Aprender algo'
+      }
+    : {
+        titulo: 'Mis asignaturas',
+        subtitulo: 'Prepara y organiza las clases de tus asignaturas.',
+        crear: '+ Nueva asignatura',
+        icono: '🎓',
+        vacioTitulo: 'Todavía no tienes asignaturas',
+        vacioDesc: 'Crea una asignatura para organizar tus clases, unidades y temas.',
+        vacioCrear: '+ Crear mi primera asignatura'
+      }
 
   return (
     <div className="mx-auto max-w-4xl px-8 py-8">
       <header className="mb-6 flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Mis asignaturas y aprendizajes</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Prepara clases o abre un espacio para aprender algo nuevo.
-          </p>
+          <h1 className="text-2xl font-semibold text-slate-900">{textos.titulo}</h1>
+          <p className="mt-1 text-sm text-slate-500">{textos.subtitulo}</p>
         </div>
-        <div className="flex shrink-0 gap-2">
-          <Boton variante="secundario" onClick={() => setCreando('aprendizaje')}>
-            + Aprender algo
-          </Boton>
-          <Boton variante="primario" onClick={() => setCreando('docencia')}>
-            + Nueva asignatura
-          </Boton>
-        </div>
+        <Boton variante="primario" onClick={() => setCreando(true)}>
+          {textos.crear}
+        </Boton>
       </header>
 
       {cargando ? (
         <p className="py-10 text-center text-sm text-slate-400">Cargando…</p>
-      ) : lista.length === 0 ? (
-        <EstadoVacio
-          icono="🎓"
-          titulo="Todavía no tienes nada aquí"
-          descripcion="Crea una asignatura para dar clases, o un espacio para aprender un tema nuevo con sus recursos."
-        >
-          <div className="flex gap-2">
-            <Boton variante="primario" onClick={() => setCreando('docencia')}>
-              + Crear mi primera asignatura
-            </Boton>
-            <Boton variante="secundario" onClick={() => setCreando('aprendizaje')}>
-              + Aprender algo
-            </Boton>
-          </div>
+      ) : delContexto.length === 0 ? (
+        <EstadoVacio icono={textos.icono} titulo={textos.vacioTitulo} descripcion={textos.vacioDesc}>
+          <Boton variante="primario" onClick={() => setCreando(true)}>
+            {textos.vacioCrear}
+          </Boton>
         </EstadoVacio>
       ) : (
         <>
-          {/* Buscar + filtrar por período */}
+          {/* Buscar + filtrar por período (el período solo aplica a docencia) */}
           <div className="mb-5 space-y-3">
             <input
               value={busqueda}
@@ -94,95 +108,49 @@ export function ListaAsignaturas(): JSX.Element {
               Nada coincide con la búsqueda.
             </p>
           ) : (
-            <div className="space-y-6">
-              <Seccion
-                titulo="Docencia"
-                icono="🎓"
-                items={docencia}
-                mostrarTitulo={aprendizaje.length > 0}
-                onSeleccionar={seleccionar}
-              />
-              <Seccion
-                titulo="Aprendizaje"
-                icono="📘"
-                items={aprendizaje}
-                mostrarTitulo={docencia.length > 0}
-                onSeleccionar={seleccionar}
-              />
-            </div>
+            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {filtradas.map((asig) => (
+                <li key={asig.id}>
+                  <button
+                    onClick={() => seleccionar(asig.id)}
+                    className="flex w-full flex-col items-start rounded-xl border border-slate-200 bg-white p-4 text-left transition hover:border-marca-300 hover:shadow-sm"
+                  >
+                    <span className="flex items-baseline gap-2">
+                      <span className="font-medium text-slate-800">{asig.nombre}</span>
+                      {!esAprendizaje && asig.periodos.length > 0 && (
+                        <span className="text-xs font-medium text-marca-600">
+                          {asig.periodos.join(', ')}
+                        </span>
+                      )}
+                    </span>
+                    <span className="mt-1 text-xs text-slate-400">
+                      {asig.totalUnidades} {asig.totalUnidades === 1 ? 'unidad' : 'unidades'} ·{' '}
+                      {asig.totalTemas} {asig.totalTemas === 1 ? 'tema' : 'temas'} ·{' '}
+                      {asig.totalTareas}{' '}
+                      {esAprendizaje
+                        ? asig.totalTareas === 1
+                          ? 'práctica'
+                          : 'prácticas'
+                        : asig.totalTareas === 1
+                          ? 'tarea'
+                          : 'tareas'}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
           )}
         </>
       )}
 
       {creando && (
         <AsistenteAsignatura
-          tipo={creando}
-          onCerrar={() => setCreando(null)}
+          tipo={tipo}
+          onCerrar={() => setCreando(false)}
           onCreada={(id) => seleccionar(id)}
         />
       )}
     </div>
-  )
-}
-
-function Seccion({
-  titulo,
-  icono,
-  items,
-  mostrarTitulo,
-  onSeleccionar
-}: {
-  titulo: string
-  icono: string
-  items: ResumenAsignaturaDTO[]
-  mostrarTitulo: boolean
-  onSeleccionar: (id: string) => void
-}): JSX.Element | null {
-  if (items.length === 0) return null
-  return (
-    <section>
-      {mostrarTitulo && (
-        <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-slate-500">
-          <span>{icono}</span>
-          {titulo}
-        </h2>
-      )}
-      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {items.map((asig) => (
-          <li key={asig.id}>
-            <button
-              onClick={() => onSeleccionar(asig.id)}
-              className="flex w-full flex-col items-start rounded-xl border border-slate-200 bg-white p-4 text-left transition hover:border-marca-300 hover:shadow-sm"
-            >
-              <span className="flex items-baseline gap-2">
-                <span className="font-medium text-slate-800">{asig.nombre}</span>
-                {asig.tipo === 'aprendizaje' ? (
-                  <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-medium text-sky-700">
-                    Aprendizaje
-                  </span>
-                ) : (
-                  <span className="text-xs font-medium text-marca-600">
-                    {asig.periodos.join(', ')}
-                  </span>
-                )}
-              </span>
-              <span className="mt-1 text-xs text-slate-400">
-                {asig.totalUnidades} {asig.totalUnidades === 1 ? 'unidad' : 'unidades'} ·{' '}
-                {asig.totalTemas} {asig.totalTemas === 1 ? 'tema' : 'temas'} ·{' '}
-                {asig.totalTareas}{' '}
-                {asig.tipo === 'aprendizaje'
-                  ? asig.totalTareas === 1
-                    ? 'práctica'
-                    : 'prácticas'
-                  : asig.totalTareas === 1
-                    ? 'tarea'
-                    : 'tareas'}
-              </span>
-            </button>
-          </li>
-        ))}
-      </ul>
-    </section>
   )
 }
 

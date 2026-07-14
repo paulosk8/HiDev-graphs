@@ -5,26 +5,30 @@ import { useAuthStore } from '../stores/authStore'
 import { useAsignaturasStore } from '../stores/asignaturasStore'
 import { useConceptosStore } from '../stores/conceptosStore'
 import { useLayoutStore } from '../stores/layoutStore'
-import { useUiStore, type Seccion } from '../stores/uiStore'
+import { useUiStore, type Contexto, type Seccion } from '../stores/uiStore'
 
 interface ItemProps {
   seccion: Seccion
+  /** Contexto al que pertenece el ítem (docencia/aprendizaje); ausente = transversal. */
+  contexto?: Contexto
   etiqueta: string
   cuenta?: number
   icono: string
   colapsada: boolean
+  /** Sangría para los sub-ítems de un grupo (docencia/aprendizaje). */
+  sangrado?: boolean
 }
 
-function Item({ seccion, etiqueta, cuenta, icono, colapsada }: ItemProps): JSX.Element {
-  const activo = useUiStore((s) => s.seccion === seccion)
+function Item({ seccion, contexto, etiqueta, cuenta, icono, colapsada, sangrado }: ItemProps): JSX.Element {
+  const activo = useUiStore((s) => s.seccion === seccion && (contexto === undefined || s.contexto === contexto))
   const irASeccion = useUiStore((s) => s.irASeccion)
 
   return (
     <button
-      onClick={() => irASeccion(seccion)}
-      title={colapsada ? etiqueta : undefined}
+      onClick={() => irASeccion(seccion, contexto)}
+      title={colapsada ? (contexto ? `${contexto === 'docencia' ? 'Docencia' : 'Aprendizaje'} · ${etiqueta}` : etiqueta) : undefined}
       className={`flex w-full items-center rounded-md text-sm font-medium transition ${
-        colapsada ? 'justify-center px-0 py-2.5' : 'gap-2.5 px-3 py-2'
+        colapsada ? 'justify-center px-0 py-2.5' : `gap-2.5 py-2 ${sangrado ? 'pl-9 pr-3' : 'px-3'}`
       } ${activo ? 'bg-marca-50 text-marca-700' : 'text-slate-600 hover:bg-slate-100'}`}
     >
       <span aria-hidden className="text-base">
@@ -42,9 +46,20 @@ function Item({ seccion, etiqueta, cuenta, icono, colapsada }: ItemProps): JSX.E
   )
 }
 
+/** Cabecera de un grupo de contexto (Docencia / Aprendizaje). */
+function EncabezadoGrupo({ icono, etiqueta }: { icono: string; etiqueta: string }): JSX.Element {
+  return (
+    <div className="flex items-center gap-2 px-3 pb-1 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+      <span aria-hidden>{icono}</span>
+      <span>{etiqueta}</span>
+    </div>
+  )
+}
+
 export function Sidebar(): JSX.Element {
-  const totalConceptos = useConceptosStore((s) => s.lista.length)
-  const totalAsignaturas = useAsignaturasStore((s) => s.lista.length)
+  const asignaturas = useAsignaturasStore((s) => s.lista)
+  const totalDocencia = asignaturas.filter((a) => a.tipo !== 'aprendizaje').length
+  const totalAprendizaje = asignaturas.filter((a) => a.tipo === 'aprendizaje').length
   const cargarConceptos = useConceptosStore((s) => s.cargar)
   const cargarAsignaturas = useAsignaturasStore((s) => s.cargar)
   const notificar = useUiStore((s) => s.notificar)
@@ -165,10 +180,24 @@ export function Sidebar(): JSX.Element {
       )}
 
       <nav className="w-full space-y-1">
-        <Item seccion="asignaturas" etiqueta="Mis asignaturas" cuenta={colapsada ? undefined : totalAsignaturas} icono="🎓" colapsada={colapsada} />
-        <Item seccion="conceptos" etiqueta="Conceptos" cuenta={colapsada ? undefined : totalConceptos} icono="💡" colapsada={colapsada} />
-        <Item seccion="grafo" etiqueta="Mapa de conceptos" icono="🕸️" colapsada={colapsada} />
-        <Item seccion="asistente" etiqueta="Asistente IA" icono="🤖" colapsada={colapsada} />
+        {/* Docencia */}
+        {!colapsada && <EncabezadoGrupo icono="🎓" etiqueta="Docencia" />}
+        <Item seccion="asignaturas" contexto="docencia" etiqueta="Asignaturas" cuenta={colapsada ? undefined : totalDocencia} icono="🎓" colapsada={colapsada} sangrado />
+        <Item seccion="conceptos" contexto="docencia" etiqueta="Conceptos" icono="💡" colapsada={colapsada} sangrado />
+        <Item seccion="grafo" contexto="docencia" etiqueta="Mapa" icono="🕸️" colapsada={colapsada} sangrado />
+
+        {/* Aprendizaje */}
+        {!colapsada && <div className="pt-2"><EncabezadoGrupo icono="📘" etiqueta="Aprendizaje" /></div>}
+        {colapsada && <div className="my-1.5 h-px w-6 bg-slate-200" />}
+        <Item seccion="asignaturas" contexto="aprendizaje" etiqueta="Espacios" cuenta={colapsada ? undefined : totalAprendizaje} icono="📘" colapsada={colapsada} sangrado />
+        <Item seccion="conceptos" contexto="aprendizaje" etiqueta="Conceptos" icono="💡" colapsada={colapsada} sangrado />
+        <Item seccion="grafo" contexto="aprendizaje" etiqueta="Mapa" icono="🕸️" colapsada={colapsada} sangrado />
+
+        {/* Transversal */}
+        <div className="pt-2">
+          {colapsada && <div className="mx-auto mb-1.5 h-px w-6 bg-slate-200" />}
+          <Item seccion="asistente" etiqueta="Asistente IA" icono="🤖" colapsada={colapsada} />
+        </div>
       </nav>
 
       <div className="mt-auto w-full space-y-2">

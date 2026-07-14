@@ -14,8 +14,9 @@ import { Modal } from '../../components/Modal'
 import { TerminalEmbebida } from '../terminal/TerminalEmbebida'
 import { CombinarTareasDialog } from '../tareas/CombinarTareasDialog'
 import { api } from '../../lib/api'
+import { useAsignaturasStore } from '../../stores/asignaturasStore'
 import { useConceptosStore } from '../../stores/conceptosStore'
-import { useUiStore } from '../../stores/uiStore'
+import { useUiStore, type Contexto } from '../../stores/uiStore'
 import { useLayoutStore } from '../../stores/layoutStore'
 
 cytoscape.use(fcose)
@@ -168,24 +169,22 @@ function elementosVisibles(
   grafo: GrafoDTO,
   tipos: Set<TipoAristaGrafo>,
   mostrarTareas: boolean,
-  asignaturasFiltro: Set<string>
+  asignaturasPermitidas: Set<string>
 ): cytoscape.ElementDefinition[] {
-  const filtrar = asignaturasFiltro.size > 0
-  // Conceptos usados en las asignaturas filtradas (vía aristas 'usado_en').
+  // El mapa está siempre acotado al contexto activo (docencia/aprendizaje): solo
+  // se muestran las asignaturas permitidas y los conceptos/tareas ligados a ellas.
+  // Conceptos usados en las asignaturas permitidas (vía aristas 'usado_en').
   const conceptosPermitidos = new Set<string>()
-  if (filtrar) {
-    for (const a of grafo.aristas) {
-      if (a.tipo === 'usado_en' && a.asignaturaId && asignaturasFiltro.has(a.asignaturaId)) {
-        conceptosPermitidos.add(a.origen)
-      }
+  for (const a of grafo.aristas) {
+    if (a.tipo === 'usado_en' && a.asignaturaId && asignaturasPermitidas.has(a.asignaturaId)) {
+      conceptosPermitidos.add(a.origen)
     }
   }
   const nodoVisible = (n: NodoGrafoDTO): boolean => {
     if (n.tipo === 'tarea' && !mostrarTareas) return false
-    if (!filtrar) return true
-    if (n.tipo === 'asignatura') return asignaturasFiltro.has(n.id.slice(2))
+    if (n.tipo === 'asignatura') return asignaturasPermitidas.has(n.id.slice(2))
     if (n.tipo === 'concepto') return conceptosPermitidos.has(n.id)
-    if (n.tipo === 'tarea') return !!n.asignaturaId && asignaturasFiltro.has(n.asignaturaId)
+    if (n.tipo === 'tarea') return !!n.asignaturaId && asignaturasPermitidas.has(n.asignaturaId)
     return true
   }
 
@@ -330,7 +329,11 @@ function sugerenciasDeConexion(grafo: GrafoDTO): {
   return { posibles, aislados }
 }
 
-export function GrafoPage(): JSX.Element {
+interface Props {
+  contexto: Contexto
+}
+
+export function GrafoPage({ contexto }: Props): JSX.Element {
   const [grafo, setGrafo] = useState<GrafoDTO | null>(null)
   const [tipos, setTipos] = useState<Set<TipoAristaGrafo>>(() => new Set(TIPOS_ARISTA.map((t) => t.tipo)))
   const [mostrarTareas, setMostrarTareas] = useState(true)
@@ -355,6 +358,18 @@ export function GrafoPage(): JSX.Element {
   const contenedor = useRef<HTMLDivElement>(null)
   const cyRef = useRef<cytoscape.Core | null>(null)
   const columnaRef = useRef<HTMLDivElement>(null)
+
+  const asignaturasLista = useAsignaturasStore((s) => s.lista)
+  // Ids de las asignaturas de ESTE contexto (docencia/aprendizaje): acotan el mapa.
+  const idsDelContexto = useMemo(
+    () =>
+      new Set(
+        asignaturasLista
+          .filter((a) => (contexto === 'aprendizaje' ? a.tipo === 'aprendizaje' : a.tipo !== 'aprendizaje'))
+          .map((a) => a.id)
+      ),
+    [asignaturasLista, contexto]
+  )
 
   const notificarError = useUiStore((s) => s.notificarError)
   const notificar = useUiStore((s) => s.notificar)
@@ -381,19 +396,26 @@ export function GrafoPage(): JSX.Element {
   // la terminal): así el nuevo nodo aparece sin recargar la app.
   useEffect(() => api.onVaultCambiado(recargarGrafo), [recargarGrafo])
 
+  // Conjunto efectivo de asignaturas permitidas: las del contexto, intersecadas
+  // con el filtro por asignatura si el usuario eligió alguna.
+  const asignaturasPermitidas = useMemo(() => {
+    if (asignaturasFiltro.size === 0) return idsDelContexto
+    return new Set([...asignaturasFiltro].filter((id) => idsDelContexto.has(id)))
+  }, [asignaturasFiltro, idsDelContexto])
+
   const elementos = useMemo(
-    () => (grafo ? elementosVisibles(grafo, tipos, mostrarTareas, asignaturasFiltro) : []),
-    [grafo, tipos, mostrarTareas, asignaturasFiltro]
+    () => (grafo ? elementosVisibles(grafo, tipos, mostrarTareas, asignaturasPermitidas) : []),
+    [grafo, tipos, mostrarTareas, asignaturasPermitidas]
   )
 
-  // Asignaturas disponibles (desde los nodos del grafo) para el filtro.
+  // Asignaturas del contexto disponibles (desde los nodos del grafo) para el filtro.
   const asignaturasGrafo = useMemo(
     () =>
       (grafo?.nodos ?? [])
-        .filter((n) => n.tipo === 'asignatura')
+        .filter((n) => n.tipo === 'asignatura' && idsDelContexto.has(n.id.slice(2)))
         .map((n) => ({ id: n.id.slice(2), etiqueta: n.etiqueta }))
         .sort((a, b) => a.etiqueta.localeCompare(b.etiqueta, 'es')),
-    [grafo]
+    [grafo, idsDelContexto]
   )
   const alternarAsignaturaFiltro = (id: string): void =>
     setAsignaturasFiltro((prev) => {
@@ -436,7 +458,7 @@ export function GrafoPage(): JSX.Element {
     cy.on('dbltap', 'node[tipo="tarea"]', (evt) => {
       const aid = evt.target.data('asignaturaId') as string | undefined
       if (aid) {
-        irASeccion('asignaturas')
+        irASeccion('asignaturas', contexto)
         seleccionarAsignatura(aid)
       }
     })
@@ -648,7 +670,12 @@ export function GrafoPage(): JSX.Element {
     <div className="flex h-full flex-col">
       <header className="border-b border-slate-200 px-8 py-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-slate-900">Mapa de conceptos</h1>
+          <h1 className="text-2xl font-semibold text-slate-900">
+            Mapa de conceptos{' '}
+            <span className="text-base font-normal text-slate-400">
+              · {contexto === 'aprendizaje' ? 'Aprendizaje' : 'Docencia'}
+            </span>
+          </h1>
           <button
             onClick={() => setModalAnalisis(true)}
             className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 transition hover:bg-slate-50"
@@ -1053,7 +1080,7 @@ export function GrafoPage(): JSX.Element {
                 <Boton
                   variante="primario"
                   onClick={() => {
-                    irASeccion('conceptos')
+                    irASeccion('conceptos', contexto)
                     void cargarConceptos()
                     seleccionarConcepto(detalle.concepto.id)
                   }}
@@ -1077,7 +1104,7 @@ export function GrafoPage(): JSX.Element {
           onCombinada={(nueva) => {
             setDialogoCombinar(false)
             setTareasCombinar([])
-            irASeccion('asignaturas')
+            irASeccion('asignaturas', contexto)
             seleccionarAsignatura(nueva.asignaturaId)
           }}
         />

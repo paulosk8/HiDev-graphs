@@ -2,8 +2,9 @@ import { useMemo, useState } from 'react'
 import type { ResumenConceptoDTO } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
 import { EstadoVacio } from '../../components/EstadoVacio'
+import { useAsignaturasStore } from '../../stores/asignaturasStore'
 import { useConceptosStore } from '../../stores/conceptosStore'
-import { useUiStore } from '../../stores/uiStore'
+import { useUiStore, type Contexto } from '../../stores/uiStore'
 import { FormularioConcepto } from './FormularioConcepto'
 
 const SIN_ASIGNATURA = 'Sin asignatura'
@@ -17,31 +18,61 @@ function normalizar(texto: string): string {
     .replace(/[̀-ͯ]/g, '')
 }
 
-export function ListaConceptos(): JSX.Element {
+interface Props {
+  contexto: Contexto
+}
+
+export function ListaConceptos({ contexto }: Props): JSX.Element {
   const lista = useConceptosStore((s) => s.lista)
   const cargando = useConceptosStore((s) => s.cargando)
+  const asignaturas = useAsignaturasStore((s) => s.lista)
   const seleccionar = useUiStore((s) => s.seleccionarConcepto)
   const [creando, setCreando] = useState(false)
   const [busqueda, setBusqueda] = useState('')
   const [colapsados, setColapsados] = useState<Set<string>>(new Set())
 
+  const esAprendizaje = contexto === 'aprendizaje'
+
+  // Nombres de las asignaturas de ESTE contexto: filtran qué conceptos y grupos
+  // se ven. El pool de conceptos es único; esto es solo una vista.
+  const nombresContexto = useMemo(
+    () =>
+      new Set(
+        asignaturas
+          .filter((a) => (esAprendizaje ? a.tipo === 'aprendizaje' : a.tipo !== 'aprendizaje'))
+          .map((a) => a.nombre)
+      ),
+    [asignaturas, esAprendizaje]
+  )
+
+  // Conceptos relevantes al contexto: los usados en alguna asignatura de este
+  // contexto, más los que aún no se usan en ninguna (disponibles en ambos).
+  const delContexto = useMemo(
+    () =>
+      lista.filter(
+        (c) => c.asignaturas.length === 0 || c.asignaturas.some((a) => nombresContexto.has(a))
+      ),
+    [lista, nombresContexto]
+  )
+
   const filtrada = useMemo(() => {
     const q = normalizar(busqueda.trim())
-    if (!q) return lista
-    return lista.filter((c) => {
+    if (!q) return delContexto
+    return delContexto.filter((c) => {
       const heno = normalizar(
         [c.nombre, c.descripcion, ...c.temas, ...c.asignaturas].filter(Boolean).join('  ')
       )
       return heno.includes(q)
     })
-  }, [lista, busqueda])
+  }, [delContexto, busqueda])
 
-  // Agrupa los conceptos por asignatura (uno puede aparecer en varias); los que
-  // no se usan en ninguna van a "Sin asignatura", al final.
+  // Agrupa los conceptos por asignatura de este contexto; los que no se usan en
+  // ninguna van a "Sin asignatura", al final.
   const grupos = useMemo(() => {
     const mapa = new Map<string, ResumenConceptoDTO[]>()
     for (const c of filtrada) {
-      const claves = c.asignaturas.length > 0 ? c.asignaturas : [SIN_ASIGNATURA]
+      const propias = c.asignaturas.filter((a) => nombresContexto.has(a))
+      const claves = propias.length > 0 ? propias : [SIN_ASIGNATURA]
       for (const clave of claves) {
         const arr = mapa.get(clave) ?? []
         arr.push(c)
@@ -53,7 +84,7 @@ export function ListaConceptos(): JSX.Element {
       if (b[0] === SIN_ASIGNATURA) return -1
       return a[0].localeCompare(b[0], 'es')
     })
-  }, [filtrada])
+  }, [filtrada, nombresContexto])
 
   const alternarGrupo = (nombre: string): void =>
     setColapsados((prev) => {
@@ -68,7 +99,9 @@ export function ListaConceptos(): JSX.Element {
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Conceptos</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Tus ideas reutilizables y el material de cada una.
+            {esAprendizaje
+              ? 'Los conceptos de tus espacios de aprendizaje y su material.'
+              : 'Los conceptos de tus asignaturas y el material de cada uno.'}
           </p>
         </div>
         <Boton variante="primario" onClick={() => setCreando(true)}>
@@ -76,7 +109,7 @@ export function ListaConceptos(): JSX.Element {
         </Boton>
       </header>
 
-      {!cargando && lista.length > 0 && (
+      {!cargando && delContexto.length > 0 && (
         <div className="mb-5">
           <input
             type="search"
@@ -90,14 +123,18 @@ export function ListaConceptos(): JSX.Element {
 
       {cargando ? (
         <p className="py-10 text-center text-sm text-slate-400">Cargando…</p>
-      ) : lista.length === 0 ? (
+      ) : delContexto.length === 0 ? (
         <EstadoVacio
           icono="💡"
-          titulo="Todavía no tienes conceptos"
-          descripcion="Crea tu primer concepto para empezar a organizar tu material y reutilizarlo entre asignaturas."
+          titulo={esAprendizaje ? 'Aún no hay conceptos por aquí' : 'Todavía no tienes conceptos'}
+          descripcion={
+            esAprendizaje
+              ? 'Crea un concepto y vincúlalo a los temas de un espacio de aprendizaje para verlo aquí.'
+              : 'Crea tu primer concepto para empezar a organizar tu material y reutilizarlo entre asignaturas.'
+          }
         >
           <Boton variante="primario" onClick={() => setCreando(true)}>
-            + Crear mi primer concepto
+            {esAprendizaje ? '+ Nuevo concepto' : '+ Crear mi primer concepto'}
           </Boton>
         </EstadoVacio>
       ) : filtrada.length === 0 ? (
