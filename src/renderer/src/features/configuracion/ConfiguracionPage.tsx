@@ -8,6 +8,7 @@ import { useConceptosStore } from '../../stores/conceptosStore'
 import { useLayoutStore } from '../../stores/layoutStore'
 import { useUiStore } from '../../stores/uiStore'
 import { AsistentePage } from '../asistente/AsistentePage'
+import { ConflictosPanel } from './ConflictosPanel'
 
 type SeccionConfig = 'apariencia' | 'asistente' | 'datos'
 
@@ -149,10 +150,22 @@ function DatosYCopias(): JSX.Element {
         r.borradosNube ? `${r.borradosNube} borrados en la nube` : '',
         r.borradosLocal ? `${r.borradosLocal} borrados aquí` : ''
       ].filter(Boolean)
-      notificar({
-        tipo: 'exito',
-        mensaje: total === 0 ? 'Todo está sincronizado con la nube.' : `Sincronizado: ${partes.join(', ')}.`
-      })
+      if (r.conflictos > 0) {
+        notificar({
+          tipo: 'info',
+          mensaje:
+            r.conflictos === 1
+              ? 'Hay 1 conflicto por resolver (abajo).'
+              : `Hay ${r.conflictos} conflictos por resolver (abajo).`,
+          sugerencia: 'El mismo elemento se editó en dos equipos. Elige con qué versión quedarte.'
+        })
+      } else {
+        notificar({
+          tipo: 'exito',
+          mensaje:
+            total === 0 ? 'Todo está sincronizado con la nube.' : `Sincronizado: ${partes.join(', ')}.`
+        })
+      }
     } catch (error) {
       notificarError(error)
     }
@@ -210,6 +223,7 @@ function DatosYCopias(): JSX.Element {
       titulo="Datos y copias"
       descripcion="Sincroniza con la nube, actualiza desde el disco y gestiona tus copias de seguridad."
     >
+      <ConflictosPanel />
       <div className="space-y-3">
         {haySesion && (
           <Fila

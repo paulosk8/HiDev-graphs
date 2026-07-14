@@ -71,7 +71,7 @@ app.whenReady().then(() => {
   registrarHandlersAuth(auth)
   const datosNube = new SupabaseDataService(auth)
   const sync = new SyncService(servicios.vault, servicios.repositorio, datosNube)
-  registrarHandlersNube(sync)
+  registrarHandlersNube(sync, servicios.vault)
   registrarHandlersTerminal(servicios.vault.raiz)
   habilitarProtocoloRecurso(servicios.vault)
 

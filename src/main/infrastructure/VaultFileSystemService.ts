@@ -18,7 +18,7 @@ import { crearSubtema } from '../domain/Subtema'
 import { crearTarea, type Tarea } from '../domain/Tarea'
 import { crearTema, type Tema } from '../domain/Tema'
 import { crearUnidad, type Unidad } from '../domain/Unidad'
-import type { BaseItem, ItemLocal, TablaAgregado } from './sincronizacion'
+import type { BaseItem, ConflictoGuardado, ItemLocal, TablaAgregado } from './sincronizacion'
 import {
   esTipoRelacion,
   formatoDesdeNombreArchivo,
@@ -495,6 +495,30 @@ export class VaultFileSystemService {
   guardarBaseSync(base: Record<TablaAgregado, BaseItem[]>): void {
     mkdirSync(this.dirIndice, { recursive: true })
     writeFileSync(this.rutaBaseSync, JSON.stringify(base), 'utf8')
+  }
+
+  private get rutaConflictos(): string {
+    return join(this.dirIndice, 'conflictos.json')
+  }
+
+  /**
+   * Conflictos pendientes de resolución manual (ambos lados editaron el mismo
+   * ítem). Se guardan con ambas versiones para poder mostrarlas y elegir. Son
+   * re-detectables: si se pierden, la siguiente sync los vuelve a detectar.
+   */
+  leerConflictos(): ConflictoGuardado[] {
+    try {
+      if (!existsSync(this.rutaConflictos)) return []
+      const arr = JSON.parse(readFileSync(this.rutaConflictos, 'utf8'))
+      return Array.isArray(arr) ? (arr as ConflictoGuardado[]) : []
+    } catch {
+      return []
+    }
+  }
+
+  guardarConflictos(conflictos: ConflictoGuardado[]): void {
+    mkdirSync(this.dirIndice, { recursive: true })
+    writeFileSync(this.rutaConflictos, JSON.stringify(conflictos), 'utf8')
   }
 
   // ---------------------------------------------------------------------------

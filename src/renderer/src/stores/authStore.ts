@@ -3,6 +3,7 @@ import type { SesionDTO, SincronizacionDTO } from '@shared/dtos'
 import { api } from '../lib/api'
 import { useConceptosStore } from './conceptosStore'
 import { useAsignaturasStore } from './asignaturasStore'
+import { useConflictosStore } from './conflictosStore'
 
 interface AuthState {
   sesion: SesionDTO | null
@@ -65,6 +66,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           useAsignaturasStore.getState().cargar()
         ])
       }
+      // Refresca la lista de conflictos (la sync la acaba de recalcular).
+      void useConflictosStore.getState().cargar()
       return resumen
     } finally {
       set({ sincronizando: false })

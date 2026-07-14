@@ -69,6 +69,9 @@ const api: PedagoGraphApi = {
   cerrarSesion: () => ipcRenderer.invoke(CANALES.authCerrar),
   sesionActual: () => ipcRenderer.invoke(CANALES.authSesion),
   sincronizarNube: () => ipcRenderer.invoke(CANALES.nubeSincronizar),
+  listarConflictos: () => ipcRenderer.invoke(CANALES.conflictosListar),
+  resolverConflicto: (tabla, id, eleccion) =>
+    ipcRenderer.invoke(CANALES.conflictosResolver, tabla, id, eleccion),
   onVaultCambiado: (callback) => {
     const oyente = (): void => callback()
     ipcRenderer.on(CANALES.vaultCambiado, oyente)

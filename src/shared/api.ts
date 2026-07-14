@@ -26,6 +26,8 @@ import type {
   ResumenTareaDTO,
   SesionDTO,
   SincronizacionDTO,
+  ConflictoDTO,
+  EleccionConflicto,
   TareaDTO,
   UsoDeConceptoDTO
 } from './dtos'
@@ -124,6 +126,14 @@ export interface PedagoGraphApi {
   sesionActual(): Promise<Resultado<SesionDTO | null>>
   /** Sincroniza el vault local con la nube (dos vías). */
   sincronizarNube(): Promise<Resultado<SincronizacionDTO>>
+  /** Conflictos pendientes de resolución manual (mismo ítem editado en dos equipos). */
+  listarConflictos(): Promise<Resultado<ConflictoDTO[]>>
+  /** Resuelve un conflicto quedándose con la versión local o la de la nube. */
+  resolverConflicto(
+    tabla: ConflictoDTO['tabla'],
+    id: string,
+    eleccion: EleccionConflicto
+  ): Promise<Resultado<null>>
 
   // --- Sistema ---
   reindexar(): Promise<Resultado<ResultadoReindexadoDTO>>

@@ -16,6 +16,7 @@ import { useAuthStore } from './stores/authStore'
 import { useConceptosStore } from './stores/conceptosStore'
 import { useLayoutStore } from './stores/layoutStore'
 import { useUiStore } from './stores/uiStore'
+import { useConflictosStore } from './stores/conflictosStore'
 import { PantallaLogin } from './features/auth/PantallaLogin'
 import { useSincronizarAlReconectar } from './hooks/useConexion'
 
@@ -67,6 +68,7 @@ function App(): JSX.Element {
   const sesion = useAuthStore((s) => s.sesion)
   const cargandoSesion = useAuthStore((s) => s.cargando)
   const cargarSesion = useAuthStore((s) => s.cargar)
+  const cargarConflictos = useConflictosStore((s) => s.cargar)
 
   // Aplica el tema (claro/oscuro) a la raíz del documento.
   useEffect(() => {
@@ -84,15 +86,17 @@ function App(): JSX.Element {
   useEffect(() => {
     void cargarConceptos()
     void cargarAsignaturas()
-  }, [cargarConceptos, cargarAsignaturas])
+    void cargarConflictos()
+  }, [cargarConceptos, cargarAsignaturas, cargarConflictos])
 
   useEffect(() => {
     // Refresca las vistas cuando el vault cambia en segundo plano (sincronización).
     return api.onVaultCambiado(() => {
       void cargarConceptos()
       void cargarAsignaturas()
+      void cargarConflictos()
     })
-  }, [cargarConceptos, cargarAsignaturas])
+  }, [cargarConceptos, cargarAsignaturas, cargarConflictos])
 
   useEffect(() => {
     // Evita que soltar un archivo fuera de una zona válida haga navegar la app.

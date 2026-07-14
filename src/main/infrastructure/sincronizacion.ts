@@ -8,8 +8,11 @@
  * que hace **seguro** el borrado simétrico.
  *
  * Reglas:
- *  - En ambos: idéntico → nada (evita rebotes por reloj); si difiere, gana el más
- *    reciente (mtime local vs actualizado_en remoto).
+ *  - En ambos: idéntico → nada (evita rebotes por reloj). Si difiere, se compara
+ *    cada lado con la BASE: si solo uno cambió, gana ese (SIN depender del reloj);
+ *    si cambiaron LOS DOS es un CONFLICTO REAL → no se aplica nada, se marca para
+ *    resolver a mano (`conflictos`) y se conserva el hash ancestro para re-detectarlo.
+ *    (Con base antigua sin hash, se cae a "última-escritura-gana" por reloj.)
  *  - Solo local:
  *      · no estaba en la base → nuevo → subir.
  *      · estaba y su contenido = el de la base → se borró en la nube → BORRAR local.
@@ -57,6 +60,22 @@ export interface PlanSincronizacion {
   borrarLocal: string[]
   /** Ítems que quedan sincronizados tras aplicar el plan (la nueva base, con hash). */
   baseFinal: BaseItem[]
+  /** Conflictos reales (ambos lados editaron el ítem): NO se aplican, se marcan. */
+  conflictos: ConflictoDetectado[]
+}
+
+/** Un conflicto real detectado: ambas versiones se conservan para resolver a mano. */
+export interface ConflictoDetectado {
+  id: string
+  local: Record<string, unknown>
+  remoto: Record<string, unknown>
+  mtimeLocalMs: number
+  actualizadoRemotoMs: number
+}
+
+/** Un conflicto persistido (con su tabla) a la espera de resolución manual. */
+export interface ConflictoGuardado extends ConflictoDetectado {
+  tabla: TablaAgregado
 }
 
 /** Serializa de forma canónica (claves ordenadas) para comparar contenido. */
@@ -92,6 +111,7 @@ export function planificarSincronizacion(
   const borrarRemoto: string[] = []
   const borrarLocal: string[] = []
   const baseFinal: BaseItem[] = []
+  const conflictos: ConflictoDetectado[] = []
   const conserva = (id: string, hash: string): void => void baseFinal.push({ id, hash })
 
   for (const id of todos) {
@@ -107,13 +127,42 @@ export function planificarSincronizacion(
       const hl = canonizar(local.datos)
       const hr = canonizar(remoto.datos)
       if (hl === hr) {
+        // Igual en ambos → nada (evita rebotes por reloj).
         conserva(id, hl)
-      } else if (local.mtimeMs >= remoto.actualizadoEnMs) {
-        subir.push(local)
-        conserva(id, hl)
+      } else if (!hashConocido) {
+        // Sin base fiable (compat): no se puede afirmar quién cambió → última-
+        // escritura-gana por reloj.
+        if (local.mtimeMs >= remoto.actualizadoEnMs) {
+          subir.push(local)
+          conserva(id, hl)
+        } else {
+          bajar.push(remoto)
+          conserva(id, hr)
+        }
       } else {
-        bajar.push(remoto)
-        conserva(id, hr)
+        const cambioLocal = hl !== hashPrevio
+        const cambioRemoto = hr !== hashPrevio
+        if (cambioLocal && !cambioRemoto) {
+          // Solo cambió local → gana local, sin depender del reloj.
+          subir.push(local)
+          conserva(id, hl)
+        } else if (!cambioLocal && cambioRemoto) {
+          // Solo cambió la nube → gana la nube.
+          bajar.push(remoto)
+          conserva(id, hr)
+        } else {
+          // Ambos editaron el mismo ítem tras la base → CONFLICTO REAL. No se
+          // aplica nada; se marca para resolver a mano y se conserva el hash
+          // ANCESTRO para volver a detectarlo en cada sync hasta resolverlo.
+          conflictos.push({
+            id,
+            local: local.datos,
+            remoto: remoto.datos,
+            mtimeLocalMs: local.mtimeMs,
+            actualizadoRemotoMs: remoto.actualizadoEnMs
+          })
+          conserva(id, hashPrevio as string)
+        }
       }
     } else if (local && !remoto) {
       const hl = canonizar(local.datos)
@@ -149,5 +198,5 @@ export function planificarSincronizacion(
     // !local && !remoto (estaba en base) → desapareció de ambos → fuera de la base.
   }
 
-  return { subir, bajar, borrarRemoto, borrarLocal, baseFinal }
+  return { subir, bajar, borrarRemoto, borrarLocal, baseFinal, conflictos }
 }

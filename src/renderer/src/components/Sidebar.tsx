@@ -3,6 +3,7 @@ import { useAsignaturasStore } from '../stores/asignaturasStore'
 import { useConceptosStore } from '../stores/conceptosStore'
 import { useLayoutStore } from '../stores/layoutStore'
 import { useUiStore, type Contexto, type Seccion } from '../stores/uiStore'
+import { useConflictosStore } from '../stores/conflictosStore'
 import { conceptosDeAprendizaje, pendientesHoy } from '../lib/repaso'
 import { useEnLinea } from '../hooks/useConexion'
 
@@ -90,6 +91,7 @@ export function Sidebar(): JSX.Element {
   const cerrarSesion = useAuthStore((s) => s.cerrar)
   const alternarConfiguracion = useUiStore((s) => s.alternarConfiguracion)
   const enLinea = useEnLinea()
+  const conflictosPendientes = useConflictosStore((s) => s.lista.length)
 
   // En la franja de iconos (sidebar plegado) los grupos se muestran siempre.
   const mostrarDocencia = colapsada || !docenciaColapsada
@@ -193,7 +195,14 @@ export function Sidebar(): JSX.Element {
         )}
 
         {/* Configuración: agrupa Apariencia (modo oscuro), Asistente IA, Datos y copias, Cuenta. */}
-        <Item seccion="configuracion" etiqueta="Configuración" icono="⚙️" colapsada={colapsada} alSeleccionar={alternarConfiguracion} />
+        <Item
+          seccion="configuracion"
+          etiqueta="Configuración"
+          icono="⚙️"
+          colapsada={colapsada}
+          cuenta={colapsada || conflictosPendientes === 0 ? undefined : conflictosPendientes}
+          alSeleccionar={alternarConfiguracion}
+        />
 
         {usuario && (
           <div className={`mt-1 flex items-center pt-1 ${colapsada ? 'justify-center' : 'gap-2 px-1'}`}>

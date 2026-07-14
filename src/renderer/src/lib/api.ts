@@ -108,5 +108,11 @@ export const api = {
   cerrarSesion: () => desenvolver(window.api.cerrarSesion()),
   sesionActual: () => desenvolver(window.api.sesionActual()),
   sincronizarNube: () => desenvolver(window.api.sincronizarNube()),
+  listarConflictos: () => desenvolver(window.api.listarConflictos()),
+  resolverConflicto: (
+    tabla: import('@shared/dtos').ConflictoDTO['tabla'],
+    id: string,
+    eleccion: import('@shared/dtos').EleccionConflicto
+  ) => desenvolver(window.api.resolverConflicto(tabla, id, eleccion)),
   onVaultCambiado: (callback: () => void): (() => void) => window.api.onVaultCambiado(callback)
 }

@@ -372,6 +372,31 @@ export interface SincronizacionDTO {
   borradosNube: number
   /** Borrados en local (propagados desde la nube desde otro equipo). */
   borradosLocal: number
+  /** Conflictos reales detectados (pendientes de resolución manual). */
+  conflictos: number
+}
+
+/** Con qué versión quedarse al resolver un conflicto. */
+export type EleccionConflicto = 'local' | 'nube'
+
+/** Una de las dos versiones en conflicto, resumida para mostrarla. */
+export interface VersionConflictoDTO {
+  /** Línea legible que describe esta versión (nombre + detalles). */
+  resumen: string
+  /** Marca de tiempo en que se editó esta versión. */
+  editadoEnMs: number
+}
+
+/** Un conflicto pendiente: el mismo ítem editado en dos equipos entre syncs. */
+export interface ConflictoDTO {
+  id: string
+  tabla: 'conceptos' | 'asignaturas' | 'tareas'
+  /** Etiqueta del tipo para la UI: "Concepto" | "Asignatura" | "Tarea". */
+  tipoEtiqueta: string
+  /** Nombre del ítem en conflicto. */
+  titulo: string
+  local: VersionConflictoDTO
+  nube: VersionConflictoDTO
 }
 
 /** Datos para configurar el servidor MCP (asistente IA) en un CLI externo. */

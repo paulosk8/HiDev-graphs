@@ -69,6 +69,8 @@ export const CANALES = {
 
   // Nube (sincronización)
   nubeSincronizar: 'nube:sincronizar',
+  conflictosListar: 'nube:conflictos-listar',
+  conflictosResolver: 'nube:conflictos-resolver',
 
   // Terminal embebida
   terminalCrear: 'terminal:crear',
