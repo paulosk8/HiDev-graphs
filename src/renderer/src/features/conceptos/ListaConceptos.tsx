@@ -29,7 +29,9 @@ export function ListaConceptos({ contexto }: Props): JSX.Element {
   const seleccionar = useUiStore((s) => s.seleccionarConcepto)
   const [creando, setCreando] = useState(false)
   const [busqueda, setBusqueda] = useState('')
-  const [colapsados, setColapsados] = useState<Set<string>>(new Set())
+  // Grupos (asignaturas) desplegados. Vacío = todos colapsados por defecto:
+  // así ves una lista breve de grupos y decides cuál abrir.
+  const [gruposAbiertos, setGruposAbiertos] = useState<Set<string>>(new Set())
   // Conceptos cuyos temas están desplegados (colapsados por defecto para no saturar).
   const [temasAbiertos, setTemasAbiertos] = useState<Set<string>>(new Set())
 
@@ -89,11 +91,14 @@ export function ListaConceptos({ contexto }: Props): JSX.Element {
   }, [filtrada, nombresContexto])
 
   const alternarGrupo = (nombre: string): void =>
-    setColapsados((prev) => {
+    setGruposAbiertos((prev) => {
       const s = new Set(prev)
       s.has(nombre) ? s.delete(nombre) : s.add(nombre)
       return s
     })
+
+  // Al buscar, se despliegan los grupos para que se vean los resultados.
+  const hayBusqueda = busqueda.trim().length > 0
 
   const alternarTemas = (id: string): void =>
     setTemasAbiertos((prev) => {
@@ -153,7 +158,7 @@ export function ListaConceptos({ contexto }: Props): JSX.Element {
       ) : (
         <div className="space-y-3">
           {grupos.map(([asignatura, conceptos]) => {
-            const cerrado = colapsados.has(asignatura)
+            const abierto = hayBusqueda || gruposAbiertos.has(asignatura)
             return (
               <section key={asignatura} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
                 <button
@@ -164,9 +169,9 @@ export function ListaConceptos({ contexto }: Props): JSX.Element {
                     {asignatura}{' '}
                     <span className="text-sm font-normal text-slate-400">({conceptos.length})</span>
                   </span>
-                  <span className="text-slate-400">{cerrado ? '▸' : '▾'}</span>
+                  <span className="text-slate-400">{abierto ? '▾' : '▸'}</span>
                 </button>
-                {!cerrado && (
+                {abierto && (
                   <ul className="divide-y divide-slate-100 border-t border-slate-100">
                     {conceptos.map((c) => {
                       const temasVisibles = temasAbiertos.has(c.id)
