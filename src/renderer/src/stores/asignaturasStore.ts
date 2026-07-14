@@ -20,7 +20,11 @@ interface AsignaturasState {
 
   cargar: () => Promise<void>
   crear: (datos: DatosAsignaturaDTO) => Promise<ResumenAsignaturaDTO | null>
-  editar: (id: string, datos: DatosAsignaturaEdicionDTO) => Promise<AsignaturaDTO | null>
+  editar: (
+    id: string,
+    datos: DatosAsignaturaEdicionDTO,
+    opciones?: { silencioso?: boolean }
+  ) => Promise<AsignaturaDTO | null>
   eliminar: (id: string, nombre: string) => Promise<boolean>
 }
 
@@ -50,7 +54,7 @@ export const useAsignaturasStore = create<AsignaturasState>((set) => ({
     }
   },
 
-  editar: async (id, datos) => {
+  editar: async (id, datos, opciones) => {
     try {
       const editada = await api.editarAsignatura(id, datos)
       set((estado) => ({
@@ -68,7 +72,10 @@ export const useAsignaturasStore = create<AsignaturasState>((set) => ({
           )
         )
       }))
-      ui().notificar({ tipo: 'exito', mensaje: `Cambios guardados en «${editada.nombre}».` })
+      // El editor inline guarda en silencio (autosave); el wizard sí notifica.
+      if (!opciones?.silencioso) {
+        ui().notificar({ tipo: 'exito', mensaje: `Cambios guardados en «${editada.nombre}».` })
+      }
       return editada
     } catch (error) {
       ui().notificarError(error)

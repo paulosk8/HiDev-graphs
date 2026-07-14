@@ -49,12 +49,16 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
   // Guarda la estructura (temas/subtemas) editada inline, conservando lo demás.
   const guardarEstructura = async (unidades: DatosUnidadEdicionDTO[]): Promise<void> => {
     if (!asignatura) return
-    const actualizada = await editarAsig(asignaturaId, {
-      nombre: asignatura.nombre,
-      periodos: asignatura.periodos,
-      componentes: asignatura.componentes,
-      unidades
-    })
+    const actualizada = await editarAsig(
+      asignaturaId,
+      {
+        nombre: asignatura.nombre,
+        periodos: asignatura.periodos,
+        componentes: asignatura.componentes,
+        unidades
+      },
+      { silencioso: true }
+    )
     if (actualizada) setAsignatura(actualizada)
   }
 

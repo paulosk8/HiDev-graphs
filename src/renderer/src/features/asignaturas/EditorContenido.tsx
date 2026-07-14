@@ -81,6 +81,8 @@ export function EditorContenido({
   const [arbol, setArbol] = useState<UniN[]>(() => desdeAsignatura(asignatura))
   const [foco, setFoco] = useState<string | null>(null)
   const [temaBuscador, setTemaBuscador] = useState<string | null>(null)
+  const [guardando, setGuardando] = useState(false)
+  const [guardado, setGuardado] = useState(false)
 
   // Re-sincroniza el árbol cuando la asignatura cambia (tras guardar o vincular).
   useEffect(() => {
@@ -92,9 +94,22 @@ export function EditorContenido({
   const N2 = esAprendizaje ? 'tema' : 'subtema'
   const N3 = esAprendizaje ? 'subtema' : 'sub-subtema'
 
+  // Muestra «✓ Guardado» un instante tras un autosave.
+  const marcarGuardado = (): void => {
+    setGuardado(true)
+    setTimeout(() => setGuardado(false), 2000)
+  }
+
+  const guardar = async (dto: DatosUnidadEdicionDTO[]): Promise<void> => {
+    setGuardando(true)
+    await onGuardar(dto)
+    setGuardando(false)
+    marcarGuardado()
+  }
+
   const persistir = async (nuevo: UniN[]): Promise<void> => {
     setArbol(nuevo)
-    await onGuardar(aDTO(nuevo))
+    await guardar(aDTO(nuevo))
   }
 
   // --- Altas (locales; se guardan al escribir el título y perder el foco) ---
@@ -144,7 +159,8 @@ export function EditorContenido({
   const alPerderFoco = (): void => {
     setFoco(null)
     // Lee el estado MÁS RECIENTE (updater funcional): descarta nodos nuevos con
-    // título vacío y persiste el resto. Evita closures obsoletos al perder el foco.
+    // título vacío. Solo guarda si de verdad cambió algo (evita el autosave —y su
+    // aviso— cuando entras y sales de un campo sin editar nada).
     setArbol((prev) => {
       const limpio = prev
         .map((u) => ({
@@ -154,7 +170,10 @@ export function EditorContenido({
             .filter((t) => t.titulo.trim() || !esTmp(t.id))
         }))
         .filter((u) => u.titulo.trim() || !esTmp(u.id))
-      queueMicrotask(() => void onGuardar(aDTO(limpio)))
+      const guardadoActual = JSON.stringify(aDTO(desdeAsignatura(asignatura)))
+      if (JSON.stringify(aDTO(limpio)) !== guardadoActual) {
+        queueMicrotask(() => void guardar(aDTO(limpio)))
+      }
       return limpio
     })
   }
@@ -198,6 +217,15 @@ export function EditorContenido({
 
   return (
     <div className="space-y-4">
+      {/* Estado del autosave (aparece solo al guardar; sin avisos intrusivos). */}
+      <div className="flex h-4 items-center justify-end text-xs">
+        {guardando ? (
+          <span className="text-slate-400">Guardando…</span>
+        ) : guardado ? (
+          <span className="text-emerald-600">✓ Guardado</span>
+        ) : null}
+      </div>
+
       {arbol.map((u) => (
         <div key={u.id} className="rounded-xl border border-slate-200 p-4">
           <div className="mb-2 flex items-center gap-1">
