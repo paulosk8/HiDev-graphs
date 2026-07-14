@@ -5,6 +5,7 @@ import type {
   ResumenTareaDTO
 } from '@shared/dtos'
 import { BuscadorConceptos } from '../vinculos/BuscadorConceptos'
+import { DialogoConfirmacion } from '../../components/DialogoConfirmacion'
 
 // Árbol editable local (ids reales para lo existente; "tmp-*" para lo nuevo aún sin guardar).
 interface SubN {
@@ -20,6 +21,16 @@ interface UniN {
   id: string
   titulo: string
   temas: TemaN[]
+}
+
+/** Borrado pendiente de confirmar. */
+interface Pendiente {
+  tipo: 'unidad' | 'tema' | 'sub'
+  uId: string
+  tId?: string
+  sId?: string
+  titulo: string
+  mensaje: string
 }
 
 let seq = 0
@@ -83,6 +94,7 @@ export function EditorContenido({
   const [temaBuscador, setTemaBuscador] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
   const [guardado, setGuardado] = useState(false)
+  const [aEliminar, setAEliminar] = useState<Pendiente | null>(null)
 
   // Re-sincroniza el árbol cuando la asignatura cambia (tras guardar o vincular).
   useEffect(() => {
@@ -178,7 +190,7 @@ export function EditorContenido({
     })
   }
 
-  // --- Bajas ---
+  // --- Bajas (ejecución) ---
   const quitarUnidad = (uId: string): void => void persistir(arbol.filter((u) => u.id !== uId))
   const quitarTema = (uId: string, tId: string): void =>
     void persistir(arbol.map((u) => (u.id === uId ? { ...u, temas: u.temas.filter((t) => t.id !== tId) } : u)))
@@ -194,6 +206,54 @@ export function EditorContenido({
   // Conceptos/tareas del tema (desde la asignatura, por id).
   const temaReal = (tId: string): AsignaturaDTO['unidades'][number]['temas'][number] | undefined =>
     asignatura.unidades.flatMap((u) => u.temas).find((t) => t.id === tId)
+
+  // --- Confirmación de borrado (no se elimina directo si hay contenido) ---
+  const plural = (n: number, palabra: string): string => `${n} ${palabra}${n > 1 ? 's' : ''}`
+
+  const pedirQuitarUnidad = (u: UniN): void => {
+    const hijos = u.temas.filter((t) => t.titulo.trim()).length
+    if (!u.titulo.trim() && hijos === 0) return quitarUnidad(u.id) // vacío: sin confirmar
+    setAEliminar({
+      tipo: 'unidad',
+      uId: u.id,
+      titulo: u.titulo || `este ${N1}`,
+      mensaje:
+        hijos > 0
+          ? `Se eliminará «${u.titulo}» y ${plural(hijos, N2)}. Los conceptos y su material NO se borran.`
+          : `Se eliminará «${u.titulo}».`
+    })
+  }
+  const pedirQuitarTema = (uId: string, t: TemaN): void => {
+    const nSub = t.subtemas.filter((s) => s.titulo.trim()).length
+    const real = temaReal(t.id)
+    const nConc = real?.conceptos.length ?? 0
+    const nTar = tareas.filter((x) => x.temas.includes(t.id)).length
+    if (!t.titulo.trim() && nSub === 0 && nConc === 0 && nTar === 0) return quitarTema(uId, t.id)
+    const extras: string[] = []
+    if (nSub) extras.push(plural(nSub, N3))
+    if (nConc) extras.push(`${plural(nConc, 'concepto')} vinculado${nConc > 1 ? 's' : ''}`)
+    if (nTar) extras.push(plural(nTar, esAprendizaje ? 'práctica' : 'tarea'))
+    setAEliminar({
+      tipo: 'tema',
+      uId,
+      tId: t.id,
+      titulo: t.titulo || `este ${N2}`,
+      mensaje: `Se eliminará «${t.titulo}»${extras.length ? ` (incluye ${extras.join(', ')})` : ''}. Los conceptos y su material NO se borran.`
+    })
+  }
+  const pedirQuitarSub = (uId: string, tId: string, sub: SubN): void => {
+    if (!sub.titulo.trim()) return quitarSub(uId, tId, sub.id)
+    setAEliminar({ tipo: 'sub', uId, tId, sId: sub.id, titulo: sub.titulo, mensaje: `Se eliminará «${sub.titulo}».` })
+  }
+
+  const confirmarEliminar = (): void => {
+    if (!aEliminar) return
+    const p = aEliminar
+    if (p.tipo === 'unidad') quitarUnidad(p.uId)
+    else if (p.tipo === 'tema') quitarTema(p.uId, p.tId!)
+    else quitarSub(p.uId, p.tId!, p.sId!)
+    setAEliminar(null)
+  }
 
   const inputTitulo = (
     valor: string,
@@ -231,7 +291,7 @@ export function EditorContenido({
           <div className="mb-2 flex items-center gap-1">
             {inputTitulo(u.titulo, u.id, (v) => setTitulo(1, [u.id], v), `Título del ${N1} (ej. Unidad 1)`, 'flex-1 font-medium text-slate-800')}
             <button
-              onClick={() => quitarUnidad(u.id)}
+              onClick={() => pedirQuitarUnidad(u)}
               title={`Quitar ${N1}`}
               className="shrink-0 rounded-md px-2 py-1 text-xs text-slate-300 transition hover:bg-red-50 hover:text-red-600"
             >
@@ -248,7 +308,7 @@ export function EditorContenido({
                   <div className="flex items-center gap-1">
                     {inputTitulo(t.titulo, t.id, (v) => setTitulo(2, [u.id, t.id], v), `Título del ${N2}`, 'flex-1 font-medium text-slate-700')}
                     <button
-                      onClick={() => quitarTema(u.id, t.id)}
+                      onClick={() => pedirQuitarTema(u.id, t)}
                       title={`Quitar ${N2}`}
                       className="shrink-0 rounded-md px-2 py-0.5 text-xs text-slate-300 transition hover:bg-red-50 hover:text-red-600"
                     >
@@ -310,7 +370,7 @@ export function EditorContenido({
                           <span className="text-slate-300">·</span>
                           {inputTitulo(sub.titulo, sub.id, (v) => setTitulo(3, [u.id, t.id, sub.id], v), `Título del ${N3}`, 'flex-1 text-slate-600')}
                           <button
-                            onClick={() => quitarSub(u.id, t.id, sub.id)}
+                            onClick={() => pedirQuitarSub(u.id, t.id, sub)}
                             title={`Quitar ${N3}`}
                             className="shrink-0 rounded-md px-2 py-0.5 text-xs text-slate-300 transition hover:bg-red-50 hover:text-red-600"
                           >
@@ -341,6 +401,16 @@ export function EditorContenido({
       >
         + Agregar {N1}
       </button>
+
+      {aEliminar && (
+        <DialogoConfirmacion
+          titulo={`¿Eliminar «${aEliminar.titulo}»?`}
+          mensaje={aEliminar.mensaje}
+          textoConfirmar="Eliminar"
+          onConfirmar={confirmarEliminar}
+          onCancelar={() => setAEliminar(null)}
+        />
+      )}
     </div>
   )
 }
