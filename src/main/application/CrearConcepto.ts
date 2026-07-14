@@ -14,7 +14,13 @@ export function crearConcepto(servicios: Servicios, datos: DatosConceptoDTO): Re
   const existentes = new Set(vault.listarIdsConceptos())
   const id = slugUnico(datos.nombre, existentes, 'concepto')
 
-  const concepto = nuevoConcepto({ id, nombre: datos.nombre, descripcion: datos.descripcion })
+  const concepto = nuevoConcepto({
+    id,
+    nombre: datos.nombre,
+    descripcion: datos.descripcion,
+    notas: datos.notas,
+    formatoNotas: datos.formatoNotas
+  })
   vault.guardarConcepto(concepto)
   repositorio.indexarConcepto(concepto)
 

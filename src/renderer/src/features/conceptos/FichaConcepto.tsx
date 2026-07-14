@@ -7,6 +7,7 @@ import { useAsignaturasStore } from '../../stores/asignaturasStore'
 import { useConceptosStore } from '../../stores/conceptosStore'
 import { useUiStore } from '../../stores/uiStore'
 import { FormularioConcepto } from './FormularioConcepto'
+import { NotasConcepto } from './NotasConcepto'
 import { ZonaMaterial } from './ZonaMaterial'
 import { FichaTarea } from '../tareas/FichaTarea'
 
@@ -106,6 +107,9 @@ export function FichaConcepto({ conceptoId }: Props): JSX.Element {
           }
         />
       </section>
+
+      {/* Notas y observaciones */}
+      <NotasConcepto concepto={concepto} onGuardado={() => void cargar()} />
 
       {/* Se usa en */}
       <section>

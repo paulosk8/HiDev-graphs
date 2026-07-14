@@ -26,7 +26,11 @@ export function editarConcepto(
     nombre: datos.nombre,
     descripcion: datos.descripcion,
     relaciones: actual.relaciones,
-    recursos: actual.recursos
+    recursos: actual.recursos,
+    // Conserva las notas y el repaso salvo que la edición traiga notas nuevas.
+    notas: datos.notas ?? actual.notas,
+    formatoNotas: datos.formatoNotas ?? actual.formatoNotas,
+    repaso: actual.repaso
   })
 
   vault.guardarConcepto(actualizado)

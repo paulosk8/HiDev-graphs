@@ -73,6 +73,10 @@ export interface ConceptoDTO {
   descripcion: string
   recursos: RecursoDTO[]
   relaciones: RelacionDTO[]
+  /** Notas u observaciones propias sobre el concepto. */
+  notas: string
+  /** Formato de las notas (Markdown, HTML o código). */
+  formatoNotas: FormatoInstrucciones
   /** Dominio percibido 0..5 (0 si nunca se repasó). */
   dominio: number
   /** Fecha ISO del próximo repaso, o null si nunca se repasó. */
@@ -85,10 +89,13 @@ export interface FichaConceptoDTO {
   usos: UsoDeConceptoDTO[]
 }
 
-/** Datos para crear o editar un concepto (formulario de 2 campos). */
+/** Datos para crear o editar un concepto. */
 export interface DatosConceptoDTO {
   nombre: string
   descripcion?: string
+  /** Notas propias (opcional). */
+  notas?: string
+  formatoNotas?: FormatoInstrucciones
 }
 
 /** Resultado de agregar material: concepto actualizado + qué se ignoró. */
@@ -213,8 +220,8 @@ export interface DatosAsignaturaEdicionDTO {
 
 // --- Tareas (capa transversal) ---
 
-/** Formato de las instrucciones de una tarea: Markdown o HTML (con CSS/JS). */
-export type FormatoInstrucciones = 'markdown' | 'html'
+/** Formato del contenido: Markdown, HTML (con CSS/JS) o código (vista tipo editor). */
+export type FormatoInstrucciones = 'markdown' | 'html' | 'codigo'
 
 /** Enlace a un recurso online que el estudiante puede usar en la tarea. */
 export interface EnlaceDTO {

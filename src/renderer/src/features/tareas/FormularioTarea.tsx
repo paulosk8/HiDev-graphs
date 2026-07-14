@@ -4,6 +4,7 @@ import type { AsignaturaDTO, FormatoInstrucciones, TareaDTO } from '@shared/dtos
 import { Boton } from '../../components/Boton'
 import { CampoTexto } from '../../components/Campos'
 import { Modal } from '../../components/Modal'
+import { VistaCodigo } from '../../components/VistaCodigo'
 import { api } from '../../lib/api'
 import { htmlAMarkdown } from '../../lib/markdown'
 import { useTareasStore } from '../../stores/tareasStore'
@@ -208,7 +209,7 @@ export function FormularioTarea({
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-slate-700">Instrucciones</span>
               <div className="inline-flex overflow-hidden rounded-md border border-slate-200 text-xs">
-                {(['markdown', 'html'] as const).map((f) => (
+                {(['markdown', 'html', 'codigo'] as const).map((f) => (
                   <button
                     key={f}
                     type="button"
@@ -217,7 +218,7 @@ export function FormularioTarea({
                       formato === f ? 'bg-marca-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
                     }`}
                   >
-                    {f === 'markdown' ? 'Markdown' : 'HTML'}
+                    {f === 'markdown' ? 'Markdown' : f === 'html' ? 'HTML' : 'Código'}
                   </button>
                 ))}
               </div>
@@ -238,6 +239,8 @@ export function FormularioTarea({
                 srcDoc={instrucciones || '<p style="color:#94a3b8;font-family:sans-serif">Sin contenido</p>'}
                 className="min-h-[12rem] w-full rounded-lg border border-slate-200 bg-white"
               />
+            ) : formato === 'codigo' ? (
+              <VistaCodigo texto={instrucciones || '// Sin contenido'} />
             ) : (
               <div
                 className="markdown-preview min-h-[8rem] rounded-lg border border-slate-200 bg-slate-50 p-3"
@@ -266,10 +269,15 @@ export function FormularioTarea({
                     </button>
                   ))}
                 </div>
-              ) : (
+              ) : formato === 'html' ? (
                 <p className="mb-1.5 text-xs text-slate-500">
                   Modo HTML: pega o escribe HTML; admite <code>&lt;style&gt;</code> y{' '}
                   <code>&lt;script&gt;</code>. Se guarda tal cual para copiarlo en Moodle.
+                </p>
+              ) : (
+                <p className="mb-1.5 text-xs text-slate-500">
+                  Modo Código: escribe o pega código; se muestra como en un editor (con números de
+                  línea), sin ejecutarse.
                 </p>
               )}
               <textarea

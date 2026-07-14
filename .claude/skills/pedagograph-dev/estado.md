@@ -30,6 +30,12 @@ Historial de lo construido, con las decisiones no obvias. Complementa `SKILL.md`
 - Pestaña **«Estado»** en la ficha de asignatura (junto a Contenido y Planificación), componente `SaludAsignatura`. Se calcula **en el cliente** desde datos que la ficha ya tiene (asignatura + tareas + `conceptosStore` para el nº de material por concepto); **sin backend ni IPC nuevos**.
 - Chequeos con semáforo verde/ámbar: **temas sin concepto vinculado**, **conceptos sin material** (chips que abren la ficha del concepto para agregarlo), **temas sin tarea/práctica** y —solo docencia— **temas sin asignar a ninguna semana**. Arriba, cifras clave (temas, conceptos, con material X/Y, tareas) y un resumen (todo en orden / N puntos por revisar). Verificado por smoke de GUI.
 
+## Notas de concepto + formato «código»
+
+- **Notas/observaciones por concepto**: `Concepto` gana `notas` + `formatoNotas` (markdown/html/código), guardados en `concepto.yaml` (sincronizan con la nube; parte del contenido). Se editan en la ficha (sección «Notas y observaciones», componente `NotasConcepto`) y se muestran también al **revelar la respuesta en el repaso** (`ModoEstudioPage` pide la ficha del concepto). DTO: `ConceptoDTO`/`DatosConceptoDTO` con `notas`+`formatoNotas`.
+- **Bug corregido**: `EditarConcepto` no preservaba `repaso` (editar un concepto borraba su progreso de repaso). Ahora conserva `repaso` y las `notas` salvo que la edición traiga notas nuevas.
+- **Formato «código»** (tercer formato además de Markdown/HTML): `FormatoInstrucciones = 'markdown'|'html'|'codigo'` (en shared **y** en `domain/tipos`). Componentes compartidos `VistaCodigo` (aspecto tipo VS Code: cabecera con puntos, tema oscuro, números de línea, monoespaciada; **sin dependencia nueva**) y `ContenidoFormateado` (renderiza md/html/código) reutilizados por tareas, notas y repaso. En el vault, las instrucciones de tarea en código viven en `instrucciones.code.txt`; el guardado limpia los archivos de los otros formatos (helper `formatoInstruccionesDesde` + `rutaInstruccionesExistente`/`limpiarInstruccionesOtras`). Verificado por smoke headless (persistencia + preservación + limpieza) y GUI (editor de notas + opción en tareas).
+
 ## Modelo de dominio (dos capas + puente)
 
 - **Conocimiento**: `Concepto` (relaciones tipadas prerequisito_de/relacionado_con/profundiza; posee `Recurso`s = material). El material pertenece al **concepto**, nunca a la asignatura.

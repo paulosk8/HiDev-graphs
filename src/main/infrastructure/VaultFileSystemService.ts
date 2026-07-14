@@ -15,9 +15,18 @@ import type { ItemLocal, TablaAgregado } from './sincronizacion'
 import {
   esTipoRelacion,
   formatoDesdeNombreArchivo,
+  type FormatoInstrucciones,
   type FormatoRecurso,
   type TipoRelacion
 } from '../domain/tipos'
+
+/** Formatos posibles de las instrucciones de una tarea. */
+const FORMATOS_INSTR = ['markdown', 'html', 'codigo'] as const
+
+/** Normaliza un valor cualquiera al formato de instrucciones (markdown por defecto). */
+function formatoInstruccionesDesde(v: unknown): FormatoInstrucciones {
+  return v === 'html' ? 'html' : v === 'codigo' ? 'codigo' : 'markdown'
+}
 
 /**
  * Fuente de verdad en el sistema de archivos: el "vault" con YAML.
@@ -89,6 +98,8 @@ export class VaultFileSystemService {
         archivo: r.archivo,
         formato: r.formato
       })),
+      // Notas propias (solo si hay contenido), con su formato.
+      ...(concepto.notas.trim() ? { notas: concepto.notas, formatoNotas: concepto.formatoNotas } : {}),
       // Estado de repaso espaciado (solo si existe); parte del contenido del concepto.
       ...(concepto.repaso ? { repaso: { ...concepto.repaso } } : {})
     }
@@ -263,8 +274,29 @@ export class VaultFileSystemService {
   private rutaTarea(id: string): string {
     return join(this.carpetaTarea(id), 'tarea.yaml')
   }
-  private rutaInstrucciones(id: string, formato: 'markdown' | 'html'): string {
-    return join(this.carpetaTarea(id), formato === 'html' ? 'instrucciones.html' : 'instrucciones.md')
+  private rutaInstrucciones(id: string, formato: FormatoInstrucciones): string {
+    const nombre =
+      formato === 'html'
+        ? 'instrucciones.html'
+        : formato === 'codigo'
+          ? 'instrucciones.code.txt'
+          : 'instrucciones.md'
+    return join(this.carpetaTarea(id), nombre)
+  }
+
+  /** Ruta del archivo de instrucciones existente para una tarea (probando todos los formatos). */
+  private rutaInstruccionesExistente(id: string, preferido: FormatoInstrucciones): string | null {
+    const orden = [preferido, ...FORMATOS_INSTR.filter((f) => f !== preferido)]
+    return orden.map((f) => this.rutaInstrucciones(id, f)).find((r) => existsSync(r)) ?? null
+  }
+
+  /** Elimina los archivos de instrucciones de los formatos distintos al indicado (evita residuos). */
+  private limpiarInstruccionesOtras(id: string, formato: FormatoInstrucciones): void {
+    for (const otro of FORMATOS_INSTR) {
+      if (otro === formato) continue
+      const r = this.rutaInstrucciones(id, otro)
+      if (existsSync(r)) rmSync(r, { force: true })
+    }
   }
 
   existeTarea(id: string): boolean {
@@ -292,18 +324,14 @@ export class VaultFileSystemService {
     writeFileSync(this.rutaTarea(tarea.id), escribirYaml(plano, { lineWidth: 100 }), 'utf8')
     // Las instrucciones van en su propio archivo (.md o .html), legible y descargable.
     writeFileSync(this.rutaInstrucciones(tarea.id, tarea.formato), tarea.instrucciones, 'utf8')
-    // Si cambió el formato, elimina el archivo del otro formato para no dejar residuos.
-    const otro = this.rutaInstrucciones(tarea.id, tarea.formato === 'html' ? 'markdown' : 'html')
-    if (existsSync(otro)) rmSync(otro, { force: true })
+    // Si cambió el formato, elimina los archivos de los otros formatos.
+    this.limpiarInstruccionesOtras(tarea.id, tarea.formato)
   }
 
   leerTarea(id: string): Tarea {
     const datos = leerYaml(readFileSync(this.rutaTarea(id), 'utf8')) as Record<string, unknown>
-    const formato = datos.formato === 'html' ? 'html' : 'markdown'
-    const ruta = this.rutaInstrucciones(id, formato)
-    // Compatibilidad: si no existe el del formato indicado, prueba el otro.
-    const rutaOtro = this.rutaInstrucciones(id, formato === 'html' ? 'markdown' : 'html')
-    const rutaLeer = existsSync(ruta) ? ruta : existsSync(rutaOtro) ? rutaOtro : null
+    const formato = formatoInstruccionesDesde(datos.formato)
+    const rutaLeer = this.rutaInstruccionesExistente(id, formato)
     const instrucciones = rutaLeer ? readFileSync(rutaLeer, 'utf8') : ''
     return tareaDesdePlano(datos, instrucciones)
   }
@@ -372,10 +400,8 @@ export class VaultFileSystemService {
     return this.listarIdsTareas().map((id) => {
       const ruta = this.rutaTarea(id)
       const plano = leerYaml(readFileSync(ruta, 'utf8')) as Record<string, unknown>
-      const formato = plano.formato === 'html' ? 'html' : 'markdown'
-      const rutaInstr = this.rutaInstrucciones(id, formato)
-      const rutaOtro = this.rutaInstrucciones(id, formato === 'html' ? 'markdown' : 'html')
-      const rutaLeer = existsSync(rutaInstr) ? rutaInstr : existsSync(rutaOtro) ? rutaOtro : null
+      const formato = formatoInstruccionesDesde(plano.formato)
+      const rutaLeer = this.rutaInstruccionesExistente(id, formato)
       const instrucciones = rutaLeer ? readFileSync(rutaLeer, 'utf8') : ''
       return { id, datos: { ...plano, instrucciones }, mtimeMs: statSync(ruta).mtimeMs }
     })
@@ -396,15 +422,14 @@ export class VaultFileSystemService {
     // Tarea: separar las instrucciones de vuelta a su propio archivo.
     mkdirSync(this.carpetaTarea(id), { recursive: true })
     const { instrucciones, ...plano } = datos as { instrucciones?: unknown } & Record<string, unknown>
-    const formato = plano.formato === 'html' ? 'html' : 'markdown'
+    const formato = formatoInstruccionesDesde(plano.formato)
     writeFileSync(this.rutaTarea(id), escribirYaml(plano, { lineWidth: 100 }), 'utf8')
     writeFileSync(
       this.rutaInstrucciones(id, formato),
       typeof instrucciones === 'string' ? instrucciones : '',
       'utf8'
     )
-    const otro = this.rutaInstrucciones(id, formato === 'html' ? 'markdown' : 'html')
-    if (existsSync(otro)) rmSync(otro, { force: true })
+    this.limpiarInstruccionesOtras(id, formato)
   }
 
   private agregadoConMtime(id: string, ruta: string): ItemLocal {
@@ -492,12 +517,16 @@ function conceptoDesdePlano(datos: Record<string, unknown>): Concepto {
       })
     )
 
+  const formatoNotas = texto(datos.formatoNotas)
   return crearConcepto({
     id: texto(datos.id),
     nombre: texto(datos.nombre),
     descripcion: texto(datos.descripcion),
     relaciones,
     recursos,
+    notas: texto(datos.notas),
+    formatoNotas:
+      formatoNotas === 'html' || formatoNotas === 'codigo' ? formatoNotas : 'markdown',
     repaso: repasoDesdePlano(datos.repaso)
   })
 }
@@ -589,7 +618,7 @@ function tareaDesdePlano(datos: Record<string, unknown>, instrucciones: string):
     id: texto(datos.id),
     titulo: texto(datos.titulo),
     instrucciones,
-    formato: datos.formato === 'html' ? 'html' : 'markdown',
+    formato: formatoInstruccionesDesde(datos.formato),
     asignaturaId: texto(datos.asignaturaId),
     temas: listaTextos(datos.temas),
     componente: componente.length > 0 ? componente : null,

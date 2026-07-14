@@ -3,6 +3,9 @@ import type { Recurso } from './Recurso'
 import type { Relacion } from './Relacion'
 import type { RepasoConcepto } from './Repaso'
 
+/** Formato del contenido de las notas: Markdown, HTML o código (vista editor). */
+export type FormatoNota = 'markdown' | 'html' | 'codigo'
+
 /**
  * Concepto: unidad de conocimiento reutilizable entre asignaturas.
  *
@@ -17,6 +20,10 @@ export interface Concepto {
   readonly descripcion: string
   readonly relaciones: readonly Relacion[]
   readonly recursos: readonly Recurso[]
+  /** Notas u observaciones propias del docente/estudiante sobre el concepto. */
+  readonly notas: string
+  /** Formato de las notas. */
+  readonly formatoNotas: FormatoNota
   /** Estado de repaso espaciado (opcional; ausente si nunca se ha repasado). */
   readonly repaso?: RepasoConcepto
 }
@@ -27,6 +34,8 @@ export interface DatosConcepto {
   descripcion?: string
   relaciones?: readonly Relacion[]
   recursos?: readonly Recurso[]
+  notas?: string
+  formatoNotas?: FormatoNota
   repaso?: RepasoConcepto
 }
 
@@ -46,6 +55,8 @@ export function crearConcepto(datos: DatosConcepto): Concepto {
     descripcion: (datos.descripcion ?? '').trim(),
     relaciones: datos.relaciones ?? [],
     recursos: datos.recursos ?? [],
+    notas: datos.notas ?? '',
+    formatoNotas: datos.formatoNotas ?? 'markdown',
     ...(datos.repaso ? { repaso: datos.repaso } : {})
   }
 }

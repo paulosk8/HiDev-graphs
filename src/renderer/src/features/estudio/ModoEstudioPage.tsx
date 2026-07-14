@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react'
-import type { CalidadRepaso, ResumenConceptoDTO } from '@shared/dtos'
+import type { CalidadRepaso, ConceptoDTO, ResumenConceptoDTO } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
 import { Modal } from '../../components/Modal'
+import { ContenidoFormateado } from '../../components/ContenidoFormateado'
 import { EstadoVacio } from '../../components/EstadoVacio'
+import { api } from '../../lib/api'
 import { useAsignaturasStore } from '../../stores/asignaturasStore'
 import { useConceptosStore } from '../../stores/conceptosStore'
 import { colorDominio, conceptosDeAprendizaje, etiquetaDominio, pendientesHoy } from '../../lib/repaso'
@@ -33,6 +35,14 @@ export function ModoEstudioPage(): JSX.Element {
   const [mostrarReverso, setMostrarReverso] = useState(false)
   const [guardando, setGuardando] = useState(false)
   const [repasados, setRepasados] = useState(0)
+  // Detalle del concepto (para mostrar sus notas al revelar la respuesta).
+  const [detalle, setDetalle] = useState<ConceptoDTO | null>(null)
+
+  const revelar = (id: string): void => {
+    setMostrarReverso(true)
+    setDetalle(null)
+    api.obtenerFichaConcepto(id).then((f) => setDetalle(f.concepto)).catch(() => setDetalle(null))
+  }
 
   const pendientes = useMemo(() => pendientesHoy(lista), [lista])
 
@@ -53,6 +63,7 @@ export function ModoEstudioPage(): JSX.Element {
     setGuardando(false)
     if (!ok) return
     setRepasados((n) => n + 1)
+    setDetalle(null)
     if (indice + 1 >= cola.length) {
       setFase('fin')
     } else {
@@ -172,7 +183,7 @@ export function ModoEstudioPage(): JSX.Element {
 
         {!mostrarReverso ? (
           <div className="mt-8 text-center">
-            <Boton variante="secundario" onClick={() => setMostrarReverso(true)}>
+            <Boton variante="secundario" onClick={() => revelar(actual.id)}>
               Mostrar respuesta
             </Boton>
             <p className="mt-3 text-xs text-slate-400">
@@ -194,6 +205,14 @@ export function ModoEstudioPage(): JSX.Element {
                   ? 'Sin material'
                   : `${actual.totalRecursos} ${actual.totalRecursos === 1 ? 'material' : 'materiales'} disponible${actual.totalRecursos === 1 ? '' : 's'}`}
               </p>
+              {detalle?.notas.trim() && (
+                <div className="mt-4">
+                  <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Tus notas
+                  </p>
+                  <ContenidoFormateado texto={detalle.notas} formato={detalle.formatoNotas} />
+                </div>
+              )}
             </div>
 
             <div className="mt-6">
