@@ -8,6 +8,7 @@ import { FichaAsignatura } from './features/asignaturas/FichaAsignatura'
 import { ListaAsignaturas } from './features/asignaturas/ListaAsignaturas'
 import { GrafoPage } from './features/grafo/GrafoPage'
 import { AsistentePage } from './features/asistente/AsistentePage'
+import { ConfiguracionPage } from './features/configuracion/ConfiguracionPage'
 import { TerminalPage } from './features/terminal/TerminalPage'
 import { useAsignaturasStore } from './stores/asignaturasStore'
 import { useAuthStore } from './stores/authStore'
@@ -24,6 +25,10 @@ function Contenido(): JSX.Element {
 
   if (seccion === 'grafo') {
     return <GrafoPage contexto={contexto} />
+  }
+
+  if (seccion === 'configuracion') {
+    return <ConfiguracionPage />
   }
 
   if (seccion === 'asistente') {

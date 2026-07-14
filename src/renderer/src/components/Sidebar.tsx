@@ -1,9 +1,5 @@
-import { useState } from 'react'
-import { api } from '../lib/api'
-import { DialogoConfirmacion } from './DialogoConfirmacion'
 import { useAuthStore } from '../stores/authStore'
 import { useAsignaturasStore } from '../stores/asignaturasStore'
-import { useConceptosStore } from '../stores/conceptosStore'
 import { useLayoutStore } from '../stores/layoutStore'
 import { useUiStore, type Contexto, type Seccion } from '../stores/uiStore'
 
@@ -46,13 +42,30 @@ function Item({ seccion, contexto, etiqueta, cuenta, icono, colapsada, sangrado 
   )
 }
 
-/** Cabecera de un grupo de contexto (Docencia / Aprendizaje). */
-function EncabezadoGrupo({ icono, etiqueta }: { icono: string; etiqueta: string }): JSX.Element {
+/** Cabecera clicable de un grupo de contexto (Docencia / Aprendizaje): pliega/despliega sus sub-ítems. */
+function EncabezadoGrupo({
+  icono,
+  etiqueta,
+  colapsado,
+  onAlternar
+}: {
+  icono: string
+  etiqueta: string
+  colapsado: boolean
+  onAlternar: () => void
+}): JSX.Element {
   return (
-    <div className="flex items-center gap-2 px-3 pb-1 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+    <button
+      onClick={onAlternar}
+      title={colapsado ? `Desplegar ${etiqueta}` : `Plegar ${etiqueta}`}
+      className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+    >
       <span aria-hidden>{icono}</span>
-      <span>{etiqueta}</span>
-    </div>
+      <span className="flex-1 text-left">{etiqueta}</span>
+      <span aria-hidden className="text-[10px] normal-case">
+        {colapsado ? '▸' : '▾'}
+      </span>
+    </button>
   )
 }
 
@@ -60,90 +73,19 @@ export function Sidebar(): JSX.Element {
   const asignaturas = useAsignaturasStore((s) => s.lista)
   const totalDocencia = asignaturas.filter((a) => a.tipo !== 'aprendizaje').length
   const totalAprendizaje = asignaturas.filter((a) => a.tipo === 'aprendizaje').length
-  const cargarConceptos = useConceptosStore((s) => s.cargar)
-  const cargarAsignaturas = useAsignaturasStore((s) => s.cargar)
-  const notificar = useUiStore((s) => s.notificar)
-  const notificarError = useUiStore((s) => s.notificarError)
   const colapsada = useLayoutStore((s) => s.sidebarColapsada)
   const alternar = useLayoutStore((s) => s.alternarSidebar)
-  const usuario = useAuthStore((s) => s.sesion?.usuario)
-  const cerrarSesion = useAuthStore((s) => s.cerrar)
-  const sincronizar = useAuthStore((s) => s.sincronizar)
-  const sincronizando = useAuthStore((s) => s.sincronizando)
-
-  const sincronizarNube = async (): Promise<void> => {
-    try {
-      const r = await sincronizar()
-      const total = r.subidos + r.bajados + r.borradosNube
-      const partes = [
-        r.subidos ? `${r.subidos} subidos` : '',
-        r.bajados ? `${r.bajados} bajados` : '',
-        r.borradosNube ? `${r.borradosNube} borrados en la nube` : ''
-      ].filter(Boolean)
-      notificar({
-        tipo: 'exito',
-        mensaje: total === 0 ? 'Todo está sincronizado con la nube.' : `Sincronizado: ${partes.join(', ')}.`
-      })
-    } catch (error) {
-      // Muestra la causa real (mensaje + detalle de Supabase) para poder diagnosticar.
-      notificarError(error)
-    }
-  }
   const tema = useLayoutStore((s) => s.tema)
   const alternarTema = useLayoutStore((s) => s.alternarTema)
-  const [actualizando, setActualizando] = useState(false)
-  const [respaldando, setRespaldando] = useState(false)
-  const [restaurando, setRestaurando] = useState(false)
-  const [confirmandoRestaurar, setConfirmandoRestaurar] = useState(false)
+  const docenciaColapsada = useLayoutStore((s) => s.docenciaColapsada)
+  const aprendizajeColapsada = useLayoutStore((s) => s.aprendizajeColapsada)
+  const alternarGrupo = useLayoutStore((s) => s.alternarGrupo)
+  const usuario = useAuthStore((s) => s.sesion?.usuario)
+  const cerrarSesion = useAuthStore((s) => s.cerrar)
 
-  const respaldar = async (): Promise<void> => {
-    setRespaldando(true)
-    try {
-      const r = await api.respaldar()
-      if (!r.cancelado) {
-        notificar({ tipo: 'exito', mensaje: 'Copia de seguridad guardada.' })
-      }
-    } catch (error) {
-      notificarError(error)
-    } finally {
-      setRespaldando(false)
-    }
-  }
-
-  const restaurar = async (): Promise<void> => {
-    setConfirmandoRestaurar(false)
-    setRestaurando(true)
-    try {
-      const r = await api.restaurar()
-      if (!r.cancelado) {
-        await Promise.all([cargarConceptos(), cargarAsignaturas()])
-        notificar({
-          tipo: 'exito',
-          mensaje: `Copia restaurada: ${r.conceptos ?? 0} ${r.conceptos === 1 ? 'concepto' : 'conceptos'}, ${r.asignaturas ?? 0} ${r.asignaturas === 1 ? 'asignatura' : 'asignaturas'} y ${r.tareas ?? 0} ${r.tareas === 1 ? 'tarea' : 'tareas'}.`
-        })
-      }
-    } catch (error) {
-      notificarError(error)
-    } finally {
-      setRestaurando(false)
-    }
-  }
-
-  const actualizar = async (): Promise<void> => {
-    setActualizando(true)
-    try {
-      const r = await api.reindexar()
-      await Promise.all([cargarConceptos(), cargarAsignaturas()])
-      notificar({
-        tipo: 'exito',
-        mensaje: `Todo actualizado: ${r.conceptos} ${r.conceptos === 1 ? 'concepto' : 'conceptos'} y ${r.asignaturas} ${r.asignaturas === 1 ? 'asignatura' : 'asignaturas'}.`
-      })
-    } catch (error) {
-      notificarError(error)
-    } finally {
-      setActualizando(false)
-    }
-  }
+  // En la franja de iconos (sidebar plegado) los grupos se muestran siempre.
+  const mostrarDocencia = colapsada || !docenciaColapsada
+  const mostrarAprendizaje = colapsada || !aprendizajeColapsada
 
   return (
     <aside
@@ -181,26 +123,45 @@ export function Sidebar(): JSX.Element {
 
       <nav className="w-full space-y-1">
         {/* Docencia */}
-        {!colapsada && <EncabezadoGrupo icono="🎓" etiqueta="Docencia" />}
-        <Item seccion="asignaturas" contexto="docencia" etiqueta="Asignaturas" cuenta={colapsada ? undefined : totalDocencia} icono="🎓" colapsada={colapsada} sangrado />
-        <Item seccion="conceptos" contexto="docencia" etiqueta="Conceptos" icono="💡" colapsada={colapsada} sangrado />
-        <Item seccion="grafo" contexto="docencia" etiqueta="Mapa" icono="🕸️" colapsada={colapsada} sangrado />
+        {!colapsada && (
+          <EncabezadoGrupo
+            icono="🎓"
+            etiqueta="Docencia"
+            colapsado={docenciaColapsada}
+            onAlternar={() => alternarGrupo('docencia')}
+          />
+        )}
+        {mostrarDocencia && (
+          <>
+            <Item seccion="asignaturas" contexto="docencia" etiqueta="Asignaturas" cuenta={colapsada ? undefined : totalDocencia} icono="🎓" colapsada={colapsada} sangrado />
+            <Item seccion="conceptos" contexto="docencia" etiqueta="Conceptos" icono="💡" colapsada={colapsada} sangrado />
+            <Item seccion="grafo" contexto="docencia" etiqueta="Mapa" icono="🕸️" colapsada={colapsada} sangrado />
+          </>
+        )}
 
         {/* Aprendizaje */}
-        {!colapsada && <div className="pt-2"><EncabezadoGrupo icono="📘" etiqueta="Aprendizaje" /></div>}
-        {colapsada && <div className="my-1.5 h-px w-6 bg-slate-200" />}
-        <Item seccion="asignaturas" contexto="aprendizaje" etiqueta="Espacios" cuenta={colapsada ? undefined : totalAprendizaje} icono="📘" colapsada={colapsada} sangrado />
-        <Item seccion="conceptos" contexto="aprendizaje" etiqueta="Conceptos" icono="💡" colapsada={colapsada} sangrado />
-        <Item seccion="grafo" contexto="aprendizaje" etiqueta="Mapa" icono="🕸️" colapsada={colapsada} sangrado />
-
-        {/* Transversal */}
-        <div className="pt-2">
-          {colapsada && <div className="mx-auto mb-1.5 h-px w-6 bg-slate-200" />}
-          <Item seccion="asistente" etiqueta="Asistente IA" icono="🤖" colapsada={colapsada} />
-        </div>
+        {colapsada && <div className="mx-auto my-1.5 h-px w-6 bg-slate-200" />}
+        {!colapsada && (
+          <div className="pt-2">
+            <EncabezadoGrupo
+              icono="📘"
+              etiqueta="Aprendizaje"
+              colapsado={aprendizajeColapsada}
+              onAlternar={() => alternarGrupo('aprendizaje')}
+            />
+          </div>
+        )}
+        {mostrarAprendizaje && (
+          <>
+            <Item seccion="asignaturas" contexto="aprendizaje" etiqueta="Espacios" cuenta={colapsada ? undefined : totalAprendizaje} icono="📘" colapsada={colapsada} sangrado />
+            <Item seccion="conceptos" contexto="aprendizaje" etiqueta="Conceptos" icono="💡" colapsada={colapsada} sangrado />
+            <Item seccion="grafo" contexto="aprendizaje" etiqueta="Mapa" icono="🕸️" colapsada={colapsada} sangrado />
+          </>
+        )}
       </nav>
 
-      <div className="mt-auto w-full space-y-2">
+      <div className="mt-auto w-full space-y-2 border-t border-slate-100 pt-3">
+        {/* Acceso rápido al tema (el control completo vive en Configuración › Apariencia). */}
         <button
           onClick={alternarTema}
           title={tema === 'oscuro' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
@@ -211,56 +172,12 @@ export function Sidebar(): JSX.Element {
           <span aria-hidden>{tema === 'oscuro' ? '☀️' : '🌙'}</span>
           {!colapsada && (tema === 'oscuro' ? 'Modo claro' : 'Modo oscuro')}
         </button>
-        <button
-          onClick={() => void sincronizarNube()}
-          disabled={sincronizando}
-          title="Sube y baja tus cambios entre este equipo y la nube"
-          className={`flex w-full items-center rounded-md text-sm text-slate-500 transition hover:bg-slate-100 disabled:opacity-50 ${
-            colapsada ? 'justify-center px-0 py-2.5' : 'gap-2 px-3 py-2'
-          }`}
-        >
-          <span aria-hidden className={sincronizando ? 'animate-spin' : ''}>
-            ☁
-          </span>
-          {!colapsada && (sincronizando ? 'Sincronizando…' : 'Sincronizar')}
-        </button>
-        <button
-          onClick={() => void actualizar()}
-          disabled={actualizando}
-          title="Vuelve a leer tu material y asignaturas desde el disco"
-          className={`flex w-full items-center rounded-md text-sm text-slate-500 transition hover:bg-slate-100 disabled:opacity-50 ${
-            colapsada ? 'justify-center px-0 py-2.5' : 'gap-2 px-3 py-2'
-          }`}
-        >
-          <span aria-hidden className={actualizando ? 'animate-spin' : ''}>
-            ↻
-          </span>
-          {!colapsada && (actualizando ? 'Actualizando…' : 'Actualizar')}
-        </button>
-        <button
-          onClick={() => void respaldar()}
-          disabled={respaldando}
-          title="Guarda todo tu material y asignaturas en un solo archivo, por seguridad"
-          className={`flex w-full items-center rounded-md text-sm text-slate-500 transition hover:bg-slate-100 disabled:opacity-50 ${
-            colapsada ? 'justify-center px-0 py-2.5' : 'gap-2 px-3 py-2'
-          }`}
-        >
-          <span aria-hidden>💾</span>
-          {!colapsada && (respaldando ? 'Guardando…' : 'Copia de seguridad')}
-        </button>
-        <button
-          onClick={() => setConfirmandoRestaurar(true)}
-          disabled={restaurando}
-          title="Recupera tu material y asignaturas desde un archivo de copia de seguridad"
-          className={`flex w-full items-center rounded-md text-sm text-slate-500 transition hover:bg-slate-100 disabled:opacity-50 ${
-            colapsada ? 'justify-center px-0 py-2.5' : 'gap-2 px-3 py-2'
-          }`}
-        >
-          <span aria-hidden>♻️</span>
-          {!colapsada && (restaurando ? 'Restaurando…' : 'Restaurar copia')}
-        </button>
+
+        {/* Configuración: agrupa Apariencia, Asistente IA, Datos y copias, Cuenta. */}
+        <Item seccion="configuracion" etiqueta="Configuración" icono="⚙️" colapsada={colapsada} />
+
         {usuario && (
-          <div className={`mt-1 flex items-center border-t border-slate-100 pt-2 ${colapsada ? 'justify-center' : 'gap-2 px-1'}`}>
+          <div className={`mt-1 flex items-center pt-1 ${colapsada ? 'justify-center' : 'gap-2 px-1'}`}>
             {usuario.foto ? (
               <img
                 src={usuario.foto}
@@ -291,17 +208,6 @@ export function Sidebar(): JSX.Element {
         )}
         {!colapsada && <div className="px-2 text-xs text-slate-400">PedagoGraph · versión 0.1.0</div>}
       </div>
-
-      {confirmandoRestaurar && (
-        <DialogoConfirmacion
-          titulo="Restaurar copia de seguridad"
-          mensaje="Elige tu archivo de copia (.zip). Su contenido se combinará con lo que ya tienes: los elementos con el mismo nombre se reemplazan y el resto se conserva."
-          textoConfirmar="Elegir archivo…"
-          textoOcupado="Restaurando…"
-          onConfirmar={restaurar}
-          onCancelar={() => setConfirmandoRestaurar(false)}
-        />
-      )}
     </aside>
   )
 }

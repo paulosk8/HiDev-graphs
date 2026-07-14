@@ -15,12 +15,17 @@ interface LayoutState {
   terminalAltura: number
   /** Tema de la interfaz (claro u oscuro). */
   tema: Tema
+  /** Grupo «Docencia» del menú plegado (oculta sus sub-ítems). */
+  docenciaColapsada: boolean
+  /** Grupo «Aprendizaje» del menú plegado. */
+  aprendizajeColapsada: boolean
 
   alternarSidebar: () => void
   alternarPanelGrafo: () => void
   setTerminalAltura: (px: number) => void
   alternarTerminal: () => void
   alternarTema: () => void
+  alternarGrupo: (grupo: 'docencia' | 'aprendizaje') => void
 }
 
 /**
@@ -35,13 +40,21 @@ export const useLayoutStore = create<LayoutState>()(
       panelGrafoColapsado: false,
       terminalAltura: 0,
       tema: 'claro',
+      docenciaColapsada: false,
+      aprendizajeColapsada: false,
 
       alternarSidebar: () => set((s) => ({ sidebarColapsada: !s.sidebarColapsada })),
       alternarPanelGrafo: () => set((s) => ({ panelGrafoColapsado: !s.panelGrafoColapsado })),
       setTerminalAltura: (px) => set({ terminalAltura: Math.max(0, Math.round(px)) }),
       alternarTerminal: () =>
         set((s) => ({ terminalAltura: s.terminalAltura > 0 ? 0 : ALTURA_TERMINAL_DEFECTO })),
-      alternarTema: () => set((s) => ({ tema: s.tema === 'oscuro' ? 'claro' : 'oscuro' }))
+      alternarTema: () => set((s) => ({ tema: s.tema === 'oscuro' ? 'claro' : 'oscuro' })),
+      alternarGrupo: (grupo) =>
+        set((s) =>
+          grupo === 'docencia'
+            ? { docenciaColapsada: !s.docenciaColapsada }
+            : { aprendizajeColapsada: !s.aprendizajeColapsada }
+        )
     }),
     { name: 'pedagograph-layout' }
   )

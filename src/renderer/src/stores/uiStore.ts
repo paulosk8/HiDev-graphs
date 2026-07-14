@@ -1,7 +1,13 @@
 import { create } from 'zustand'
 import { ErrorAmigableError } from '../lib/api'
 
-export type Seccion = 'conceptos' | 'asignaturas' | 'grafo' | 'asistente' | 'terminal'
+export type Seccion =
+  | 'conceptos'
+  | 'asignaturas'
+  | 'grafo'
+  | 'asistente'
+  | 'terminal'
+  | 'configuracion'
 
 /**
  * Contexto de trabajo: separa la capa de docencia (asignaturas) de la de
