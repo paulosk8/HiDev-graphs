@@ -108,7 +108,58 @@ function MuestraLinea({
 const ETIQUETA_ARISTA: Record<string, string> = Object.fromEntries(TIPOS_ARISTA.map((t) => [t.tipo, t.etiqueta]))
 
 /** Paleta para colorear los conceptos relacionados con el seleccionado. */
-const PALETA = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#0ea5e9', '#a855f7']
+/**
+ * Rol de un concepto en la secuencia de prerequisitos (aristas `prerequisito_de`):
+ *  - fundamento: es prerequisito de otros y no depende de ninguno (se aprende primero).
+ *  - puente: depende de alguno y a la vez es prerequisito de otros (paso intermedio).
+ *  - avanzado: depende de otros y nadie depende de él (final de la cadena).
+ *  - suelto: sin prerequisitos definidos (no forma parte de ninguna secuencia).
+ */
+type RolConcepto = 'fundamento' | 'puente' | 'avanzado' | 'suelto'
+
+const COLOR_ROL: Record<RolConcepto, string> = {
+  fundamento: '#0891b2', // cian
+  puente: '#7c3aed', // violeta
+  avanzado: '#db2777', // rosa
+  suelto: '#6366f1' // índigo neutro (color por defecto)
+}
+
+const ROLES_INFO: { color: string; etiqueta: string; ayuda: string }[] = [
+  { color: COLOR_ROL.fundamento, etiqueta: 'Base', ayuda: 'Se aprende primero: es prerequisito de otros.' },
+  { color: COLOR_ROL.puente, etiqueta: 'Intermedio', ayuda: 'Paso intermedio de la secuencia.' },
+  { color: COLOR_ROL.avanzado, etiqueta: 'Avanzado', ayuda: 'Depende de otros conceptos.' },
+  { color: COLOR_ROL.suelto, etiqueta: 'Sin secuencia', ayuda: 'Sin prerequisitos definidos.' }
+]
+
+/** Leyenda de color por dominio (modo Aprendizaje). */
+const DOMINIO_INFO: { color: string; etiqueta: string; ayuda: string }[] = [
+  { color: '#cbd5e1', etiqueta: 'Sin repasar', ayuda: 'Aún no lo has repasado.' },
+  { color: '#ef4444', etiqueta: 'No lo sé', ayuda: 'Necesita refuerzo.' },
+  { color: '#f59e0b', etiqueta: 'A profundizar', ayuda: 'Lo sabes a medias.' },
+  { color: '#22c55e', etiqueta: 'Dominado', ayuda: 'Lo dominas.' }
+]
+
+/** Clasifica cada concepto por su rol en la secuencia de prerequisitos (por id sin prefijo). */
+function rolesDeConceptos(grafo: GrafoDTO): Map<string, RolConcepto> {
+  const salida = new Map<string, number>() // es prerequisito de N (out)
+  const entrada = new Map<string, number>() // depende de N (in)
+  for (const a of grafo.aristas) {
+    if (a.tipo !== 'prerequisito_de') continue
+    if (!a.origen.startsWith('c:') || !a.destino.startsWith('c:')) continue
+    salida.set(a.origen, (salida.get(a.origen) ?? 0) + 1)
+    entrada.set(a.destino, (entrada.get(a.destino) ?? 0) + 1)
+  }
+  const roles = new Map<string, RolConcepto>()
+  for (const n of grafo.nodos) {
+    if (n.tipo !== 'concepto') continue
+    const o = salida.get(n.id) ?? 0
+    const i = entrada.get(n.id) ?? 0
+    const rol: RolConcepto =
+      o > 0 && i === 0 ? 'fundamento' : o > 0 && i > 0 ? 'puente' : i > 0 ? 'avanzado' : 'suelto'
+    roles.set(n.id.slice(2), rol)
+  }
+  return roles
+}
 
 const truncar = (s: string, n = 22): string => (s.length > n ? `${s.slice(0, n - 1)}…` : s)
 
@@ -433,24 +484,27 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
     })
 
   const relacionados = useMemo(
-    () =>
-      grafo && seleccionado
-        ? relacionadosDe(grafo, seleccionado).map((r, i) => ({ ...r, color: PALETA[i % PALETA.length] }))
-        : [],
+    () => (grafo && seleccionado ? relacionadosDe(grafo, seleccionado) : []),
     [grafo, seleccionado]
   )
-  const colorPorId = useMemo(() => new Map(relacionados.map((r) => [r.id, r.color])), [relacionados])
+  // Rol de cada concepto en la secuencia de prerequisitos (colorea los nodos).
+  const rolPorId = useMemo(
+    () => (grafo ? rolesDeConceptos(grafo) : new Map<string, RolConcepto>()),
+    [grafo]
+  )
 
-  // Color del punto de un concepto en el panel lateral. En modo "Dominio"
-  // (solo Aprendizaje) usa el color de dominio, igual que en el mapa; si no,
-  // el azul de selección o el color relacional.
-  const colorPunto = (id: string, activo: boolean, defecto: string): string => {
+  // Color del punto de un concepto en el panel lateral: por dominio (modo
+  // Aprendizaje) o por su rol en la secuencia de prerequisitos, igual que el mapa.
+  const colorPunto = (id: string): string => {
     if (colorearDominio && contexto === 'aprendizaje') {
       const c = dominioPorId.get(id)
       return c ? colorDominio(c) : '#cbd5e1'
     }
-    return activo ? '#4338ca' : (colorPorId.get(id) ?? defecto)
+    return COLOR_ROL[rolPorId.get(id) ?? 'suelto']
   }
+
+  // Modo de color de los nodos: por dominio (Aprendizaje) o por rol (por defecto).
+  const modoDominio = colorearDominio && contexto === 'aprendizaje'
 
   // Crea el grafo cuando cambian los elementos (filtros de arista).
   useEffect(() => {
@@ -512,32 +566,32 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
     }
   }, [elementos])
 
-  // Resalta el vecindario del nodo seleccionado y colorea los relacionados.
-  // En "colorear por dominio" se ignora la selección y cada concepto toma el
-  // color de su nivel de dominio (repaso espaciado).
+  // Colorea cada concepto por su rol en la secuencia de prerequisitos (por
+  // defecto) o por su dominio (modo Aprendizaje). Al seleccionar, atenúa el
+  // resto y resalta el vecindario, conservando los colores.
   useEffect(() => {
     const cy = cyRef.current
     if (!cy) return
     cy.elements().removeClass('atenuado').removeClass('foco')
-    if (colorearDominio && contexto === 'aprendizaje') {
-      cy.nodes('[tipo="concepto"]').forEach((n) => {
-        const c = dominioPorId.get(n.id().slice(2))
-        n.style('background-color', c ? colorDominio(c) : '#cbd5e1')
-      })
-      return
-    }
-    cy.nodes('[tipo="concepto"]').style('background-color', '#6366f1') // restablece
+    const modoDominio = colorearDominio && contexto === 'aprendizaje'
+    cy.nodes('[tipo="concepto"]').forEach((n) => {
+      const id = n.id().slice(2)
+      const color = modoDominio
+        ? (() => {
+            const c = dominioPorId.get(id)
+            return c ? colorDominio(c) : '#cbd5e1'
+          })()
+        : COLOR_ROL[rolPorId.get(id) ?? 'suelto']
+      n.style('background-color', color)
+    })
     if (!seleccionado) return
     const nodo = cy.getElementById(`c:${seleccionado}`)
     if (nodo.nonempty()) {
       cy.elements().addClass('atenuado')
       nodo.removeClass('atenuado').addClass('foco')
       nodo.neighborhood().removeClass('atenuado')
-      for (const [id, color] of colorPorId) {
-        cy.getElementById(`c:${id}`).style('background-color', color)
-      }
     }
-  }, [seleccionado, elementos, colorPorId, colorearDominio, dominioPorId, contexto])
+  }, [seleccionado, elementos, rolPorId, colorearDominio, dominioPorId, contexto])
 
   // Color de las etiquetas de los nodos según el tema (legible en claro y oscuro).
   useEffect(() => {
@@ -732,22 +786,6 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
             </button>
           </div>
         </div>
-        {colorearDominio && contexto === 'aprendizaje' && (
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-            <span className="font-medium text-slate-400">Tu dominio:</span>
-            {[
-              ['#cbd5e1', 'Sin repasar'],
-              ['#ef4444', 'No lo sé'],
-              ['#f59e0b', 'A profundizar'],
-              ['#22c55e', 'Dominado']
-            ].map(([color, etiqueta]) => (
-              <span key={etiqueta} className="inline-flex items-center gap-1">
-                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
-                {etiqueta}
-              </span>
-            ))}
-          </div>
-        )}
         {asignaturasGrafo.length > 0 && asignaturasGrafo.length <= 6 && (
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             <span className="mr-1 text-xs font-medium text-slate-400">Asignatura:</span>
@@ -869,11 +907,36 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
                   onClick={() => setLeyendaColapsada((v) => !v)}
                   className="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
                 >
-                  <span>Tipos de conexión</span>
+                  <span>Leyenda</span>
                   <span className="text-slate-400">{leyendaColapsada ? '▸' : '▾'}</span>
                 </button>
                 {!leyendaColapsada && (
-                  <ul className="border-t border-slate-100 p-1.5">
+                  <div className="max-h-[60vh] overflow-y-auto border-t border-slate-100">
+                    {/* Sección: color del concepto (por rol de prerequisitos o por dominio) */}
+                    <div className="p-1.5">
+                      <p className="px-2 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                        Color del concepto {modoDominio ? '(dominio)' : '(secuencia)'}
+                      </p>
+                      <ul>
+                        {(modoDominio ? DOMINIO_INFO : ROLES_INFO).map((r) => (
+                          <li key={r.etiqueta} className="flex items-start gap-2 px-2 py-1">
+                            <span
+                              className="mt-0.5 h-3 w-3 shrink-0 rounded-full"
+                              style={{ backgroundColor: r.color }}
+                            />
+                            <span className="min-w-0">
+                              <span className="block text-xs font-medium text-slate-700">{r.etiqueta}</span>
+                              <span className="block text-[11px] leading-snug text-slate-400">{r.ayuda}</span>
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    {/* Sección: tipos de conexión (clic para mostrar/ocultar) */}
+                    <p className="border-t border-slate-100 px-3.5 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                      Tipos de conexión
+                    </p>
+                    <ul className="p-1.5 pt-0">
                     {TIPOS_ARISTA.map((t) => (
                       <li key={t.tipo}>
                         <button
@@ -912,7 +975,8 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
                         </span>
                       </button>
                     </li>
-                  </ul>
+                    </ul>
+                  </div>
                 )}
               </div>
 
@@ -1002,7 +1066,7 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
                     title={c.etiqueta}
                     className="h-3.5 w-3.5 shrink-0 rounded-full transition"
                     style={{
-                      backgroundColor: colorPunto(id, activo, '#cbd5e1'),
+                      backgroundColor: colorPunto(id),
                       outline: activo ? '2px solid #4338ca' : undefined,
                       outlineOffset: 2
                     }}
@@ -1059,7 +1123,7 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
                     >
                       <span
                         className="h-2.5 w-2.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: colorPunto(id, activo, '#e2e8f0') }}
+                        style={{ backgroundColor: colorPunto(id) }}
                       />
                       <span className="min-w-0 flex-1 truncate">{c.etiqueta}</span>
                       {c.peso > 0 && <span className="shrink-0 text-xs text-slate-400">{c.peso}</span>}
