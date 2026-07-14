@@ -1,19 +1,30 @@
 /**
  * Lógica PURA de sincronización local ↔ nube (sin red ni disco).
  *
- * Merge de tres vías: compara el estado LOCAL, el REMOTO y la BASE (los ids que
- * existían en la última sincronización) para decidir qué subir, bajar o borrar.
+ * Merge de tres vías: compara el estado LOCAL, el REMOTO y la BASE (el contenido
+ * de cada ítem en la última sincronización, como `{ id, hash }`) para decidir qué
+ * subir, bajar o borrar EN AMBOS lados. El `hash` de la base permite distinguir
+ * un ítem "sin cambios desde la última sync" de uno "editado después", que es lo
+ * que hace **seguro** el borrado simétrico.
+ *
  * Reglas:
  *  - En ambos: idéntico → nada (evita rebotes por reloj); si difiere, gana el más
  *    reciente (mtime local vs actualizado_en remoto).
- *  - Solo local → subir (nuevo, o re-subida segura). NUNCA se borra en local.
- *  - Solo remoto y estaba en la base → se borró aquí → BORRAR de la nube.
- *  - Solo remoto y no estaba en la base → es nuevo de otro equipo → bajar.
+ *  - Solo local:
+ *      · no estaba en la base → nuevo → subir.
+ *      · estaba y su contenido = el de la base → se borró en la nube → BORRAR local.
+ *      · estaba pero fue editado localmente → la edición gana → subir (resucita).
+ *  - Solo remoto:
+ *      · no estaba en la base → nuevo de otro equipo → bajar.
+ *      · estaba y su contenido = el de la base → se borró aquí → BORRAR de la nube.
+ *      · estaba pero fue editado en la nube → la edición gana → bajar (resucita).
  *
- * Asimetría deliberada: el borrado local se propaga a la nube, pero la sync NUNCA
- * elimina datos locales (seguridad ante una nube vaciada o cuenta equivocada).
- * Limitación conocida: un ítem borrado en otro equipo puede reaparecer desde este.
- * Los conflictos de edición se resuelven por "última escritura gana".
+ * Guardas anti-catástrofe: si un lado vuelve completamente vacío pero la base tenía
+ * datos (glitch de red/lectura, cuenta equivocada), NO se propaga el borrado hacia
+ * ese lado; se restaura desde el otro. Nunca se pierde una edición: ante borrado-vs-
+ * edición, la edición gana. Compat: una base antigua (solo ids, sin hash) preserva
+ * el comportamiento previo (propaga borrados locales a la nube, no borra en local)
+ * hasta que la siguiente sync la reescribe con hashes.
  */
 
 /** Tablas de agregados que se sincronizan (una por tipo de dato). */
@@ -31,13 +42,21 @@ export interface ItemRemoto {
   actualizadoEnMs: number
 }
 
+/** Un ítem en la base: su id y el hash de su contenido en la última sync. */
+export interface BaseItem {
+  id: string
+  hash: string
+}
+
 export interface PlanSincronizacion {
   subir: ItemLocal[]
   bajar: ItemRemoto[]
   /** Ids a borrar en la nube (se borraron localmente). */
   borrarRemoto: string[]
-  /** Ids que quedan sincronizados tras aplicar el plan (la nueva base). */
-  baseFinal: string[]
+  /** Ids a borrar en local (se borraron en la nube desde otro equipo). */
+  borrarLocal: string[]
+  /** Ítems que quedan sincronizados tras aplicar el plan (la nueva base, con hash). */
+  baseFinal: BaseItem[]
 }
 
 /** Serializa de forma canónica (claves ordenadas) para comparar contenido. */
@@ -56,44 +75,79 @@ export function igualesJson(a: unknown, b: unknown): boolean {
 export function planificarSincronizacion(
   locales: readonly ItemLocal[],
   remotos: readonly ItemRemoto[],
-  base: readonly string[] = []
+  base: readonly BaseItem[] = []
 ): PlanSincronizacion {
   const mapaLocal = new Map(locales.map((l) => [l.id, l]))
   const mapaRemoto = new Map(remotos.map((r) => [r.id, r]))
-  const enBase = new Set(base)
-  const todos = new Set<string>([...mapaLocal.keys(), ...mapaRemoto.keys(), ...enBase])
+  const hashBase = new Map(base.map((b) => [b.id, b.hash]))
+  const todos = new Set<string>([...mapaLocal.keys(), ...mapaRemoto.keys(), ...hashBase.keys()])
+
+  // Un lado que vuelve VACÍO teniendo la base datos es sospechoso (glitch de red o
+  // lectura, cuenta equivocada): no se propaga el borrado hacia ese lado.
+  const remotoSospechoso = remotos.length === 0 && base.length > 0
+  const localSospechoso = locales.length === 0 && base.length > 0
 
   const subir: ItemLocal[] = []
   const bajar: ItemRemoto[] = []
   const borrarRemoto: string[] = []
-  const baseFinal: string[] = []
+  const borrarLocal: string[] = []
+  const baseFinal: BaseItem[] = []
+  const conserva = (id: string, hash: string): void => void baseFinal.push({ id, hash })
 
   for (const id of todos) {
     const local = mapaLocal.get(id)
     const remoto = mapaRemoto.get(id)
+    const hashPrevio = hashBase.get(id)
+    const enBase = hashPrevio !== undefined
+    // Base antigua (solo ids): hash desconocido. Sin evidencia de "sin cambios",
+    // no se puede borrar en local con seguridad → se preserva lo previo.
+    const hashConocido = enBase && hashPrevio !== ''
 
     if (local && remoto) {
-      if (!igualesJson(local.datos, remoto.datos)) {
-        if (local.mtimeMs >= remoto.actualizadoEnMs) subir.push(local)
-        else bajar.push(remoto)
+      const hl = canonizar(local.datos)
+      const hr = canonizar(remoto.datos)
+      if (hl === hr) {
+        conserva(id, hl)
+      } else if (local.mtimeMs >= remoto.actualizadoEnMs) {
+        subir.push(local)
+        conserva(id, hl)
+      } else {
+        bajar.push(remoto)
+        conserva(id, hr)
       }
-      baseFinal.push(id)
     } else if (local && !remoto) {
-      // Solo local: nuevo, o re-subida segura. Nunca se borra en local.
-      subir.push(local)
-      baseFinal.push(id)
+      const hl = canonizar(local.datos)
+      if (!enBase || remotoSospechoso) {
+        // Nuevo local, o nube sospechosamente vacía → subir/restaurar en la nube.
+        subir.push(local)
+        conserva(id, hl)
+      } else if (hashConocido && hl === hashPrevio) {
+        // Sincronizado, sin cambios locales, y desapareció de la nube (borrado en
+        // otro equipo) → borrado simétrico seguro.
+        borrarLocal.push(id)
+      } else {
+        // Hash desconocido (compat) o editado localmente tras la base: la edición
+        // gana → subir (resucita en la nube). Nunca se borra una edición local.
+        subir.push(local)
+        conserva(id, hl)
+      }
     } else if (!local && remoto) {
-      if (enBase.has(id)) {
-        // Existía en la última sync y ya no está local → se borró aquí.
+      const hr = canonizar(remoto.datos)
+      if (!enBase || localSospechoso) {
+        // Nuevo de otro equipo, o local sospechosamente vacío → bajar/restaurar.
+        bajar.push(remoto)
+        conserva(id, hr)
+      } else if (!hashConocido || hr === hashPrevio) {
+        // Base antigua (compat: se borró aquí) o sin cambios remotos → borrar en la nube.
         borrarRemoto.push(id)
       } else {
-        // Nuevo de otro equipo.
+        // Editado en la nube tras la base: la edición gana → bajar (resucita local).
         bajar.push(remoto)
-        baseFinal.push(id)
+        conserva(id, hr)
       }
     }
     // !local && !remoto (estaba en base) → desapareció de ambos → fuera de la base.
   }
 
-  return { subir, bajar, borrarRemoto, baseFinal }
+  return { subir, bajar, borrarRemoto, borrarLocal, baseFinal }
 }

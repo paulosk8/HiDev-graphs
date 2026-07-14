@@ -18,7 +18,7 @@ import { crearSubtema } from '../domain/Subtema'
 import { crearTarea, type Tarea } from '../domain/Tarea'
 import { crearTema, type Tema } from '../domain/Tema'
 import { crearUnidad, type Unidad } from '../domain/Unidad'
-import type { ItemLocal, TablaAgregado } from './sincronizacion'
+import type { BaseItem, ItemLocal, TablaAgregado } from './sincronizacion'
 import {
   esTipoRelacion,
   formatoDesdeNombreArchivo,
@@ -464,25 +464,35 @@ export class VaultFileSystemService {
     return join(this.dirIndice, 'sync-base.json')
   }
 
-  /** Ids que existían en la última sincronización, por tabla (para detectar borrados). */
-  leerBaseSync(): Record<TablaAgregado, string[]> {
+  /**
+   * Estado de cada ítem en la última sincronización, por tabla (`{ id, hash }`),
+   * para detectar borrados y distinguir "sin cambios" de "editado". Migra el
+   * formato antiguo (solo ids) a `{ id, hash: '' }` (hash desconocido).
+   */
+  leerBaseSync(): Record<TablaAgregado, BaseItem[]> {
     const vacio = { conceptos: [], asignaturas: [], tareas: [] }
+    const normalizar = (arr: unknown): BaseItem[] => {
+      if (!Array.isArray(arr)) return []
+      return arr.map((e) =>
+        typeof e === 'string' ? { id: e, hash: '' } : (e as BaseItem)
+      )
+    }
     try {
       if (!existsSync(this.rutaBaseSync)) return vacio
       const o = JSON.parse(readFileSync(this.rutaBaseSync, 'utf8')) as Partial<
-        Record<TablaAgregado, string[]>
+        Record<TablaAgregado, unknown>
       >
       return {
-        conceptos: o.conceptos ?? [],
-        asignaturas: o.asignaturas ?? [],
-        tareas: o.tareas ?? []
+        conceptos: normalizar(o.conceptos),
+        asignaturas: normalizar(o.asignaturas),
+        tareas: normalizar(o.tareas)
       }
     } catch {
       return vacio
     }
   }
 
-  guardarBaseSync(base: Record<TablaAgregado, string[]>): void {
+  guardarBaseSync(base: Record<TablaAgregado, BaseItem[]>): void {
     mkdirSync(this.dirIndice, { recursive: true })
     writeFileSync(this.rutaBaseSync, JSON.stringify(base), 'utf8')
   }

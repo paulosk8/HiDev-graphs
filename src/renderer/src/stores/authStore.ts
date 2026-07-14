@@ -58,8 +58,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ sincronizando: true })
     try {
       const resumen = await api.sincronizarNube()
-      // Si bajó algo de la nube, refresca las vistas.
-      if (resumen.bajados > 0) {
+      // Si el vault local cambió (bajó o se borró algo), refresca las vistas.
+      if (resumen.bajados > 0 || resumen.borradosLocal > 0) {
         await Promise.all([
           useConceptosStore.getState().cargar(),
           useAsignaturasStore.getState().cargar()

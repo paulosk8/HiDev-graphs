@@ -142,11 +142,12 @@ function DatosYCopias(): JSX.Element {
   const sincronizarNube = async (): Promise<void> => {
     try {
       const r = await sincronizar()
-      const total = r.subidos + r.bajados + r.borradosNube
+      const total = r.subidos + r.bajados + r.borradosNube + r.borradosLocal
       const partes = [
         r.subidos ? `${r.subidos} subidos` : '',
         r.bajados ? `${r.bajados} bajados` : '',
-        r.borradosNube ? `${r.borradosNube} borrados en la nube` : ''
+        r.borradosNube ? `${r.borradosNube} borrados en la nube` : '',
+        r.borradosLocal ? `${r.borradosLocal} borrados aquí` : ''
       ].filter(Boolean)
       notificar({
         tipo: 'exito',
