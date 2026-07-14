@@ -441,6 +441,17 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
   )
   const colorPorId = useMemo(() => new Map(relacionados.map((r) => [r.id, r.color])), [relacionados])
 
+  // Color del punto de un concepto en el panel lateral. En modo "Dominio"
+  // (solo Aprendizaje) usa el color de dominio, igual que en el mapa; si no,
+  // el azul de selección o el color relacional.
+  const colorPunto = (id: string, activo: boolean, defecto: string): string => {
+    if (colorearDominio && contexto === 'aprendizaje') {
+      const c = dominioPorId.get(id)
+      return c ? colorDominio(c) : '#cbd5e1'
+    }
+    return activo ? '#4338ca' : (colorPorId.get(id) ?? defecto)
+  }
+
   // Crea el grafo cuando cambian los elementos (filtros de arista).
   useEffect(() => {
     if (!contenedor.current || elementos.length === 0) return
@@ -983,7 +994,6 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
               {conceptos.map((c) => {
                 const id = c.id.slice(2)
                 const activo = id === seleccionado
-                const color = colorPorId.get(id)
                 return (
                   <button
                     key={c.id}
@@ -992,7 +1002,7 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
                     title={c.etiqueta}
                     className="h-3.5 w-3.5 shrink-0 rounded-full transition"
                     style={{
-                      backgroundColor: activo ? '#4338ca' : (color ?? '#cbd5e1'),
+                      backgroundColor: colorPunto(id, activo, '#cbd5e1'),
                       outline: activo ? '2px solid #4338ca' : undefined,
                       outlineOffset: 2
                     }}
@@ -1037,7 +1047,6 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
               {conceptos.map((c) => {
                 const id = c.id.slice(2)
                 const activo = id === seleccionado
-                const color = colorPorId.get(id)
                 return (
                   <li key={c.id}>
                     <button
@@ -1050,7 +1059,7 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
                     >
                       <span
                         className="h-2.5 w-2.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: activo ? '#4338ca' : (color ?? '#e2e8f0') }}
+                        style={{ backgroundColor: colorPunto(id, activo, '#e2e8f0') }}
                       />
                       <span className="min-w-0 flex-1 truncate">{c.etiqueta}</span>
                       {c.peso > 0 && <span className="shrink-0 text-xs text-slate-400">{c.peso}</span>}
