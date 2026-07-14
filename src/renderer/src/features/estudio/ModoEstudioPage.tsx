@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { CalidadRepaso, ResumenConceptoDTO } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
+import { Modal } from '../../components/Modal'
 import { EstadoVacio } from '../../components/EstadoVacio'
 import { useAsignaturasStore } from '../../stores/asignaturasStore'
 import { useConceptosStore } from '../../stores/conceptosStore'
@@ -225,11 +226,96 @@ function Contenedor({ children }: { children: React.ReactNode }): JSX.Element {
 function Cabecera(): JSX.Element {
   return (
     <header className="mb-6">
-      <h1 className="text-2xl font-semibold text-slate-900">Repaso</h1>
+      <div className="flex items-start justify-between gap-4">
+        <h1 className="text-2xl font-semibold text-slate-900">Repaso</h1>
+        <AyudaRepaso />
+      </div>
       <p className="mt-1 text-sm text-slate-500">
         Refuerza los conceptos de tus espacios de aprendizaje con repaso espaciado: recuerda,
         valora y el sistema decide cuándo volver a mostrártelos.
       </p>
     </header>
+  )
+}
+
+/** Explicador de cómo funciona el repaso (autocontenido: gestiona su propia apertura). */
+function AyudaRepaso(): JSX.Element {
+  const [abierto, setAbierto] = useState(false)
+  return (
+    <>
+      <button
+        onClick={() => setAbierto(true)}
+        className="shrink-0 rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
+      >
+        ¿Cómo funciona?
+      </button>
+      {abierto && (
+        <Modal titulo="¿Cómo funciona el repaso?" ancho="lg" onCerrar={() => setAbierto(false)}>
+          <div className="space-y-5 text-sm text-slate-600">
+            <p>
+              El repaso usa <strong>recuerdo activo</strong> y <strong>repetición espaciada</strong>{' '}
+              para que recuerdes a largo plazo con poco esfuerzo diario. Cada día te muestra lo que
+              conviene repasar.
+            </p>
+
+            <ol className="space-y-2">
+              <li>
+                <span className="font-medium text-slate-700">1. Recuerda.</span> Ves el nombre del
+                concepto e intentas recordarlo tú.
+              </li>
+              <li>
+                <span className="font-medium text-slate-700">2. Comprueba.</span> Muestras la
+                respuesta (su descripción y material) y ves si acertaste.
+              </li>
+              <li>
+                <span className="font-medium text-slate-700">3. Valora.</span> Dices qué tal te fue;
+                según eso se ajusta cuándo vuelve a aparecer y tu nivel de dominio.
+              </li>
+            </ol>
+
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Las valoraciones
+              </p>
+              <ul className="space-y-1.5">
+                {[
+                  ['bg-red-500', 'No lo sé', 'Baja tu dominio y vuelve mañana.'],
+                  ['bg-amber-500', 'Difícil', 'Lo recordaste con esfuerzo; vuelve pronto.'],
+                  ['bg-lime-600', 'Bien', 'Sube tu dominio y se espacia.'],
+                  ['bg-emerald-600', 'Fácil', 'Sube tu dominio y se espacia aún más.']
+                ].map(([clase, etiqueta, desc]) => (
+                  <li key={etiqueta} className="flex items-center gap-2">
+                    <span className={`h-3 w-3 shrink-0 rounded-full ${clase}`} />
+                    <span className="font-medium text-slate-700">{etiqueta}:</span>
+                    <span>{desc}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+              <p className="text-xs text-slate-600">
+                <strong>Míralo en el mapa.</strong> En <strong>Aprendizaje › Mapa</strong>, activa{' '}
+                <strong>«🎯 Dominio»</strong> para ver en colores qué dominas y qué te falta:
+              </p>
+              <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
+                <li className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: '#cbd5e1' }} /> Sin repasar
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: '#ef4444' }} /> No lo sé
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: '#f59e0b' }} /> A profundizar
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: '#22c55e' }} /> Dominado
+                </li>
+              </ul>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </>
   )
 }

@@ -508,7 +508,7 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
     const cy = cyRef.current
     if (!cy) return
     cy.elements().removeClass('atenuado').removeClass('foco')
-    if (colorearDominio) {
+    if (colorearDominio && contexto === 'aprendizaje') {
       cy.nodes('[tipo="concepto"]').forEach((n) => {
         const c = dominioPorId.get(n.id().slice(2))
         n.style('background-color', c ? colorDominio(c) : '#cbd5e1')
@@ -526,7 +526,7 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
         cy.getElementById(`c:${id}`).style('background-color', color)
       }
     }
-  }, [seleccionado, elementos, colorPorId, colorearDominio, dominioPorId])
+  }, [seleccionado, elementos, colorPorId, colorearDominio, dominioPorId, contexto])
 
   // Color de las etiquetas de los nodos según el tema (legible en claro y oscuro).
   useEffect(() => {
@@ -694,17 +694,20 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
             </span>
           </h1>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setColorearDominio((v) => !v)}
-              title="Colorea cada concepto según tu nivel de dominio (repaso)"
-              className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition ${
-                colorearDominio
-                  ? 'border-marca-300 bg-marca-50 text-marca-700'
-                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
-              }`}
-            >
-              🎯 Dominio
-            </button>
+            {/* Coloreado por dominio: solo en la capa de Aprendizaje (repaso). */}
+            {contexto === 'aprendizaje' && (
+              <button
+                onClick={() => setColorearDominio((v) => !v)}
+                title="Colorea cada concepto según tu nivel de dominio (repaso)"
+                className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition ${
+                  colorearDominio
+                    ? 'border-marca-300 bg-marca-50 text-marca-700'
+                    : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                🎯 Dominio
+              </button>
+            )}
             <button
               onClick={() => setModalAnalisis(true)}
               className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 transition hover:bg-slate-50"
@@ -718,14 +721,13 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
             </button>
           </div>
         </div>
-        {colorearDominio && (
+        {colorearDominio && contexto === 'aprendizaje' && (
           <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-            <span className="font-medium text-slate-400">Dominio:</span>
+            <span className="font-medium text-slate-400">Tu dominio:</span>
             {[
               ['#cbd5e1', 'Sin repasar'],
-              ['#ef4444', 'Flojo'],
-              ['#f59e0b', 'Regular'],
-              ['#84cc16', 'Bien'],
+              ['#ef4444', 'No lo sé'],
+              ['#f59e0b', 'A profundizar'],
               ['#22c55e', 'Dominado']
             ].map(([color, etiqueta]) => (
               <span key={etiqueta} className="inline-flex items-center gap-1">
