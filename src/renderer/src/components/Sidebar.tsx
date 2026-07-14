@@ -15,15 +15,17 @@ interface ItemProps {
   colapsada: boolean
   /** Sangría para los sub-ítems de un grupo (docencia/aprendizaje). */
   sangrado?: boolean
+  /** Acción al tocar; por defecto navega a la sección. Se usa para el toggle de Configuración. */
+  alSeleccionar?: () => void
 }
 
-function Item({ seccion, contexto, etiqueta, cuenta, icono, colapsada, sangrado }: ItemProps): JSX.Element {
+function Item({ seccion, contexto, etiqueta, cuenta, icono, colapsada, sangrado, alSeleccionar }: ItemProps): JSX.Element {
   const activo = useUiStore((s) => s.seccion === seccion && (contexto === undefined || s.contexto === contexto))
   const irASeccion = useUiStore((s) => s.irASeccion)
 
   return (
     <button
-      onClick={() => irASeccion(seccion, contexto)}
+      onClick={() => (alSeleccionar ? alSeleccionar() : irASeccion(seccion, contexto))}
       title={colapsada ? (contexto ? `${contexto === 'docencia' ? 'Docencia' : 'Aprendizaje'} · ${etiqueta}` : etiqueta) : undefined}
       className={`flex w-full items-center rounded-md text-sm font-medium transition ${
         colapsada ? 'justify-center px-0 py-2.5' : `gap-2.5 py-2 ${sangrado ? 'pl-9 pr-3' : 'px-3'}`
@@ -85,6 +87,7 @@ export function Sidebar(): JSX.Element {
   const alternarGrupo = useLayoutStore((s) => s.alternarGrupo)
   const usuario = useAuthStore((s) => s.sesion?.usuario)
   const cerrarSesion = useAuthStore((s) => s.cerrar)
+  const alternarConfiguracion = useUiStore((s) => s.alternarConfiguracion)
 
   // En la franja de iconos (sidebar plegado) los grupos se muestran siempre.
   const mostrarDocencia = colapsada || !docenciaColapsada
@@ -175,7 +178,7 @@ export function Sidebar(): JSX.Element {
 
       <div className="mt-auto w-full space-y-2 border-t border-slate-100 pt-3">
         {/* Configuración: agrupa Apariencia (modo oscuro), Asistente IA, Datos y copias, Cuenta. */}
-        <Item seccion="configuracion" etiqueta="Configuración" icono="⚙️" colapsada={colapsada} />
+        <Item seccion="configuracion" etiqueta="Configuración" icono="⚙️" colapsada={colapsada} alSeleccionar={alternarConfiguracion} />
 
         {usuario && (
           <div className={`mt-1 flex items-center pt-1 ${colapsada ? 'justify-center' : 'gap-2 px-1'}`}>

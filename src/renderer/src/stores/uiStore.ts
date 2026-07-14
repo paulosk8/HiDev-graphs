@@ -36,6 +36,8 @@ interface UiState {
 
   /** Navega a una sección; si se indica, cambia también el contexto (docencia/aprendizaje). */
   irASeccion: (seccion: Seccion, contexto?: Contexto) => void
+  /** Abre Configuración; si ya está abierta, vuelve a la vista anterior (toggle). */
+  alternarConfiguracion: () => void
   seleccionarConcepto: (id: string | null) => void
   seleccionarAsignatura: (id: string | null) => void
 
@@ -46,6 +48,12 @@ interface UiState {
 }
 
 let secuenciaAviso = 0
+
+// Vista a la que volver al cerrar Configuración (se recuerda al abrirla).
+let vistaPrevia: { seccion: Seccion; contexto: Contexto } = {
+  seccion: 'asignaturas',
+  contexto: 'docencia'
+}
 
 export const useUiStore = create<UiState>((set) => ({
   // Al arrancar (tras iniciar sesión) se muestran las asignaturas de docencia.
@@ -62,6 +70,26 @@ export const useUiStore = create<UiState>((set) => ({
       conceptoSeleccionadoId: null,
       asignaturaSeleccionadaId: null
     })),
+
+  alternarConfiguracion: () =>
+    set((estado) => {
+      if (estado.seccion === 'configuracion') {
+        // Ya está abierta: vuelve a la vista anterior (oculta las opciones).
+        return {
+          seccion: vistaPrevia.seccion,
+          contexto: vistaPrevia.contexto,
+          conceptoSeleccionadoId: null,
+          asignaturaSeleccionadaId: null
+        }
+      }
+      // Recuerda desde dónde se abrió para poder regresar al cerrarla.
+      vistaPrevia = { seccion: estado.seccion, contexto: estado.contexto }
+      return {
+        seccion: 'configuracion',
+        conceptoSeleccionadoId: null,
+        asignaturaSeleccionadaId: null
+      }
+    }),
   seleccionarConcepto: (id) => set({ conceptoSeleccionadoId: id }),
   seleccionarAsignatura: (id) => set({ asignaturaSeleccionadaId: id }),
 
