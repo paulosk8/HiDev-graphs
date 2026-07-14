@@ -17,6 +17,7 @@ import { useConceptosStore } from './stores/conceptosStore'
 import { useLayoutStore } from './stores/layoutStore'
 import { useUiStore } from './stores/uiStore'
 import { PantallaLogin } from './features/auth/PantallaLogin'
+import { useSincronizarAlReconectar } from './hooks/useConexion'
 
 function Contenido(): JSX.Element {
   const seccion = useUiStore((s) => s.seccion)
@@ -76,6 +77,9 @@ function App(): JSX.Element {
   useEffect(() => {
     void cargarSesion()
   }, [cargarSesion])
+
+  // Al recuperar la conexión, sube los cambios hechos offline.
+  useSincronizarAlReconectar()
 
   useEffect(() => {
     void cargarConceptos()

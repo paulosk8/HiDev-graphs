@@ -11,6 +11,13 @@ function detalle(error: PostgrestError): string {
     .join(' · ')
 }
 
+/**
+ * Tope de tiempo por operación de red (ms). Sin él, si la nube no responde el
+ * `await` queda pendiente hasta el timeout por defecto de fetch → la
+ * sincronización se cuelga. Con esto falla rápido y la app sigue con lo local.
+ */
+const TIEMPO_MAX_MS = 15000
+
 /** Un agregado tal cual viaja a/desde la nube: su id, documento y marca de tiempo. */
 export interface AgregadoNube {
   id: string
@@ -34,37 +41,64 @@ export class SupabaseDataService {
   /** Devuelve todos los agregados del usuario en una tabla. */
   async listar(tabla: TablaAgregado): Promise<AgregadoNube[]> {
     const cliente = await this.auth.obtenerClienteAutenticado()
-    const { data, error } = await cliente.from(tabla).select('id, datos, actualizado_en')
-    if (error) {
-      throw new ErrorDeDominio('No se pudieron leer tus datos de la nube.', detalle(error))
+    const mensaje = 'No se pudieron leer tus datos de la nube.'
+    try {
+      const { data, error } = await cliente
+        .from(tabla)
+        .select('id, datos, actualizado_en')
+        .abortSignal(this.senal())
+      if (error) throw new ErrorDeDominio(mensaje, detalle(error))
+      return (data ?? []).map((fila) => {
+        const f = fila as { id: unknown; datos: unknown; actualizado_en: unknown }
+        return {
+          id: String(f.id),
+          datos: (f.datos ?? {}) as Record<string, unknown>,
+          actualizadoEnMs: Date.parse(String(f.actualizado_en)) || 0
+        }
+      })
+    } catch (e) {
+      throw this.aErrorRed(e, mensaje)
     }
-    return (data ?? []).map((fila) => {
-      const f = fila as { id: unknown; datos: unknown; actualizado_en: unknown }
-      return {
-        id: String(f.id),
-        datos: (f.datos ?? {}) as Record<string, unknown>,
-        actualizadoEnMs: Date.parse(String(f.actualizado_en)) || 0
-      }
-    })
   }
 
   /** Crea o actualiza un agregado (por su id). `user_id` lo pone la base de datos. */
   async guardar(tabla: TablaAgregado, id: string, datos: Record<string, unknown>): Promise<void> {
     const cliente = await this.auth.obtenerClienteAutenticado()
-    const { error } = await cliente
-      .from(tabla)
-      .upsert({ id, datos }, { onConflict: 'user_id,id' })
-    if (error) {
-      throw new ErrorDeDominio('No se pudieron guardar tus datos en la nube.', detalle(error))
+    const mensaje = 'No se pudieron guardar tus datos en la nube.'
+    try {
+      const { error } = await cliente
+        .from(tabla)
+        .upsert({ id, datos }, { onConflict: 'user_id,id' })
+        .abortSignal(this.senal())
+      if (error) throw new ErrorDeDominio(mensaje, detalle(error))
+    } catch (e) {
+      throw this.aErrorRed(e, mensaje)
     }
   }
 
   /** Elimina un agregado por su id. */
   async eliminar(tabla: TablaAgregado, id: string): Promise<void> {
     const cliente = await this.auth.obtenerClienteAutenticado()
-    const { error } = await cliente.from(tabla).delete().eq('id', id)
-    if (error) {
-      throw new ErrorDeDominio('No se pudo eliminar en la nube.', detalle(error))
+    const mensaje = 'No se pudo eliminar en la nube.'
+    try {
+      const { error } = await cliente.from(tabla).delete().eq('id', id).abortSignal(this.senal())
+      if (error) throw new ErrorDeDominio(mensaje, detalle(error))
+    } catch (e) {
+      throw this.aErrorRed(e, mensaje)
     }
+  }
+
+  // --- Internos ---
+
+  /** Señal que aborta la consulta si la nube no responde a tiempo. */
+  private senal(): AbortSignal {
+    return AbortSignal.timeout(TIEMPO_MAX_MS)
+  }
+
+  /** Normaliza cualquier fallo (timeout/red o error ya tipado) a un error humano. */
+  private aErrorRed(e: unknown, mensaje: string): ErrorDeDominio {
+    if (e instanceof ErrorDeDominio) return e
+    const causa = e instanceof Error ? e.message : 'Sin conexión con la nube.'
+    return new ErrorDeDominio(mensaje, causa)
   }
 }

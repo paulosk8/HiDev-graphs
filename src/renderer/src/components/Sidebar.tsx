@@ -4,6 +4,7 @@ import { useConceptosStore } from '../stores/conceptosStore'
 import { useLayoutStore } from '../stores/layoutStore'
 import { useUiStore, type Contexto, type Seccion } from '../stores/uiStore'
 import { conceptosDeAprendizaje, pendientesHoy } from '../lib/repaso'
+import { useEnLinea } from '../hooks/useConexion'
 
 interface ItemProps {
   seccion: Seccion
@@ -88,6 +89,7 @@ export function Sidebar(): JSX.Element {
   const usuario = useAuthStore((s) => s.sesion?.usuario)
   const cerrarSesion = useAuthStore((s) => s.cerrar)
   const alternarConfiguracion = useUiStore((s) => s.alternarConfiguracion)
+  const enLinea = useEnLinea()
 
   // En la franja de iconos (sidebar plegado) los grupos se muestran siempre.
   const mostrarDocencia = colapsada || !docenciaColapsada
@@ -177,6 +179,19 @@ export function Sidebar(): JSX.Element {
       </nav>
 
       <div className="mt-auto w-full space-y-2 border-t border-slate-100 pt-3">
+        {/* Aviso "sin conexión": trabajas con la copia local; se sincroniza al reconectar. */}
+        {!enLinea && (
+          <div
+            title="Sin conexión. Tus cambios se guardan y se sincronizarán al reconectar."
+            className={`flex items-center rounded-md bg-amber-50 py-1.5 text-xs font-medium text-amber-800 ${
+              colapsada ? 'justify-center px-0' : 'gap-2 px-3'
+            }`}
+          >
+            <span aria-hidden>⚠️</span>
+            {!colapsada && <span>Sin conexión</span>}
+          </div>
+        )}
+
         {/* Configuración: agrupa Apariencia (modo oscuro), Asistente IA, Datos y copias, Cuenta. */}
         <Item seccion="configuracion" etiqueta="Configuración" icono="⚙️" colapsada={colapsada} alSeleccionar={alternarConfiguracion} />
 
