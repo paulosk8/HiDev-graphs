@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import type { ConceptoDTO, FormatoInstrucciones, NotaDTO } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
 import { ContenidoFormateado } from '../../components/ContenidoFormateado'
+import { VistaCodigo } from '../../components/VistaCodigo'
 import { useConceptosStore } from '../../stores/conceptosStore'
 import { manejarPegadoRico } from '../../lib/pegadoRico'
 
@@ -31,7 +32,16 @@ export function NotasConcepto({
   const [formato, setFormato] = useState<FormatoInstrucciones>('markdown')
   const [previa, setPrevia] = useState(false)
   const [guardando, setGuardando] = useState(false)
+  // Notas que se muestran como código fuente en vez de renderizadas.
+  const [verCodigo, setVerCodigo] = useState<Set<string>>(new Set())
   const areaRef = useRef<HTMLTextAreaElement>(null)
+
+  const alternarCodigo = (id: string): void =>
+    setVerCodigo((prev) => {
+      const s = new Set(prev)
+      s.has(id) ? s.delete(id) : s.add(id)
+      return s
+    })
 
   const abrirNueva = (): void => {
     setTitulo('')
@@ -178,7 +188,17 @@ export function NotasConcepto({
                 ) : (
                   <span className="text-xs uppercase tracking-wide text-slate-300">Nota</span>
                 )}
-                <div className="flex shrink-0 gap-1">
+                <div className="flex shrink-0 items-center gap-1">
+                  {/* Vista renderizada / código fuente (para HTML y Markdown) */}
+                  {(n.formato === 'html' || n.formato === 'markdown') && (
+                    <button
+                      onClick={() => alternarCodigo(n.id)}
+                      title={verCodigo.has(n.id) ? 'Ver renderizado' : 'Ver el código'}
+                      className="rounded-md border border-slate-200 px-2 py-0.5 text-[11px] text-slate-500 transition hover:bg-slate-50"
+                    >
+                      {verCodigo.has(n.id) ? '👁 Vista' : '</> Código'}
+                    </button>
+                  )}
                   <button
                     onClick={() => abrirEditar(n)}
                     className="rounded-md px-2 py-0.5 text-xs text-slate-500 transition hover:bg-slate-100"
@@ -193,7 +213,11 @@ export function NotasConcepto({
                   </button>
                 </div>
               </div>
-              <ContenidoFormateado texto={n.contenido} formato={n.formato} />
+              {verCodigo.has(n.id) && (n.formato === 'html' || n.formato === 'markdown') ? (
+                <VistaCodigo texto={n.contenido} lenguaje={n.formato} />
+              ) : (
+                <ContenidoFormateado texto={n.contenido} formato={n.formato} />
+              )}
             </div>
           ))}
         </div>
