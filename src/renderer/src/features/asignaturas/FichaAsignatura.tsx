@@ -1,17 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { AsignaturaDTO, ResumenTareaDTO } from '@shared/dtos'
+import type { AsignaturaDTO, DatosUnidadEdicionDTO, ResumenTareaDTO } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
 import { DialogoConfirmacion } from '../../components/DialogoConfirmacion'
 import { api } from '../../lib/api'
 import { useAsignaturasStore } from '../../stores/asignaturasStore'
 import { useConceptosStore } from '../../stores/conceptosStore'
 import { useUiStore } from '../../stores/uiStore'
-import { BuscadorConceptos } from '../vinculos/BuscadorConceptos'
 import { FormularioTarea } from '../tareas/FormularioTarea'
 import { FichaTarea } from '../tareas/FichaTarea'
 import { PlanificacionSemanal } from './PlanificacionSemanal'
 import { AsistenteAsignatura } from './AsistenteAsignatura'
 import { SaludAsignatura } from './SaludAsignatura'
+import { EditorContenido } from './EditorContenido'
 
 interface Props {
   asignaturaId: string
@@ -22,7 +22,6 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
   const [cargando, setCargando] = useState(true)
   const [confirmando, setConfirmando] = useState(false)
   const [editando, setEditando] = useState(false)
-  const [temaBuscador, setTemaBuscador] = useState<string | null>(null)
   const [periodoNuevo, setPeriodoNuevo] = useState('')
   const [tareas, setTareas] = useState<ResumenTareaDTO[]>([])
   const [creandoTarea, setCreandoTarea] = useState(false)
@@ -45,6 +44,19 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
   const notificarError = useUiStore((s) => s.notificarError)
   const notificar = useUiStore((s) => s.notificar)
   const eliminar = useAsignaturasStore((s) => s.eliminar)
+  const editarAsig = useAsignaturasStore((s) => s.editar)
+
+  // Guarda la estructura (temas/subtemas) editada inline, conservando lo demás.
+  const guardarEstructura = async (unidades: DatosUnidadEdicionDTO[]): Promise<void> => {
+    if (!asignatura) return
+    const actualizada = await editarAsig(asignaturaId, {
+      nombre: asignatura.nombre,
+      periodos: asignatura.periodos,
+      componentes: asignatura.componentes,
+      unidades
+    })
+    if (actualizada) setAsignatura(actualizada)
+  }
 
   const conceptos = useConceptosStore((s) => s.lista)
   const nombrePorId = useMemo(
@@ -55,7 +67,6 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
   const vincular = async (temaId: string, conceptoId: string): Promise<void> => {
     try {
       setAsignatura(await api.vincularTemaConcepto(asignaturaId, temaId, conceptoId))
-      setTemaBuscador(null)
       notificar({ tipo: 'exito', mensaje: 'Concepto vinculado al tema.' })
     } catch (error) {
       notificarError(error)
@@ -225,90 +236,16 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
           <PlanificacionSemanal asignatura={asig} onAbrirTarea={setTareaAbierta} />
         )}
         {vista === 'contenido' && (
-        <div className="space-y-4">
-          {asignatura.unidades.map((unidad) => (
-            <div key={unidad.id} className="rounded-xl border border-slate-200 p-4">
-              <h3 className="mb-2 font-medium text-slate-800">
-                <span className="text-slate-400">
-                  {esAprendizaje ? 'Bloque' : 'Tema'} {unidad.orden}.{' '}
-                </span>
-                {unidad.titulo}
-              </h3>
-              {unidad.temas.length === 0 ? (
-                <p className="text-sm text-slate-400">{esAprendizaje ? 'Sin temas.' : 'Sin subtemas.'}</p>
-              ) : (
-                <ul className="space-y-3">
-                  {unidad.temas.map((tema) => (
-                    <li key={tema.id} className="text-sm">
-                      <div className="flex items-center gap-2 text-slate-700">
-                        <span className="text-slate-400">{tema.orden}.</span>
-                        <span className="font-medium">{tema.titulo}</span>
-                      </div>
-
-                      {/* Conceptos vinculados (puente) */}
-                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5 pl-5">
-                        {tema.conceptos.map((conceptoId) => (
-                          <span
-                            key={conceptoId}
-                            className="flex items-center gap-1 rounded-full bg-marca-50 py-0.5 pl-2.5 pr-1 text-xs text-marca-700"
-                          >
-                            {nombrePorId.get(conceptoId) ?? conceptoId}
-                            <button
-                              onClick={() => void desvincular(tema.id, conceptoId)}
-                              className="text-marca-400 hover:text-red-600"
-                              aria-label="Quitar concepto"
-                            >
-                              ✕
-                            </button>
-                          </span>
-                        ))}
-
-                        <span className="relative">
-                          <button
-                            onClick={() =>
-                              setTemaBuscador((actual) => (actual === tema.id ? null : tema.id))
-                            }
-                            className="rounded-full border border-dashed border-slate-300 px-2.5 py-0.5 text-xs text-slate-500 hover:border-marca-300 hover:text-marca-700"
-                          >
-                            + Vincular concepto
-                          </button>
-                          {temaBuscador === tema.id && (
-                            <BuscadorConceptos
-                              excluir={tema.conceptos}
-                              onSeleccionar={(conceptoId) => vincular(tema.id, conceptoId)}
-                              onCerrar={() => setTemaBuscador(null)}
-                            />
-                          )}
-                        </span>
-                      </div>
-
-                      {/* Tareas asociadas a este tema */}
-                      {tareas.filter((t) => t.temas.includes(tema.id)).length > 0 && (
-                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 pl-5">
-                          <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-                            {esAprendizaje ? 'Prácticas:' : 'Tareas:'}
-                          </span>
-                          {tareas
-                            .filter((t) => t.temas.includes(tema.id))
-                            .map((t) => (
-                              <button
-                                key={t.id}
-                                onClick={() => setTareaAbierta(t.id)}
-                                title="Abrir la tarea"
-                                className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs text-amber-800 hover:bg-amber-100"
-                              >
-                                {t.titulo}
-                              </button>
-                            ))}
-                        </div>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          ))}
-        </div>
+          <EditorContenido
+            asignatura={asig}
+            esAprendizaje={esAprendizaje}
+            nombrePorId={nombrePorId}
+            tareas={tareas}
+            onVincular={(temaId, conceptoId) => void vincular(temaId, conceptoId)}
+            onDesvincular={(temaId, conceptoId) => void desvincular(temaId, conceptoId)}
+            onAbrirTarea={setTareaAbierta}
+            onGuardar={guardarEstructura}
+          />
         )}
       </section>
 

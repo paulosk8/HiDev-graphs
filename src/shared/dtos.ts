@@ -198,10 +198,18 @@ export interface DatosAsignaturaDTO {
 // conceptos, tareas y planificación). Los subtemas de un tema existente se
 // conservan intactos (el asistente no los edita).
 
+export interface DatosSubtemaEdicionDTO {
+  /** Id del subtema existente; ausente si es nuevo. */
+  id?: string
+  titulo: string
+}
+
 export interface DatosTemaEdicionDTO {
   /** Id del tema existente; ausente si es un tema nuevo. */
   id?: string
   titulo: string
+  /** Subtemas (3er nivel). Si se omite, se conservan los del tema existente. */
+  subtemas?: DatosSubtemaEdicionDTO[]
 }
 
 export interface DatosUnidadEdicionDTO {

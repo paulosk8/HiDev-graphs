@@ -9,6 +9,7 @@ import {
   type Planificacion
 } from '../domain/Asignatura'
 import { ErrorDeDominio } from '../domain/errores'
+import { crearSubtema, type Subtema } from '../domain/Subtema'
 import { crearTema, type Tema } from '../domain/Tema'
 import { crearUnidad, type Unidad } from '../domain/Unidad'
 import type { Servicios } from '../servicios'
@@ -46,12 +47,28 @@ export function editarAsignatura(
   const unidades: Unidad[] = datos.unidades.map((u, i) => {
     const temas: Tema[] = u.temas.map((t, j) => {
       const previo = t.id ? temasPrevios.get(t.id) : undefined
+      // Subtemas (3er nivel): si el payload los trae, se reconstruyen conservando
+      // los ids existentes; si se omiten, se conservan los del tema previo.
+      const subtemas: readonly Subtema[] = t.subtemas
+        ? (() => {
+            const prevPorId = new Map((previo?.subtemas ?? []).map((s) => [s.id, s]))
+            return t.subtemas
+              .filter((st) => st.titulo.trim().length > 0)
+              .map((st, k) =>
+                crearSubtema({
+                  id: st.id && prevPorId.has(st.id) ? st.id : randomUUID(),
+                  titulo: st.titulo,
+                  orden: k + 1
+                })
+              )
+          })()
+        : (previo?.subtemas ?? [])
       return crearTema({
         id: previo?.id ?? randomUUID(),
         titulo: t.titulo,
         orden: j + 1,
         semana: previo?.semana ?? null,
-        subtemas: previo?.subtemas ?? [],
+        subtemas,
         conceptos: previo?.conceptos ?? []
       })
     })
