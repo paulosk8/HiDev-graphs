@@ -125,5 +125,5 @@ Repo: `https://github.com/paulosk8/HiDev-graphs` (remoto `origin`, base `main`).
 ## 6. Estado y siguiente
 
 - **Fase 1 (MVP) y Fase 2 completas**; copiloto IA por MCP (consultar grafo, leer material, crear/propagar tareas) + terminal embebida. Workspaces de aprendizaje, tareas ricas (Markdown/HTML/Moodle), planificación por período, respaldo **y restauración**. Ver [`estado.md`](./estado.md) para el detalle.
-- **Pendiente**: empaquetado/instaladores (electron-builder mac local + Windows por CI, por better-sqlite3). Fase 3: exportar tareas a Moodle/GIFT.
-- **En evaluación (no empezado)**: autenticación con Google + almacenamiento en la nube + versión web (SaaS). Es un cambio de arquitectura mayor; requiere backend y decisiones de producto antes de codificar.
+- **Nube/SaaS (Fases A–D hechas)**: login Google obligatorio + Supabase (Postgres), sync local-first bidireccional con auto-sync y borrados de tres vías. **Robustez offline**: la app arranca sin internet (sesión cacheada), sincroniza al reconectar y las llamadas de red tienen timeout; aviso "Sin conexión" en el Sidebar.
+- **Pendiente**: empaquetado/instaladores (electron-builder mac local + Windows por CI, por better-sqlite3). Fase 3: exportar tareas a Moodle/GIFT. **Limitaciones de nube por resolver**: borrado NO simétrico (un ítem borrado en otro equipo puede reaparecer), conflictos = última-escritura-gana, y el **material (archivos) nunca sube** (decisión: sin Supabase Storage). Versión web (SaaS solo-nube) más adelante.
