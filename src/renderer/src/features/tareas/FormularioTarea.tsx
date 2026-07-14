@@ -6,21 +6,11 @@ import { CampoTexto } from '../../components/Campos'
 import { Modal } from '../../components/Modal'
 import { VistaCodigo } from '../../components/VistaCodigo'
 import { api } from '../../lib/api'
-import { htmlAMarkdown } from '../../lib/markdown'
+import { manejarPegadoRico } from '../../lib/pegadoRico'
 import { useTareasStore } from '../../stores/tareasStore'
 
 /** Fragmentos que inserta la barra de formato. */
 const PLANTILLA_TABLA = '\n| Criterio | Puntos |\n| --- | --- |\n| … | … |\n| … | … |\n'
-
-/** Lee un archivo (imagen) como Data URI base64 para incrustarlo autocontenido. */
-function leerComoDataUri(archivo: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const lector = new FileReader()
-    lector.onload = () => resolve(lector.result as string)
-    lector.onerror = () => reject(lector.error)
-    lector.readAsDataURL(archivo)
-  })
-}
 
 interface Props {
   asignatura: AsignaturaDTO
@@ -80,40 +70,8 @@ export function FormularioTarea({
   }
 
   /** Al pegar: imágenes → base64 autocontenido; HTML con formato → Markdown/HTML. */
-  const alPegar = (e: ClipboardEvent<HTMLTextAreaElement>): void => {
-    // 1) Imágenes del portapapeles: se incrustan en base64 (viajan con el contenido).
-    const imagenes: File[] = []
-    for (const item of Array.from(e.clipboardData.items)) {
-      if (item.kind === 'file' && item.type.startsWith('image/')) {
-        const f = item.getAsFile()
-        if (f) imagenes.push(f)
-      }
-    }
-    if (imagenes.length > 0) {
-      e.preventDefault()
-      const el = areaRef.current
-      const inicio = el?.selectionStart ?? instrucciones.length
-      const fin = el?.selectionEnd ?? instrucciones.length
-      void Promise.all(imagenes.map(leerComoDataUri)).then((uris) => {
-        const frag = uris
-          .map((u) =>
-            formato === 'html'
-              ? `<img src="${u}" alt="imagen" style="max-width:100%">`
-              : `\n![imagen](${u})\n`
-          )
-          .join('')
-        setInstrucciones((prev) => prev.slice(0, inicio) + frag + prev.slice(fin))
-      })
-      return
-    }
-    // 2) HTML con formato: en modo HTML se pega tal cual; en Markdown se convierte.
-    const html = e.clipboardData.getData('text/html')
-    if (html && html.trim()) {
-      e.preventDefault()
-      insertar(formato === 'html' ? html : `${htmlAMarkdown(html)}\n`)
-    }
-    // Sin HTML ni imagen (texto plano): se deja el pegado por defecto.
-  }
+  const alPegar = (e: ClipboardEvent<HTMLTextAreaElement>): void =>
+    manejarPegadoRico(e, { formato, ref: areaRef, setValor: setInstrucciones })
 
   const alternarTema = (id: string): void =>
     setTemas((prev) => {

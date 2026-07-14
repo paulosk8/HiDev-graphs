@@ -205,12 +205,17 @@ export function ModoEstudioPage(): JSX.Element {
                   ? 'Sin material'
                   : `${actual.totalRecursos} ${actual.totalRecursos === 1 ? 'material' : 'materiales'} disponible${actual.totalRecursos === 1 ? '' : 's'}`}
               </p>
-              {detalle?.notas.trim() && (
-                <div className="mt-4">
+              {detalle && detalle.notas.length > 0 && (
+                <div className="mt-4 space-y-2">
                   <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
                     Tus notas
                   </p>
-                  <ContenidoFormateado texto={detalle.notas} formato={detalle.formatoNotas} />
+                  {detalle.notas.map((n) => (
+                    <div key={n.id}>
+                      {n.titulo && <p className="text-xs font-medium text-slate-600">{n.titulo}</p>}
+                      <ContenidoFormateado texto={n.contenido} formato={n.formato} />
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

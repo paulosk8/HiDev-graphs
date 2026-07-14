@@ -23,8 +23,12 @@ export function aConceptoDTO(concepto: Concepto): ConceptoDTO {
       formato: r.formato
     })),
     relaciones: concepto.relaciones.map((rel) => ({ destino: rel.destino, tipo: rel.tipo })),
-    notas: concepto.notas,
-    formatoNotas: concepto.formatoNotas,
+    notas: concepto.notas.map((n) => ({
+      id: n.id,
+      titulo: n.titulo,
+      contenido: n.contenido,
+      formato: n.formato
+    })),
     dominio: concepto.repaso?.dominio ?? 0,
     proximaRevision: concepto.repaso?.proximaRevision ?? null
   }

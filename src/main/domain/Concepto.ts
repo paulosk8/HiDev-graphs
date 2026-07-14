@@ -6,6 +6,15 @@ import type { RepasoConcepto } from './Repaso'
 /** Formato del contenido de las notas: Markdown, HTML o código (vista editor). */
 export type FormatoNota = 'markdown' | 'html' | 'codigo'
 
+/** Una nota u observación sobre un concepto (varias por concepto). */
+export interface NotaConcepto {
+  readonly id: string
+  /** Título opcional de la nota. */
+  readonly titulo: string
+  readonly contenido: string
+  readonly formato: FormatoNota
+}
+
 /**
  * Concepto: unidad de conocimiento reutilizable entre asignaturas.
  *
@@ -20,10 +29,8 @@ export interface Concepto {
   readonly descripcion: string
   readonly relaciones: readonly Relacion[]
   readonly recursos: readonly Recurso[]
-  /** Notas u observaciones propias del docente/estudiante sobre el concepto. */
-  readonly notas: string
-  /** Formato de las notas. */
-  readonly formatoNotas: FormatoNota
+  /** Notas u observaciones propias sobre el concepto (varias). */
+  readonly notas: readonly NotaConcepto[]
   /** Estado de repaso espaciado (opcional; ausente si nunca se ha repasado). */
   readonly repaso?: RepasoConcepto
 }
@@ -34,8 +41,7 @@ export interface DatosConcepto {
   descripcion?: string
   relaciones?: readonly Relacion[]
   recursos?: readonly Recurso[]
-  notas?: string
-  formatoNotas?: FormatoNota
+  notas?: readonly NotaConcepto[]
   repaso?: RepasoConcepto
 }
 
@@ -55,8 +61,7 @@ export function crearConcepto(datos: DatosConcepto): Concepto {
     descripcion: (datos.descripcion ?? '').trim(),
     relaciones: datos.relaciones ?? [],
     recursos: datos.recursos ?? [],
-    notas: datos.notas ?? '',
-    formatoNotas: datos.formatoNotas ?? 'markdown',
+    notas: datos.notas ?? [],
     ...(datos.repaso ? { repaso: datos.repaso } : {})
   }
 }

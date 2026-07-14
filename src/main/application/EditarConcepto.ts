@@ -29,7 +29,6 @@ export function editarConcepto(
     recursos: actual.recursos,
     // Conserva las notas y el repaso salvo que la edición traiga notas nuevas.
     notas: datos.notas ?? actual.notas,
-    formatoNotas: datos.formatoNotas ?? actual.formatoNotas,
     repaso: actual.repaso
   })
 

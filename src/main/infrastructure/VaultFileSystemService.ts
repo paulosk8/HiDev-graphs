@@ -3,7 +3,14 @@ import { basename, extname, join, resolve, sep } from 'node:path'
 import { load as leerYaml, dump as escribirYaml } from 'js-yaml'
 
 import { crearAsignatura, crearComponente, type Asignatura } from '../domain/Asignatura'
-import { crearConcepto, type Concepto } from '../domain/Concepto'
+import { randomUUID } from 'node:crypto'
+
+import {
+  crearConcepto,
+  type Concepto,
+  type FormatoNota,
+  type NotaConcepto
+} from '../domain/Concepto'
 import { repasoDesdePlano } from '../domain/Repaso'
 import { crearRecurso } from '../domain/Recurso'
 import { crearRelacion } from '../domain/Relacion'
@@ -98,8 +105,17 @@ export class VaultFileSystemService {
         archivo: r.archivo,
         formato: r.formato
       })),
-      // Notas propias (solo si hay contenido), con su formato.
-      ...(concepto.notas.trim() ? { notas: concepto.notas, formatoNotas: concepto.formatoNotas } : {}),
+      // Notas propias (varias). Solo se escriben si hay alguna.
+      ...(concepto.notas.length > 0
+        ? {
+            notas: concepto.notas.map((n) => ({
+              id: n.id,
+              titulo: n.titulo,
+              contenido: n.contenido,
+              formato: n.formato
+            }))
+          }
+        : {}),
       // Estado de repaso espaciado (solo si existe); parte del contenido del concepto.
       ...(concepto.repaso ? { repaso: { ...concepto.repaso } } : {})
     }
@@ -517,18 +533,43 @@ function conceptoDesdePlano(datos: Record<string, unknown>): Concepto {
       })
     )
 
-  const formatoNotas = texto(datos.formatoNotas)
   return crearConcepto({
     id: texto(datos.id),
     nombre: texto(datos.nombre),
     descripcion: texto(datos.descripcion),
     relaciones,
     recursos,
-    notas: texto(datos.notas),
-    formatoNotas:
-      formatoNotas === 'html' || formatoNotas === 'codigo' ? formatoNotas : 'markdown',
+    notas: notasDesdePlano(datos.notas, datos.formatoNotas),
     repaso: repasoDesdePlano(datos.repaso)
   })
+}
+
+function formatoNotaDesde(v: unknown): FormatoNota {
+  return v === 'html' ? 'html' : v === 'codigo' ? 'codigo' : 'markdown'
+}
+
+/**
+ * Lee las notas de un concepto. Acepta la forma nueva (array de notas) y la
+ * antigua (un único string `notas` con `formatoNotas` aparte), que migra a una
+ * nota única.
+ */
+function notasDesdePlano(notas: unknown, formatoLegacy: unknown): NotaConcepto[] {
+  if (Array.isArray(notas)) {
+    return notas
+      .map((n) => n as Record<string, unknown>)
+      .map((n) => ({
+        id: texto(n.id) || randomUUID(),
+        titulo: texto(n.titulo),
+        contenido: texto(n.contenido),
+        formato: formatoNotaDesde(n.formato)
+      }))
+      .filter((n) => n.contenido.trim().length > 0)
+  }
+  const contenido = texto(notas)
+  if (contenido.trim().length > 0) {
+    return [{ id: randomUUID(), titulo: '', contenido, formato: formatoNotaDesde(formatoLegacy) }]
+  }
+  return []
 }
 
 function asignaturaDesdePlano(datos: Record<string, unknown>): Asignatura {

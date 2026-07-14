@@ -66,6 +66,14 @@ export interface RelacionDTO {
   tipo: TipoRelacion
 }
 
+/** Una nota u observación sobre un concepto (varias por concepto). */
+export interface NotaDTO {
+  id: string
+  titulo: string
+  contenido: string
+  formato: FormatoInstrucciones
+}
+
 /** Detalle completo de un concepto para su ficha. */
 export interface ConceptoDTO {
   id: string
@@ -73,10 +81,8 @@ export interface ConceptoDTO {
   descripcion: string
   recursos: RecursoDTO[]
   relaciones: RelacionDTO[]
-  /** Notas u observaciones propias sobre el concepto. */
-  notas: string
-  /** Formato de las notas (Markdown, HTML o código). */
-  formatoNotas: FormatoInstrucciones
+  /** Notas u observaciones propias sobre el concepto (varias). */
+  notas: NotaDTO[]
   /** Dominio percibido 0..5 (0 si nunca se repasó). */
   dominio: number
   /** Fecha ISO del próximo repaso, o null si nunca se repasó. */
@@ -93,9 +99,8 @@ export interface FichaConceptoDTO {
 export interface DatosConceptoDTO {
   nombre: string
   descripcion?: string
-  /** Notas propias (opcional). */
-  notas?: string
-  formatoNotas?: FormatoInstrucciones
+  /** Notas propias (varias). Si se omite al editar, se conservan las actuales. */
+  notas?: NotaDTO[]
 }
 
 /** Resultado de agregar material: concepto actualizado + qué se ignoró. */

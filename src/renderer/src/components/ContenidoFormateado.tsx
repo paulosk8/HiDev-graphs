@@ -27,12 +27,14 @@ export function ContenidoFormateado({
     return <VistaCodigo texto={texto} />
   }
   if (formato === 'html') {
+    // El iframe SIEMPRE ocupa todo el ancho (w-full) y tiene un alto mínimo;
+    // `className` solo añade estilos (antes lo reemplazaba y perdía el ancho).
     return (
       <iframe
         title="Contenido"
         sandbox="allow-scripts"
         srcDoc={texto}
-        className={className ?? 'min-h-[24rem] w-full rounded-lg border border-slate-200 bg-white'}
+        className={`min-h-[16rem] w-full rounded-lg border border-slate-200 bg-white ${className ?? ''}`}
       />
     )
   }
