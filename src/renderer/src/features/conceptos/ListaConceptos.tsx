@@ -207,7 +207,7 @@ export function ListaConceptos({ contexto }: Props): JSX.Element {
                           </div>
                           {/* Temas del concepto: como lista vertical, solo al desplegar */}
                           {temasVisibles && c.temas.length > 0 && (
-                            <ul className="space-y-0.5 border-t border-slate-50 bg-slate-50/50 px-4 py-2 pl-6">
+                            <ul className="space-y-0.5 border-t border-slate-100 bg-slate-50 px-4 py-2 pl-6">
                               {c.temas.map((t) => (
                                 <li key={t} className="flex items-start gap-2 text-xs text-slate-600">
                                   <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-marca-400" />
