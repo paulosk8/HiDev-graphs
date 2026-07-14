@@ -230,12 +230,12 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
             <div key={unidad.id} className="rounded-xl border border-slate-200 p-4">
               <h3 className="mb-2 font-medium text-slate-800">
                 <span className="text-slate-400">
-                  {esAprendizaje ? 'Bloque' : 'Unidad'} {unidad.orden}.{' '}
+                  {esAprendizaje ? 'Bloque' : 'Tema'} {unidad.orden}.{' '}
                 </span>
                 {unidad.titulo}
               </h3>
               {unidad.temas.length === 0 ? (
-                <p className="text-sm text-slate-400">Sin temas.</p>
+                <p className="text-sm text-slate-400">{esAprendizaje ? 'Sin temas.' : 'Sin subtemas.'}</p>
               ) : (
                 <ul className="space-y-3">
                   {unidad.temas.map((tema) => (

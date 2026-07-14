@@ -375,21 +375,21 @@ export function AsistenteAsignatura({
           <p className="text-sm text-slate-500">
             {esAprendizaje
               ? 'Organiza lo que vas a aprender en bloques y temas. Podrás añadir subtemas y material después.'
-              : 'Organiza el contenido en unidades y temas.'}
+              : 'Organiza el contenido en temas y subtemas. Puedes titular un tema «Unidad 1» si lo prefieres.'}
           </p>
 
           {unidades.map((unidad, i) => (
             <div key={unidad.id} className="rounded-xl border border-slate-200 p-4">
               <div className="mb-3 flex items-center gap-2">
                 <span className="text-xs font-semibold text-slate-400">
-                  {esAprendizaje ? 'Bloque' : 'Unidad'} {i + 1}
+                  {esAprendizaje ? 'Bloque' : 'Tema'} {i + 1}
                 </span>
                 {unidades.length > 1 && (
                   <button
                     onClick={() => quitarUnidad(unidad.id)}
                     className="ml-auto text-xs text-slate-400 hover:text-red-600"
                   >
-                    {esAprendizaje ? 'Quitar bloque' : 'Quitar unidad'}
+                    {esAprendizaje ? 'Quitar bloque' : 'Quitar tema'}
                   </button>
                 )}
               </div>
@@ -399,7 +399,7 @@ export function AsistenteAsignatura({
                 placeholder={
                   esAprendizaje
                     ? 'Título del bloque (ej. Fundamentos de React)'
-                    : 'Título de la unidad (ej. Fundamentos)'
+                    : 'Título del tema (ej. Unidad 1 · Fundamentos)'
                 }
                 className="mb-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-marca-500 focus:ring-2 focus:ring-marca-100"
               />
@@ -410,14 +410,14 @@ export function AsistenteAsignatura({
                     <input
                       value={tema.titulo}
                       onChange={(e) => modificarTema(unidad.id, tema.id, { titulo: e.target.value })}
-                      placeholder="Tema"
+                      placeholder={esAprendizaje ? 'Tema' : 'Subtema'}
                       className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-marca-500 focus:ring-2 focus:ring-marca-100"
                     />
                     {unidad.temas.length > 1 && (
                       <button
                         onClick={() => quitarTema(unidad.id, tema.id)}
                         className="text-slate-400 hover:text-red-600"
-                        aria-label="Quitar tema"
+                        aria-label={esAprendizaje ? 'Quitar tema' : 'Quitar subtema'}
                       >
                         ✕
                       </button>
@@ -428,7 +428,7 @@ export function AsistenteAsignatura({
                   onClick={() => agregarTema(unidad.id)}
                   className="text-sm text-marca-600 hover:text-marca-700"
                 >
-                  + Agregar tema
+                  {esAprendizaje ? '+ Agregar tema' : '+ Agregar subtema'}
                 </button>
               </div>
             </div>
@@ -438,7 +438,7 @@ export function AsistenteAsignatura({
             onClick={agregarUnidad}
             className="w-full rounded-xl border border-dashed border-slate-300 py-2.5 text-sm text-slate-500 hover:border-marca-300 hover:text-marca-700"
           >
-            {esAprendizaje ? '+ Agregar bloque' : '+ Agregar unidad'}
+            {esAprendizaje ? '+ Agregar bloque' : '+ Agregar tema'}
           </button>
         </div>
       )}

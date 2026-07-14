@@ -30,6 +30,11 @@ Historial de lo construido, con las decisiones no obvias. Complementa `SKILL.md`
 - Pestaña **«Estado»** en la ficha de asignatura (junto a Contenido y Planificación), componente `SaludAsignatura`. Se calcula **en el cliente** desde datos que la ficha ya tiene (asignatura + tareas + `conceptosStore` para el nº de material por concepto); **sin backend ni IPC nuevos**.
 - Chequeos con semáforo verde/ámbar: **temas sin concepto vinculado**, **conceptos sin material** (chips que abren la ficha del concepto para agregarlo), **temas sin tarea/práctica** y —solo docencia— **temas sin asignar a ninguna semana**. Arriba, cifras clave (temas, conceptos, con material X/Y, tareas) y un resumen (todo en orden / N puntos por revisar). Verificado por smoke de GUI.
 
+## Docencia: «Tema/Subtema» en vez de «Unidad/Tema»
+
+- Decisión: en **Docencia** el nivel superior ya **no se llama «Unidad»** sino **«Tema»** (el docente lo titula «Unidad 1» si quiere) y sus hijos son **«Subtemas»**. Es **solo reetiquetado de UI** (`AsistenteAsignatura`, `FichaAsignatura`, tarjeta de `ListaAsignaturas`): el backend sigue siendo Asignatura→Unidad→Tema→Subtema, así que el puente (concepto se vincula al backend-Tema = «Subtema» en la UI), la planificación y las tareas **no se tocan** («no dañar el backend»). Aprendizaje conserva «Bloque/Tema».
+- **Pendiente/nota**: la parte «subtemas que pueden tener más subtemas» (un 3er nivel editable) usaría el `Subtema` del backend (hoy hoja); es un incremento acotado que aún no se expone en la UI. Verificado por smoke de GUI (ficha y wizard sin «Unidad», con «Tema/Subtema»).
+
 ## Notas de concepto + formato «código»
 
 - **Notas/observaciones por concepto**: `Concepto` gana `notas` + `formatoNotas` (markdown/html/código), guardados en `concepto.yaml` (sincronizan con la nube; parte del contenido). Se editan en la ficha (sección «Notas y observaciones», componente `NotasConcepto`) y se muestran también al **revelar la respuesta en el repaso** (`ModoEstudioPage` pide la ficha del concepto). DTO: `ConceptoDTO`/`DatosConceptoDTO` con `notas`+`formatoNotas`.

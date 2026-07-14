@@ -124,9 +124,15 @@ export function ListaAsignaturas({ contexto }: Props): JSX.Element {
                       )}
                     </span>
                     <span className="mt-1 text-xs text-slate-400">
-                      {asig.totalUnidades} {asig.totalUnidades === 1 ? 'unidad' : 'unidades'} ·{' '}
-                      {asig.totalTemas} {asig.totalTemas === 1 ? 'tema' : 'temas'} ·{' '}
-                      {asig.totalTareas}{' '}
+                      {asig.totalUnidades}{' '}
+                      {esAprendizaje
+                        ? asig.totalUnidades === 1 ? 'bloque' : 'bloques'
+                        : asig.totalUnidades === 1 ? 'tema' : 'temas'}{' '}
+                      · {asig.totalTemas}{' '}
+                      {esAprendizaje
+                        ? asig.totalTemas === 1 ? 'tema' : 'temas'
+                        : asig.totalTemas === 1 ? 'subtema' : 'subtemas'}{' '}
+                      · {asig.totalTareas}{' '}
                       {esAprendizaje
                         ? asig.totalTareas === 1
                           ? 'práctica'
