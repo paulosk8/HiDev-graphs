@@ -10,10 +10,17 @@ import type { SesionDTO, UsuarioDTO } from '../../shared/dtos'
 import { ErrorDeDominio } from '../domain/errores'
 import { obtenerConfigSupabase } from './configSupabase'
 
-/** Tokens persistidos localmente para reanudar la sesión entre arranques. */
-interface TokensGuardados {
+/**
+ * Sesión persistida localmente para reanudarla entre arranques.
+ *
+ * Guarda también el perfil (`usuario`) para poder **arrancar sin conexión**:
+ * si al refrescar el token no hay red, se reconstruye la sesión desde aquí
+ * en vez de obligar a iniciar sesión de nuevo.
+ */
+interface SesionGuardada {
   access_token: string
   refresh_token: string
+  usuario?: UsuarioDTO
 }
 
 /**
@@ -31,6 +38,9 @@ export class SupabaseAuthService {
   private cliente: SupabaseClient | null = null
   /** Almacenamiento en memoria para que el verificador PKCE sobreviva entre llamadas. */
   private readonly memoria = new Map<string, string>()
+  /** Tiempo máximo de espera al refrescar el token en el arranque (ms). Pasado ese
+   * plazo se asume "sin conexión" y se arranca con la sesión cacheada. */
+  private tiempoMaxRed = 8000
 
   get configurado(): boolean {
     return obtenerConfigSupabase() !== null
@@ -94,8 +104,9 @@ export class SupabaseAuthService {
         throw new ErrorDeDominio('No se pudo completar el inicio de sesión.')
       }
       const { access_token, refresh_token, user } = intercambio.data.session
-      this.guardarTokens({ access_token, refresh_token })
-      return { usuario: this.aUsuario(user) }
+      const usuario = this.aUsuario(user)
+      this.guardarSesion({ access_token, refresh_token, usuario })
+      return { usuario }
     } finally {
       cerrar()
     }
@@ -129,33 +140,114 @@ export class SupabaseAuthService {
     if (existsSync(this.rutaTokens)) rmSync(this.rutaTokens, { force: true })
   }
 
-  /** Reanuda la sesión guardada (refrescando el token). `null` si no hay. */
+  /**
+   * Reanuda la sesión guardada refrescando el token contra Supabase.
+   *
+   * Tolerante a la falta de red (arranque offline): si el refresco falla por
+   * conexión (excepción, timeout o error transitorio/servidor) **conserva** la
+   * sesión local y la devuelve desde la caché, para que la app arranque sin
+   * internet. Solo borra la sesión ante un rechazo de autenticación real
+   * (token revocado/expirado sin refresco válido). `null` si no hay sesión
+   * guardada ni forma de reconstruir el perfil.
+   */
   async obtenerSesion(): Promise<SesionDTO | null> {
     const fake = this.sesionDePrueba()
     if (fake) return fake
     if (!this.configurado) return null
 
-    const tokens = this.leerTokens()
-    if (!tokens) return null
+    const guardada = this.leerTokens()
+    if (!guardada) return null
+    const cacheada = guardada.usuario ?? this.usuarioDesdeJwt(guardada.access_token)
+    const sesionOffline = (): SesionDTO | null => (cacheada ? { usuario: cacheada } : null)
+
+    let resultado: Awaited<ReturnType<SupabaseClient['auth']['setSession']>> | 'timeout'
     try {
       const cliente = this.obtenerCliente()
-      const { data, error } = await cliente.auth.setSession(tokens)
-      if (error || !data.session) {
+      resultado = await this.conTimeout(
+        cliente.auth.setSession({
+          access_token: guardada.access_token,
+          refresh_token: guardada.refresh_token
+        }),
+        this.tiempoMaxRed
+      )
+    } catch {
+      // La petición lanzó (típicamente "fetch failed" sin red): arranca offline.
+      return sesionOffline()
+    }
+
+    if (resultado === 'timeout') return sesionOffline()
+
+    const { data, error } = resultado
+    if (error) {
+      // Distinguir "sin red / servidor caído" (transitorio) de "token inválido".
+      if (this.esRechazoDeAutenticacion(error)) {
         rmSync(this.rutaTokens, { force: true })
         return null
       }
-      // El token pudo rotar al refrescarse: se vuelve a guardar.
-      this.guardarTokens({
-        access_token: data.session.access_token,
-        refresh_token: data.session.refresh_token
+      return sesionOffline()
+    }
+    if (!data.session) {
+      rmSync(this.rutaTokens, { force: true })
+      return null
+    }
+    // El token pudo rotar al refrescarse: se vuelve a guardar (con el perfil).
+    const usuario = this.aUsuario(data.session.user)
+    this.guardarSesion({
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
+      usuario
+    })
+    return { usuario }
+  }
+
+  // --- Internos ---
+
+  /** Corre una promesa con tope de tiempo; devuelve `'timeout'` si se excede. */
+  private conTimeout<T>(promesa: Promise<T>, ms: number): Promise<T | 'timeout'> {
+    return Promise.race([
+      promesa,
+      new Promise<'timeout'>((res) => setTimeout(() => res('timeout'), ms))
+    ])
+  }
+
+  /**
+   * `true` solo si el error indica credenciales rechazadas por el servidor
+   * (token/refresh inválido) y no un problema de red o del servidor. Ante la
+   * duda devuelve `false` para **no** cerrar la sesión local (offline-safe).
+   */
+  private esRechazoDeAutenticacion(error: unknown): boolean {
+    const e = error as { status?: number; name?: string } | null
+    if (!e) return false
+    if (e.name === 'AuthRetryableFetchError') return false // red/transitorio
+    const status = e.status ?? 0
+    return status === 400 || status === 401 || status === 403 || status === 422
+  }
+
+  /** Reconstruye el perfil desde los claims del JWT (sin red), para sesiones
+   * guardadas antes de que se persistiera el usuario. `null` si no se puede. */
+  private usuarioDesdeJwt(accessToken: string): UsuarioDTO | null {
+    try {
+      const payload = accessToken.split('.')[1]
+      if (!payload) return null
+      const json = Buffer.from(
+        payload.replace(/-/g, '+').replace(/_/g, '/'),
+        'base64'
+      ).toString('utf8')
+      const claims = JSON.parse(json) as {
+        sub?: string
+        email?: string
+        user_metadata?: Record<string, unknown>
+      }
+      if (!claims.sub) return null
+      return this.aUsuario({
+        id: claims.sub,
+        email: claims.email,
+        user_metadata: claims.user_metadata
       })
-      return { usuario: this.aUsuario(data.session.user) }
     } catch {
       return null
     }
   }
-
-  // --- Internos ---
 
   private aUsuario(user: { id: string; email?: string; user_metadata?: Record<string, unknown> }): UsuarioDTO {
     const meta = user.user_metadata ?? {}
@@ -165,22 +257,22 @@ export class SupabaseAuthService {
     return { id: user.id, email: user.email ?? '', nombre, foto }
   }
 
-  private guardarTokens(tokens: TokensGuardados): void {
-    const texto = JSON.stringify(tokens)
+  private guardarSesion(sesion: SesionGuardada): void {
+    const texto = JSON.stringify(sesion)
     const datos = safeStorage.isEncryptionAvailable()
       ? safeStorage.encryptString(texto)
       : Buffer.from(texto, 'utf8')
     writeFileSync(this.rutaTokens, datos)
   }
 
-  private leerTokens(): TokensGuardados | null {
+  private leerTokens(): SesionGuardada | null {
     if (!existsSync(this.rutaTokens)) return null
     try {
       const buffer = readFileSync(this.rutaTokens)
       const texto = safeStorage.isEncryptionAvailable()
         ? safeStorage.decryptString(buffer)
         : buffer.toString('utf8')
-      const obj = JSON.parse(texto) as TokensGuardados
+      const obj = JSON.parse(texto) as SesionGuardada
       return obj.access_token && obj.refresh_token ? obj : null
     } catch {
       return null
