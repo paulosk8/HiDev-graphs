@@ -22,7 +22,9 @@ export function aConceptoDTO(concepto: Concepto): ConceptoDTO {
       archivo: r.archivo,
       formato: r.formato
     })),
-    relaciones: concepto.relaciones.map((rel) => ({ destino: rel.destino, tipo: rel.tipo }))
+    relaciones: concepto.relaciones.map((rel) => ({ destino: rel.destino, tipo: rel.tipo })),
+    dominio: concepto.repaso?.dominio ?? 0,
+    proximaRevision: concepto.repaso?.proximaRevision ?? null
   }
 }
 
@@ -36,7 +38,9 @@ export function aResumenConceptoDTO(concepto: Concepto): ResumenConceptoDTO {
     // Un resumen recién creado/editado no conoce sus temas ni asignaturas; el
     // listado los rellena al recargar. El store conserva los previos al editar.
     temas: [],
-    asignaturas: []
+    asignaturas: [],
+    dominio: concepto.repaso?.dominio ?? 0,
+    proximaRevision: concepto.repaso?.proximaRevision ?? null
   }
 }
 

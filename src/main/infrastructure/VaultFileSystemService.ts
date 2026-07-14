@@ -4,6 +4,7 @@ import { load as leerYaml, dump as escribirYaml } from 'js-yaml'
 
 import { crearAsignatura, crearComponente, type Asignatura } from '../domain/Asignatura'
 import { crearConcepto, type Concepto } from '../domain/Concepto'
+import { repasoDesdePlano } from '../domain/Repaso'
 import { crearRecurso } from '../domain/Recurso'
 import { crearRelacion } from '../domain/Relacion'
 import { crearSubtema } from '../domain/Subtema'
@@ -87,7 +88,9 @@ export class VaultFileSystemService {
         nombre: r.nombre,
         archivo: r.archivo,
         formato: r.formato
-      }))
+      })),
+      // Estado de repaso espaciado (solo si existe); parte del contenido del concepto.
+      ...(concepto.repaso ? { repaso: { ...concepto.repaso } } : {})
     }
     writeFileSync(this.rutaConcepto(concepto.id), escribirYaml(plano, { lineWidth: 100 }), 'utf8')
   }
@@ -494,7 +497,8 @@ function conceptoDesdePlano(datos: Record<string, unknown>): Concepto {
     nombre: texto(datos.nombre),
     descripcion: texto(datos.descripcion),
     relaciones,
-    recursos
+    recursos,
+    repaso: repasoDesdePlano(datos.repaso)
   })
 }
 

@@ -11,6 +11,7 @@ export const CANALES = {
   conceptoCrear: 'concepto:crear',
   conceptoEditar: 'concepto:editar',
   conceptoEliminar: 'concepto:eliminar',
+  conceptoRepasar: 'concepto:repasar',
 
   // Material
   materialAgregar: 'material:agregar',

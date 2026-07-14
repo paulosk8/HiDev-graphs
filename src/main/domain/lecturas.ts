@@ -11,6 +11,10 @@ export interface ResumenConcepto {
   readonly totalRecursos: number
   /** Títulos de los temas que usan el concepto (para búsqueda). */
   readonly temas: string[]
+  /** Dominio percibido 0..5 (0 si nunca se repasó). */
+  readonly dominio: number
+  /** Fecha ISO del próximo repaso, o null si nunca se ha repasado. */
+  readonly proximaRevision: string | null
 }
 
 /** Resumen de una asignatura para el listado lateral. */

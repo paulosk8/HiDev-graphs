@@ -15,6 +15,7 @@ const api: PedagoGraphApi = {
   crearConcepto: (datos) => ipcRenderer.invoke(CANALES.conceptoCrear, datos),
   editarConcepto: (id, datos) => ipcRenderer.invoke(CANALES.conceptoEditar, id, datos),
   eliminarConcepto: (id) => ipcRenderer.invoke(CANALES.conceptoEliminar, id),
+  registrarRepaso: (id, calidad) => ipcRenderer.invoke(CANALES.conceptoRepasar, id, calidad),
   vincularConceptos: (origenId, destinoId, tipo) =>
     ipcRenderer.invoke(CANALES.conceptoVincular, origenId, destinoId, tipo),
   rutaDeArchivo: (archivo) => webUtils.getPathForFile(archivo),

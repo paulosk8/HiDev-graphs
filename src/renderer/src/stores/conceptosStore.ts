@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { ConceptoDTO, DatosConceptoDTO, ResumenConceptoDTO } from '@shared/dtos'
+import type { CalidadRepaso, ConceptoDTO, DatosConceptoDTO, ResumenConceptoDTO } from '@shared/dtos'
 import { api } from '../lib/api'
 import { useUiStore } from './uiStore'
 
@@ -19,6 +19,8 @@ interface ConceptosState {
   eliminar: (id: string, nombre: string) => Promise<boolean>
   agregarMaterial: (conceptoId: string, rutas: string[]) => Promise<ConceptoDTO | null>
   eliminarMaterial: (conceptoId: string, recursoId: string) => Promise<ConceptoDTO | null>
+  /** Registra un repaso y refleja el nuevo dominio/próxima revisión en el listado. */
+  repasar: (conceptoId: string, calidad: CalidadRepaso) => Promise<ConceptoDTO | null>
 }
 
 /** Actualiza el conteo de material de un concepto en el listado. */
@@ -120,6 +122,24 @@ export const useConceptosStore = create<ConceptosState>((set) => ({
         lista: conConteoActualizado(estado.lista, conceptoId, concepto.recursos.length)
       }))
       ui().notificar({ tipo: 'exito', mensaje: 'Material eliminado.' })
+      return concepto
+    } catch (error) {
+      ui().notificarError(error)
+      return null
+    }
+  },
+
+  repasar: async (conceptoId, calidad) => {
+    try {
+      const concepto = await api.registrarRepaso(conceptoId, calidad)
+      // Refleja el nuevo dominio y próxima revisión en el listado (mapa, estudio…).
+      set((estado) => ({
+        lista: estado.lista.map((c) =>
+          c.id === conceptoId
+            ? { ...c, dominio: concepto.dominio, proximaRevision: concepto.proximaRevision }
+            : c
+        )
+      }))
       return concepto
     } catch (error) {
       ui().notificarError(error)

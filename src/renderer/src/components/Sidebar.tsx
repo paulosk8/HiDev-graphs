@@ -1,7 +1,9 @@
 import { useAuthStore } from '../stores/authStore'
 import { useAsignaturasStore } from '../stores/asignaturasStore'
+import { useConceptosStore } from '../stores/conceptosStore'
 import { useLayoutStore } from '../stores/layoutStore'
 import { useUiStore, type Contexto, type Seccion } from '../stores/uiStore'
+import { pendientesHoy } from '../lib/repaso'
 
 interface ItemProps {
   seccion: Seccion
@@ -73,6 +75,8 @@ export function Sidebar(): JSX.Element {
   const asignaturas = useAsignaturasStore((s) => s.lista)
   const totalDocencia = asignaturas.filter((a) => a.tipo !== 'aprendizaje').length
   const totalAprendizaje = asignaturas.filter((a) => a.tipo === 'aprendizaje').length
+  const conceptos = useConceptosStore((s) => s.lista)
+  const pendientesRepaso = pendientesHoy(conceptos).length
   const colapsada = useLayoutStore((s) => s.sidebarColapsada)
   const alternar = useLayoutStore((s) => s.alternarSidebar)
   const docenciaColapsada = useLayoutStore((s) => s.docenciaColapsada)
@@ -156,6 +160,18 @@ export function Sidebar(): JSX.Element {
             <Item seccion="grafo" contexto="aprendizaje" etiqueta="Mapa" icono="🕸️" colapsada={colapsada} sangrado />
           </>
         )}
+
+        {/* Repaso: transversal (repasas conceptos de docencia y de aprendizaje). */}
+        <div className="pt-2">
+          {colapsada && <div className="mx-auto mb-1.5 h-px w-6 bg-slate-200" />}
+          <Item
+            seccion="estudio"
+            etiqueta="Repaso"
+            icono="🎯"
+            colapsada={colapsada}
+            cuenta={colapsada || pendientesRepaso === 0 ? undefined : pendientesRepaso}
+          />
+        </div>
       </nav>
 
       <div className="mt-auto w-full space-y-2 border-t border-slate-100 pt-3">

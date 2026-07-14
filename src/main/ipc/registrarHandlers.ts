@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs'
 
 import { CANALES } from '../../shared/canales'
 import type {
+  CalidadRepaso,
   ClienteMcpId,
   CombinarTareasDTO,
   DatosAsignaturaDTO,
@@ -29,6 +30,7 @@ import { agregarMaterial } from '../application/AgregarMaterial'
 import { eliminarMaterial } from '../application/EliminarMaterial'
 import { crearAsignatura } from '../application/CrearAsignatura'
 import { editarAsignatura } from '../application/EditarAsignatura'
+import { registrarRepaso } from '../application/RegistrarRepaso'
 import { obtenerAsignatura } from '../application/ObtenerAsignatura'
 import { guardarPlanificacion } from '../application/GuardarPlanificacion'
 import { obtenerMaterialDeConceptos } from '../application/ObtenerMaterialDeConceptos'
@@ -143,6 +145,10 @@ export function registrarHandlersIpc(servicios: Servicios): void {
 
   ipcMain.handle(CANALES.conceptoEliminar, (_evento, id: string) =>
     envolver(() => eliminarConcepto(servicios, id))
+  )
+
+  ipcMain.handle(CANALES.conceptoRepasar, (_evento, id: string, calidad: CalidadRepaso) =>
+    envolver(() => registrarRepaso(servicios, id, calidad))
   )
 
   ipcMain.handle(

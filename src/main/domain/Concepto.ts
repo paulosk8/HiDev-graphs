@@ -1,6 +1,7 @@
 import { exigir, ErrorDeDominio } from './errores'
 import type { Recurso } from './Recurso'
 import type { Relacion } from './Relacion'
+import type { RepasoConcepto } from './Repaso'
 
 /**
  * Concepto: unidad de conocimiento reutilizable entre asignaturas.
@@ -16,6 +17,8 @@ export interface Concepto {
   readonly descripcion: string
   readonly relaciones: readonly Relacion[]
   readonly recursos: readonly Recurso[]
+  /** Estado de repaso espaciado (opcional; ausente si nunca se ha repasado). */
+  readonly repaso?: RepasoConcepto
 }
 
 export interface DatosConcepto {
@@ -24,6 +27,7 @@ export interface DatosConcepto {
   descripcion?: string
   relaciones?: readonly Relacion[]
   recursos?: readonly Recurso[]
+  repaso?: RepasoConcepto
 }
 
 /** Crea un concepto validando sus datos básicos. */
@@ -41,7 +45,8 @@ export function crearConcepto(datos: DatosConcepto): Concepto {
     nombre,
     descripcion: (datos.descripcion ?? '').trim(),
     relaciones: datos.relaciones ?? [],
-    recursos: datos.recursos ?? []
+    recursos: datos.recursos ?? [],
+    ...(datos.repaso ? { repaso: datos.repaso } : {})
   }
 }
 

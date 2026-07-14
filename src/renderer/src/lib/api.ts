@@ -1,5 +1,6 @@
 import type {
   ClienteMcpId,
+  CalidadRepaso,
   CombinarTareasDTO,
   DatosAsignaturaDTO,
   DatosAsignaturaEdicionDTO,
@@ -45,6 +46,8 @@ export const api = {
   editarConcepto: (id: string, datos: DatosConceptoDTO) =>
     desenvolver(window.api.editarConcepto(id, datos)),
   eliminarConcepto: (id: string) => desenvolver(window.api.eliminarConcepto(id)),
+  registrarRepaso: (id: string, calidad: CalidadRepaso) =>
+    desenvolver(window.api.registrarRepaso(id, calidad)),
   vincularConceptos: (origenId: string, destinoId: string, tipo: TipoRelacion) =>
     desenvolver(window.api.vincularConceptos(origenId, destinoId, tipo)),
   rutaDeArchivo: (archivo: File): string => window.api.rutaDeArchivo(archivo),

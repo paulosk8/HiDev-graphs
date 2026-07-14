@@ -8,6 +8,7 @@ export type Seccion =
   | 'asistente'
   | 'terminal'
   | 'configuracion'
+  | 'estudio'
 
 /**
  * Contexto de trabajo: separa la capa de docencia (asignaturas) de la de

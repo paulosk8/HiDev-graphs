@@ -18,6 +18,7 @@ import { useAsignaturasStore } from '../../stores/asignaturasStore'
 import { useConceptosStore } from '../../stores/conceptosStore'
 import { useUiStore, type Contexto } from '../../stores/uiStore'
 import { useLayoutStore } from '../../stores/layoutStore'
+import { colorDominio } from '../../lib/repaso'
 
 cytoscape.use(fcose)
 
@@ -355,6 +356,7 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
   const [comando, setComando] = useState('')
   const [copiado, setCopiado] = useState(false)
   const [alturaDrag, setAlturaDrag] = useState<number | null>(null)
+  const [colorearDominio, setColorearDominio] = useState(false)
   const contenedor = useRef<HTMLDivElement>(null)
   const cyRef = useRef<cytoscape.Core | null>(null)
   const columnaRef = useRef<HTMLDivElement>(null)
@@ -377,6 +379,12 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
   const seleccionarConcepto = useUiStore((s) => s.seleccionarConcepto)
   const seleccionarAsignatura = useUiStore((s) => s.seleccionarAsignatura)
   const cargarConceptos = useConceptosStore((s) => s.cargar)
+  const conceptosLista = useConceptosStore((s) => s.lista)
+  // Dominio por concepto (para colorear el mapa por repaso espaciado).
+  const dominioPorId = useMemo(
+    () => new Map(conceptosLista.map((c) => [c.id, { dominio: c.dominio, proximaRevision: c.proximaRevision }])),
+    [conceptosLista]
+  )
   const panelColapsado = useLayoutStore((s) => s.panelGrafoColapsado)
   const alternarPanel = useLayoutStore((s) => s.alternarPanelGrafo)
   const terminalAltura = useLayoutStore((s) => s.terminalAltura)
@@ -494,11 +502,20 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
   }, [elementos])
 
   // Resalta el vecindario del nodo seleccionado y colorea los relacionados.
+  // En "colorear por dominio" se ignora la selección y cada concepto toma el
+  // color de su nivel de dominio (repaso espaciado).
   useEffect(() => {
     const cy = cyRef.current
     if (!cy) return
-    cy.nodes('[tipo="concepto"]').style('background-color', '#6366f1') // restablece
     cy.elements().removeClass('atenuado').removeClass('foco')
+    if (colorearDominio) {
+      cy.nodes('[tipo="concepto"]').forEach((n) => {
+        const c = dominioPorId.get(n.id().slice(2))
+        n.style('background-color', c ? colorDominio(c) : '#cbd5e1')
+      })
+      return
+    }
+    cy.nodes('[tipo="concepto"]').style('background-color', '#6366f1') // restablece
     if (!seleccionado) return
     const nodo = cy.getElementById(`c:${seleccionado}`)
     if (nodo.nonempty()) {
@@ -509,7 +526,7 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
         cy.getElementById(`c:${id}`).style('background-color', color)
       }
     }
-  }, [seleccionado, elementos, colorPorId])
+  }, [seleccionado, elementos, colorPorId, colorearDominio, dominioPorId])
 
   // Color de las etiquetas de los nodos según el tema (legible en claro y oscuro).
   useEffect(() => {
@@ -676,18 +693,48 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
               · {contexto === 'aprendizaje' ? 'Aprendizaje' : 'Docencia'}
             </span>
           </h1>
-          <button
-            onClick={() => setModalAnalisis(true)}
-            className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 transition hover:bg-slate-50"
-          >
-            🔎 Analizar conexiones
-            {analisis.posibles.length + analisis.aislados.length > 0 && (
-              <span className="rounded-full bg-amber-100 px-2 text-xs font-medium text-amber-800">
-                {analisis.posibles.length + analisis.aislados.length}
-              </span>
-            )}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setColorearDominio((v) => !v)}
+              title="Colorea cada concepto según tu nivel de dominio (repaso)"
+              className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition ${
+                colorearDominio
+                  ? 'border-marca-300 bg-marca-50 text-marca-700'
+                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              🎯 Dominio
+            </button>
+            <button
+              onClick={() => setModalAnalisis(true)}
+              className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 transition hover:bg-slate-50"
+            >
+              🔎 Analizar conexiones
+              {analisis.posibles.length + analisis.aislados.length > 0 && (
+                <span className="rounded-full bg-amber-100 px-2 text-xs font-medium text-amber-800">
+                  {analisis.posibles.length + analisis.aislados.length}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
+        {colorearDominio && (
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+            <span className="font-medium text-slate-400">Dominio:</span>
+            {[
+              ['#cbd5e1', 'Sin repasar'],
+              ['#ef4444', 'Flojo'],
+              ['#f59e0b', 'Regular'],
+              ['#84cc16', 'Bien'],
+              ['#22c55e', 'Dominado']
+            ].map(([color, etiqueta]) => (
+              <span key={etiqueta} className="inline-flex items-center gap-1">
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
+                {etiqueta}
+              </span>
+            ))}
+          </div>
+        )}
         {asignaturasGrafo.length > 0 && asignaturasGrafo.length <= 6 && (
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             <span className="mr-1 text-xs font-medium text-slate-400">Asignatura:</span>

@@ -38,7 +38,14 @@ export interface ResumenConceptoDTO {
   temas: string[]
   /** Nombres de las asignaturas donde se usa (para agrupar/filtrar). */
   asignaturas: string[]
+  /** Dominio percibido 0..5 (0 si nunca se repasó). Colorea el mapa. */
+  dominio: number
+  /** Fecha ISO (YYYY-MM-DD) del próximo repaso, o null si nunca se repasó. */
+  proximaRevision: string | null
 }
+
+/** Calidad del recuerdo al repasar: 0 = no me acuerdo, 3 = con esfuerzo, 4 = bien, 5 = fácil. */
+export type CalidadRepaso = 0 | 1 | 2 | 3 | 4 | 5
 
 export interface RecursoDTO {
   id: string
@@ -66,6 +73,10 @@ export interface ConceptoDTO {
   descripcion: string
   recursos: RecursoDTO[]
   relaciones: RelacionDTO[]
+  /** Dominio percibido 0..5 (0 si nunca se repasó). */
+  dominio: number
+  /** Fecha ISO del próximo repaso, o null si nunca se repasó. */
+  proximaRevision: string | null
 }
 
 /** Ficha de un concepto: su detalle + dónde se usa. */
