@@ -228,7 +228,8 @@ export interface DatosAsignaturaEdicionDTO {
   nombre: string
   periodos: string[]
   componentes: ComponenteDTO[]
-  unidades: DatosUnidadEdicionDTO[]
+  /** Estructura (temas/subtemas). Si se omite, se conserva la actual (se edita inline). */
+  unidades?: DatosUnidadEdicionDTO[]
 }
 
 // --- Tareas (capa transversal) ---

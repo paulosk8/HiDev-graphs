@@ -42,9 +42,11 @@ export function editarAsignatura(
     for (const t of u.temas) temasPrevios.set(t.id, t)
   }
 
-  // Reconstruye unidades y temas conservando ids (y subtemas/conceptos de los
-  // temas existentes). Los que no traen id son nuevos.
-  const unidades: Unidad[] = datos.unidades.map((u, i) => {
+  // Si el payload no trae `unidades`, se conserva la estructura actual (el
+  // contenido se edita inline en la ficha, no en este formulario).
+  const unidades: Unidad[] = datos.unidades === undefined
+    ? [...actual.unidades]
+    : datos.unidades.map((u, i) => {
     const temas: Tema[] = u.temas.map((t, j) => {
       const previo = t.id ? temasPrevios.get(t.id) : undefined
       // Subtemas (3er nivel): si el payload los trae, se reconstruyen conservando
