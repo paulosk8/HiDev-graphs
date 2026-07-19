@@ -352,51 +352,42 @@ export interface RestauracionDTO {
   tareas?: number
 }
 
-/** Usuario autenticado (datos públicos de su cuenta de Google). */
-export interface UsuarioDTO {
-  id: string
-  email: string
-  nombre: string
-  foto?: string
+// --- Almacenamiento del material (dónde vive: este equipo o carpeta de nube) ---
+
+/** Dónde guarda el docente su material. */
+export type ModoAlmacenamiento = 'local' | 'nube'
+
+/** Proveedor de nube detectado por su carpeta local sincronizada. */
+export type ProveedorNube = 'google' | 'onedrive'
+
+/** Una carpeta de nube detectada en el equipo, lista para guardar el material. */
+export interface CarpetaNubeDTO {
+  proveedor: ProveedorNube
+  /** Nombre amigable para la UI ("Google Drive", "OneDrive · Trabajo"). */
+  etiqueta: string
+  /** Carpeta contenedora donde vivirá el material (uso interno). */
+  ruta: string
 }
 
-/** Sesión activa: quién inició sesión. `null` = nadie ha iniciado sesión. */
-export interface SesionDTO {
-  usuario: UsuarioDTO
+/** Estado actual del almacenamiento del material, para mostrarlo en Configuración. */
+export interface AlmacenamientoDTO {
+  /** true si el usuario ya completó la bienvenida (eligió dónde guardar). */
+  configurado: boolean
+  modo: ModoAlmacenamiento
+  /** Nombre amigable de dónde se guarda ("Este equipo", "Google Drive · …"). */
+  nombreVisible: string
+  /** Carpeta del material (uso informativo; no se muestra como acción). */
+  ruta: string
 }
 
-/** Resultado de sincronizar con la nube: qué subió, bajó y se borró en cada lado. */
-export interface SincronizacionDTO {
-  subidos: number
-  bajados: number
-  borradosNube: number
-  /** Borrados en local (propagados desde la nube desde otro equipo). */
-  borradosLocal: number
-  /** Conflictos reales detectados (pendientes de resolución manual). */
-  conflictos: number
-}
-
-/** Con qué versión quedarse al resolver un conflicto. */
-export type EleccionConflicto = 'local' | 'nube'
-
-/** Una de las dos versiones en conflicto, resumida para mostrarla. */
-export interface VersionConflictoDTO {
-  /** Línea legible que describe esta versión (nombre + detalles). */
-  resumen: string
-  /** Marca de tiempo en que se editó esta versión. */
-  editadoEnMs: number
-}
-
-/** Un conflicto pendiente: el mismo ítem editado en dos equipos entre syncs. */
-export interface ConflictoDTO {
-  id: string
-  tabla: 'conceptos' | 'asignaturas' | 'tareas'
-  /** Etiqueta del tipo para la UI: "Concepto" | "Asignatura" | "Tarea". */
-  tipoEtiqueta: string
-  /** Nombre del ítem en conflicto. */
-  titulo: string
-  local: VersionConflictoDTO
-  nube: VersionConflictoDTO
+/** Resultado de mover el material a otro sitio (antes de reiniciar la app). */
+export interface ResultadoAlmacenamientoDTO {
+  modo: ModoAlmacenamiento
+  nombreVisible: string
+  /** true si el destino ya tenía material y se adoptó (segundo equipo). */
+  adoptado: boolean
+  /** true si ya estaba en ese sitio (no hubo cambios). */
+  sinCambios: boolean
 }
 
 /** Datos para configurar el servidor MCP (asistente IA) en un CLI externo. */

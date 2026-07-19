@@ -21,13 +21,28 @@ function dividirPeriodos(valor: string): string[] {
  * lo repueblan desde las entidades del vault.
  */
 export class SqliteGraphRepository implements IGraphRepository {
-  private readonly db: Database.Database
+  private db: Database.Database
 
   constructor(rutaDb: string) {
     this.db = new Database(rutaDb)
+    this.inicializar()
+  }
+
+  private inicializar(): void {
     this.db.pragma('journal_mode = WAL')
     this.db.exec(ESQUEMA_SQL)
     this.migrar()
+  }
+
+  /**
+   * Cierra la conexión actual y abre el índice en otra ruta (cambio de
+   * almacenamiento). El índice es derivado: tras reabrir se reindexa desde el
+   * vault. Conserva la misma instancia para no invalidar referencias.
+   */
+  reabrir(rutaDb: string): void {
+    this.db.close()
+    this.db = new Database(rutaDb)
+    this.inicializar()
   }
 
   /**

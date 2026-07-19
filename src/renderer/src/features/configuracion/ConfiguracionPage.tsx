@@ -3,12 +3,11 @@ import { Boton } from '../../components/Boton'
 import { DialogoConfirmacion } from '../../components/DialogoConfirmacion'
 import { api } from '../../lib/api'
 import { useAsignaturasStore } from '../../stores/asignaturasStore'
-import { useAuthStore } from '../../stores/authStore'
 import { useConceptosStore } from '../../stores/conceptosStore'
 import { useLayoutStore } from '../../stores/layoutStore'
 import { useUiStore } from '../../stores/uiStore'
 import { AsistentePage } from '../asistente/AsistentePage'
-import { ConflictosPanel } from './ConflictosPanel'
+import { AlmacenamientoNube } from './AlmacenamientoNube'
 
 type SeccionConfig = 'apariencia' | 'asistente' | 'datos'
 
@@ -83,20 +82,96 @@ function Seccion({
 function Apariencia(): JSX.Element {
   const tema = useLayoutStore((s) => s.tema)
   const alternarTema = useLayoutStore((s) => s.alternarTema)
+  const capaDocencia = useLayoutStore((s) => s.capaDocencia)
+  const capaAprendizaje = useLayoutStore((s) => s.capaAprendizaje)
+  const elegirCapas = useLayoutStore((s) => s.elegirCapas)
 
   return (
     <Seccion titulo="Apariencia" descripcion="Ajusta cómo se ve PedagoGraph.">
-      <div className="rounded-xl border border-slate-200 bg-white p-4">
-        <p className="text-sm font-medium text-slate-800">Tema</p>
-        <p className="mt-0.5 text-xs text-slate-500">
-          Elige entre el modo claro y el oscuro para trabajar cómodo.
-        </p>
-        <div className="mt-3 inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
-          <OpcionTema activo={tema === 'claro'} onClick={() => tema !== 'claro' && alternarTema()} icono="☀️" etiqueta="Claro" />
-          <OpcionTema activo={tema === 'oscuro'} onClick={() => tema !== 'oscuro' && alternarTema()} icono="🌙" etiqueta="Oscuro" />
+      <div className="space-y-4">
+        <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <p className="text-sm font-medium text-slate-800">Tema</p>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Elige entre el modo claro y el oscuro para trabajar cómodo.
+          </p>
+          <div className="mt-3 inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
+            <OpcionTema activo={tema === 'claro'} onClick={() => tema !== 'claro' && alternarTema()} icono="☀️" etiqueta="Claro" />
+            <OpcionTema activo={tema === 'oscuro'} onClick={() => tema !== 'oscuro' && alternarTema()} icono="🌙" etiqueta="Oscuro" />
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <p className="text-sm font-medium text-slate-800">Secciones del menú</p>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Elige qué capas ver en el menú lateral. Debe quedar al menos una activa.
+          </p>
+          <div className="mt-3 space-y-2">
+            <ToggleCapa
+              icono="🎓"
+              etiqueta="Docencia"
+              descripcion="Asignaturas, temas y su material."
+              activo={capaDocencia}
+              // No permitas apagar la última capa activa.
+              bloqueado={capaDocencia && !capaAprendizaje}
+              onAlternar={() => elegirCapas(!capaDocencia, capaAprendizaje)}
+            />
+            <ToggleCapa
+              icono="📘"
+              etiqueta="Aprendizaje"
+              descripcion="Espacios de estudio y repaso."
+              activo={capaAprendizaje}
+              bloqueado={capaAprendizaje && !capaDocencia}
+              onAlternar={() => elegirCapas(capaDocencia, !capaAprendizaje)}
+            />
+          </div>
         </div>
       </div>
     </Seccion>
+  )
+}
+
+function ToggleCapa({
+  icono,
+  etiqueta,
+  descripcion,
+  activo,
+  bloqueado,
+  onAlternar
+}: {
+  icono: string
+  etiqueta: string
+  descripcion: string
+  activo: boolean
+  bloqueado: boolean
+  onAlternar: () => void
+}): JSX.Element {
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-slate-200 p-3">
+      <span aria-hidden className="text-lg">
+        {icono}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-slate-800">{etiqueta}</p>
+        <p className="mt-0.5 text-xs text-slate-500">{descripcion}</p>
+      </div>
+      <button
+        role="switch"
+        aria-checked={activo}
+        aria-label={etiqueta}
+        onClick={onAlternar}
+        disabled={bloqueado}
+        title={bloqueado ? 'Debe quedar al menos una capa activa' : undefined}
+        className={`relative h-6 w-11 shrink-0 rounded-full transition disabled:cursor-not-allowed disabled:opacity-60 ${
+          activo ? 'bg-marca-600' : 'bg-slate-300'
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
+            activo ? 'left-[22px]' : 'left-0.5'
+          }`}
+        />
+      </button>
+    </div>
   )
 }
 
@@ -131,45 +206,11 @@ function DatosYCopias(): JSX.Element {
   const cargarAsignaturas = useAsignaturasStore((s) => s.cargar)
   const notificar = useUiStore((s) => s.notificar)
   const notificarError = useUiStore((s) => s.notificarError)
-  const sincronizar = useAuthStore((s) => s.sincronizar)
-  const sincronizando = useAuthStore((s) => s.sincronizando)
-  const haySesion = useAuthStore((s) => !!s.sesion)
 
   const [actualizando, setActualizando] = useState(false)
   const [respaldando, setRespaldando] = useState(false)
   const [restaurando, setRestaurando] = useState(false)
   const [confirmandoRestaurar, setConfirmandoRestaurar] = useState(false)
-
-  const sincronizarNube = async (): Promise<void> => {
-    try {
-      const r = await sincronizar()
-      const total = r.subidos + r.bajados + r.borradosNube + r.borradosLocal
-      const partes = [
-        r.subidos ? `${r.subidos} subidos` : '',
-        r.bajados ? `${r.bajados} bajados` : '',
-        r.borradosNube ? `${r.borradosNube} borrados en la nube` : '',
-        r.borradosLocal ? `${r.borradosLocal} borrados aquí` : ''
-      ].filter(Boolean)
-      if (r.conflictos > 0) {
-        notificar({
-          tipo: 'info',
-          mensaje:
-            r.conflictos === 1
-              ? 'Hay 1 conflicto por resolver (abajo).'
-              : `Hay ${r.conflictos} conflictos por resolver (abajo).`,
-          sugerencia: 'El mismo elemento se editó en dos equipos. Elige con qué versión quedarte.'
-        })
-      } else {
-        notificar({
-          tipo: 'exito',
-          mensaje:
-            total === 0 ? 'Todo está sincronizado con la nube.' : `Sincronizado: ${partes.join(', ')}.`
-        })
-      }
-    } catch (error) {
-      notificarError(error)
-    }
-  }
 
   const actualizar = async (): Promise<void> => {
     setActualizando(true)
@@ -221,22 +262,17 @@ function DatosYCopias(): JSX.Element {
   return (
     <Seccion
       titulo="Datos y copias"
-      descripcion="Sincroniza con la nube, actualiza desde el disco y gestiona tus copias de seguridad."
+      descripcion="Elige dónde se guarda tu material, actualízalo y gestiona tus copias de seguridad."
     >
-      <ConflictosPanel />
+      <div className="mb-8">
+        <h2 className="mb-1 text-sm font-semibold text-slate-700">Dónde se guarda tu material</h2>
+        <p className="mb-3 text-xs text-slate-500">
+          Guárdalo en este equipo o en tu nube (Google Drive / OneDrive) para tenerlo disponible en
+          todos tus dispositivos.
+        </p>
+        <AlmacenamientoNube />
+      </div>
       <div className="space-y-3">
-        {haySesion && (
-          <Fila
-            icono="☁️"
-            titulo="Sincronizar con la nube"
-            descripcion="Sube y baja tus cambios entre este equipo y tu cuenta."
-            boton={
-              <Boton variante="primario" onClick={() => void sincronizarNube()} disabled={sincronizando}>
-                {sincronizando ? 'Sincronizando…' : 'Sincronizar'}
-              </Boton>
-            }
-          />
-        )}
         <Fila
           icono="↻"
           titulo="Actualizar"

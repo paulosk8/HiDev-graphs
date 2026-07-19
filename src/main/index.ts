@@ -2,13 +2,11 @@ import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { inicializarServicios, type Servicios } from './servicios'
 import { registrarHandlersIpc } from './ipc/registrarHandlers'
-import { registrarHandlersAuth } from './ipc/registrarHandlersAuth'
-import { registrarHandlersNube } from './ipc/registrarHandlersNube'
+import { registrarHandlersAlmacenamiento } from './ipc/registrarHandlersAlmacenamiento'
 import { registrarHandlersTerminal, cerrarTerminal } from './ipc/terminal'
-import { SupabaseAuthService } from './infrastructure/SupabaseAuthService'
-import { SupabaseDataService } from './infrastructure/SupabaseDataService'
-import { SyncService } from './infrastructure/SyncService'
 import { IndexSyncService } from './infrastructure/IndexSyncService'
+import { reindexarVault } from './application/ReindexarVault'
+import { resolverRutaVault, rutaIndicePorEquipo } from './infrastructure/configApp'
 import {
   habilitarProtocoloRecurso,
   registrarEsquemaRecursoPrivilegiado
@@ -63,42 +61,51 @@ function createWindow(): void {
   }
 }
 
+/**
+ * Arranca el observador del vault (archivos -> índice). Cuando el cliente de
+ * nube (Google Drive / OneDrive) baja cambios desde otro equipo, el watcher los
+ * detecta, reindexa y refresca la interfaz. Se recrea al cambiar de carpeta.
+ */
+function iniciarObservadorVault(): void {
+  if (!servicios) return
+  sincronizador = new IndexSyncService(servicios.vault, servicios.repositorio, () => {
+    if (ventanaPrincipal && !ventanaPrincipal.isDestroyed()) {
+      ventanaPrincipal.webContents.send(CANALES.vaultCambiado)
+    }
+  })
+  sincronizador.iniciar()
+}
+
+/**
+ * Aplica un cambio de almacenamiento (mover el material a/desde una carpeta de
+ * nube) SIN reiniciar el proceso: re-apunta el núcleo a la nueva carpeta en
+ * caliente y recarga la ventana. Reiniciar la app entera es frágil bajo el
+ * servidor de desarrollo; esto funciona igual en dev y en producción.
+ */
+async function aplicarCambioAlmacenamiento(): Promise<void> {
+  if (!servicios) return
+  await sincronizador?.detener()
+  servicios.vault.reapuntar(resolverRutaVault(), rutaIndicePorEquipo())
+  servicios.vault.asegurarVault()
+  servicios.repositorio.reabrir(servicios.vault.rutaBaseDatos)
+  reindexarVault(servicios.vault, servicios.repositorio)
+  iniciarObservadorVault()
+  if (ventanaPrincipal && !ventanaPrincipal.isDestroyed()) {
+    ventanaPrincipal.webContents.reload()
+  }
+}
+
 app.whenReady().then(() => {
   // Inicializa el núcleo (vault + índice) y registra la API IPC antes de la ventana.
   servicios = inicializarServicios()
   registrarHandlersIpc(servicios)
-  const auth = new SupabaseAuthService()
-  registrarHandlersAuth(auth)
-  const datosNube = new SupabaseDataService(auth)
-  const sync = new SyncService(servicios.vault, servicios.repositorio, datosNube)
-  registrarHandlersNube(sync, servicios.vault)
+  registrarHandlersAlmacenamiento(aplicarCambioAlmacenamiento)
   registrarHandlersTerminal(servicios.vault.raiz)
   habilitarProtocoloRecurso(servicios.vault)
 
   createWindow()
 
-  // Auto-sincronización: tras cada cambio local (con debounce), sube a la nube.
-  // El planificador hace no-op cuando el contenido ya coincide, así el ciclo
-  // "bajar → escribir → detectar cambio → sincronizar" se corta solo.
-  let temporizadorSync: ReturnType<typeof setTimeout> | null = null
-  const programarAutoSync = (): void => {
-    if (!auth.configurado || !auth.haySesionGuardada()) return
-    if (temporizadorSync) clearTimeout(temporizadorSync)
-    temporizadorSync = setTimeout(() => {
-      void sync.sincronizar().catch(() => {
-        /* sin conexión: la app sigue con la copia local */
-      })
-    }, 2000)
-  }
-
-  // Mantiene el índice sincronizado con el vault y avisa al renderer.
-  sincronizador = new IndexSyncService(servicios.vault, servicios.repositorio, () => {
-    if (ventanaPrincipal && !ventanaPrincipal.isDestroyed()) {
-      ventanaPrincipal.webContents.send(CANALES.vaultCambiado)
-    }
-    programarAutoSync()
-  })
-  sincronizador.iniciar()
+  iniciarObservadorVault()
 
   app.on('activate', () => {
     // En macOS es habitual recrear la ventana al hacer clic en el icono del dock.

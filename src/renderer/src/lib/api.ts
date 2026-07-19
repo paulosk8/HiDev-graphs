@@ -101,18 +101,14 @@ export const api = {
   obtenerGrafo: () => desenvolver(window.api.obtenerGrafo()),
   obtenerInfoMcp: () => desenvolver(window.api.obtenerInfoMcp()),
   conectarMcp: (cli: ClienteMcpId) => desenvolver(window.api.conectarMcp(cli)),
+  estadoAlmacenamiento: () => desenvolver(window.api.estadoAlmacenamiento()),
+  detectarCarpetasNube: () => desenvolver(window.api.detectarCarpetasNube()),
+  elegirCarpetaAlmacenamiento: () => desenvolver(window.api.elegirCarpetaAlmacenamiento()),
+  usarAlmacenamientoNube: (rutaContenedor: string, nombreCarpeta: string) =>
+    desenvolver(window.api.usarAlmacenamientoNube(rutaContenedor, nombreCarpeta)),
+  usarAlmacenamientoLocal: () => desenvolver(window.api.usarAlmacenamientoLocal()),
   reindexar: () => desenvolver(window.api.reindexar()),
   respaldar: () => desenvolver(window.api.respaldar()),
   restaurar: () => desenvolver(window.api.restaurar()),
-  iniciarSesion: () => desenvolver(window.api.iniciarSesion()),
-  cerrarSesion: () => desenvolver(window.api.cerrarSesion()),
-  sesionActual: () => desenvolver(window.api.sesionActual()),
-  sincronizarNube: () => desenvolver(window.api.sincronizarNube()),
-  listarConflictos: () => desenvolver(window.api.listarConflictos()),
-  resolverConflicto: (
-    tabla: import('@shared/dtos').ConflictoDTO['tabla'],
-    id: string,
-    eleccion: import('@shared/dtos').EleccionConflicto
-  ) => desenvolver(window.api.resolverConflicto(tabla, id, eleccion)),
   onVaultCambiado: (callback: () => void): (() => void) => window.api.onVaultCambiado(callback)
 }

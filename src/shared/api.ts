@@ -1,5 +1,8 @@
 import type {
   ClienteMcpId,
+  AlmacenamientoDTO,
+  CarpetaNubeDTO,
+  ResultadoAlmacenamientoDTO,
   AsignaturaDTO,
   MaterialConceptoDTO,
   SemanaPlanDTO,
@@ -24,10 +27,6 @@ import type {
   ResumenAsignaturaDTO,
   ResumenConceptoDTO,
   ResumenTareaDTO,
-  SesionDTO,
-  SincronizacionDTO,
-  ConflictoDTO,
-  EleccionConflicto,
   TareaDTO,
   UsoDeConceptoDTO
 } from './dtos'
@@ -118,22 +117,26 @@ export interface PedagoGraphApi {
   obtenerInfoMcp(): Promise<Resultado<McpInfoDTO>>
   conectarMcp(cli: ClienteMcpId): Promise<Resultado<McpInfoDTO>>
 
-  // --- Autenticación ---
-  /** Abre el navegador para iniciar sesión con Google. Resuelve con la sesión creada. */
-  iniciarSesion(): Promise<Resultado<SesionDTO>>
-  cerrarSesion(): Promise<Resultado<null>>
-  /** Sesión activa (o null si nadie ha iniciado sesión). */
-  sesionActual(): Promise<Resultado<SesionDTO | null>>
-  /** Sincroniza el vault local con la nube (dos vías). */
-  sincronizarNube(): Promise<Resultado<SincronizacionDTO>>
-  /** Conflictos pendientes de resolución manual (mismo ítem editado en dos equipos). */
-  listarConflictos(): Promise<Resultado<ConflictoDTO[]>>
-  /** Resuelve un conflicto quedándose con la versión local o la de la nube. */
-  resolverConflicto(
-    tabla: ConflictoDTO['tabla'],
-    id: string,
-    eleccion: EleccionConflicto
-  ): Promise<Resultado<null>>
+  // --- Almacenamiento del material (este equipo / carpeta de nube) ---
+  /** Dónde se guarda hoy el material (para mostrarlo en Configuración). */
+  estadoAlmacenamiento(): Promise<Resultado<AlmacenamientoDTO>>
+  /** Carpetas de Google Drive / OneDrive detectadas en este equipo. */
+  detectarCarpetasNube(): Promise<Resultado<CarpetaNubeDTO[]>>
+  /**
+   * Abre el selector nativo del sistema para elegir (o crear) una carpeta donde
+   * guardar el material. Devuelve la ruta elegida, o null si se cancela.
+   */
+  elegirCarpetaAlmacenamiento(): Promise<Resultado<string | null>>
+  /**
+   * Guarda el material en una carpeta de nube: crea `<rutaContenedor>/<nombreCarpeta>`,
+   * copia el material y aplica el cambio en caliente (recarga la interfaz).
+   */
+  usarAlmacenamientoNube(
+    rutaContenedor: string,
+    nombreCarpeta: string
+  ): Promise<Resultado<ResultadoAlmacenamientoDTO>>
+  /** Vuelve a guardar el material en este equipo (carpeta Documentos). */
+  usarAlmacenamientoLocal(): Promise<Resultado<ResultadoAlmacenamientoDTO>>
 
   // --- Sistema ---
   reindexar(): Promise<Resultado<ResultadoReindexadoDTO>>

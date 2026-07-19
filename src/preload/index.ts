@@ -62,16 +62,15 @@ const api: PedagoGraphApi = {
   obtenerGrafo: () => ipcRenderer.invoke(CANALES.grafoObtener),
   obtenerInfoMcp: () => ipcRenderer.invoke(CANALES.mcpInfo),
   conectarMcp: (cli) => ipcRenderer.invoke(CANALES.mcpConectar, cli),
+  estadoAlmacenamiento: () => ipcRenderer.invoke(CANALES.almacenamientoEstado),
+  detectarCarpetasNube: () => ipcRenderer.invoke(CANALES.almacenamientoCarpetasNube),
+  elegirCarpetaAlmacenamiento: () => ipcRenderer.invoke(CANALES.almacenamientoElegirCarpeta),
+  usarAlmacenamientoNube: (rutaContenedor, nombreCarpeta) =>
+    ipcRenderer.invoke(CANALES.almacenamientoUsarNube, rutaContenedor, nombreCarpeta),
+  usarAlmacenamientoLocal: () => ipcRenderer.invoke(CANALES.almacenamientoUsarLocal),
   reindexar: () => ipcRenderer.invoke(CANALES.reindexar),
   respaldar: () => ipcRenderer.invoke(CANALES.respaldar),
   restaurar: () => ipcRenderer.invoke(CANALES.restaurar),
-  iniciarSesion: () => ipcRenderer.invoke(CANALES.authIniciar),
-  cerrarSesion: () => ipcRenderer.invoke(CANALES.authCerrar),
-  sesionActual: () => ipcRenderer.invoke(CANALES.authSesion),
-  sincronizarNube: () => ipcRenderer.invoke(CANALES.nubeSincronizar),
-  listarConflictos: () => ipcRenderer.invoke(CANALES.conflictosListar),
-  resolverConflicto: (tabla, id, eleccion) =>
-    ipcRenderer.invoke(CANALES.conflictosResolver, tabla, id, eleccion),
   onVaultCambiado: (callback) => {
     const oyente = (): void => callback()
     ipcRenderer.on(CANALES.vaultCambiado, oyente)

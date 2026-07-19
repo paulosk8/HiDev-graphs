@@ -1,11 +1,8 @@
-import { useAuthStore } from '../stores/authStore'
 import { useAsignaturasStore } from '../stores/asignaturasStore'
 import { useConceptosStore } from '../stores/conceptosStore'
 import { useLayoutStore } from '../stores/layoutStore'
 import { useUiStore, type Contexto, type Seccion } from '../stores/uiStore'
-import { useConflictosStore } from '../stores/conflictosStore'
 import { conceptosDeAprendizaje, pendientesHoy } from '../lib/repaso'
-import { useEnLinea } from '../hooks/useConexion'
 
 interface ItemProps {
   seccion: Seccion
@@ -87,11 +84,9 @@ export function Sidebar(): JSX.Element {
   const docenciaColapsada = useLayoutStore((s) => s.docenciaColapsada)
   const aprendizajeColapsada = useLayoutStore((s) => s.aprendizajeColapsada)
   const alternarGrupo = useLayoutStore((s) => s.alternarGrupo)
-  const usuario = useAuthStore((s) => s.sesion?.usuario)
-  const cerrarSesion = useAuthStore((s) => s.cerrar)
+  const capaDocencia = useLayoutStore((s) => s.capaDocencia)
+  const capaAprendizaje = useLayoutStore((s) => s.capaAprendizaje)
   const alternarConfiguracion = useUiStore((s) => s.alternarConfiguracion)
-  const enLinea = useEnLinea()
-  const conflictosPendientes = useConflictosStore((s) => s.lista.length)
 
   // En la franja de iconos (sidebar plegado) los grupos se muestran siempre.
   const mostrarDocencia = colapsada || !docenciaColapsada
@@ -132,108 +127,71 @@ export function Sidebar(): JSX.Element {
       )}
 
       <nav className="w-full space-y-1">
-        {/* Docencia */}
-        {!colapsada && (
-          <EncabezadoGrupo
-            icono="🎓"
-            etiqueta="Docencia"
-            colapsado={docenciaColapsada}
-            onAlternar={() => alternarGrupo('docencia')}
-          />
-        )}
-        {mostrarDocencia && (
+        {/* Docencia (solo si la capa está habilitada) */}
+        {capaDocencia && (
           <>
-            <Item seccion="asignaturas" contexto="docencia" etiqueta="Asignaturas" cuenta={colapsada ? undefined : totalDocencia} icono="🎓" colapsada={colapsada} sangrado />
-            <Item seccion="conceptos" contexto="docencia" etiqueta="Conceptos" icono="💡" colapsada={colapsada} sangrado />
-            <Item seccion="grafo" contexto="docencia" etiqueta="Mapa" icono="🕸️" colapsada={colapsada} sangrado />
+            {!colapsada && (
+              <EncabezadoGrupo
+                icono="🎓"
+                etiqueta="Docencia"
+                colapsado={docenciaColapsada}
+                onAlternar={() => alternarGrupo('docencia')}
+              />
+            )}
+            {mostrarDocencia && (
+              <>
+                <Item seccion="asignaturas" contexto="docencia" etiqueta="Asignaturas" cuenta={colapsada ? undefined : totalDocencia} icono="🎓" colapsada={colapsada} sangrado />
+                <Item seccion="conceptos" contexto="docencia" etiqueta="Conceptos" icono="💡" colapsada={colapsada} sangrado />
+                <Item seccion="grafo" contexto="docencia" etiqueta="Mapa" icono="🕸️" colapsada={colapsada} sangrado />
+              </>
+            )}
           </>
         )}
 
-        {/* Aprendizaje */}
-        {colapsada && <div className="mx-auto my-1.5 h-px w-6 bg-slate-200" />}
-        {!colapsada && (
-          <div className="pt-2">
-            <EncabezadoGrupo
-              icono="📘"
-              etiqueta="Aprendizaje"
-              colapsado={aprendizajeColapsada}
-              onAlternar={() => alternarGrupo('aprendizaje')}
-            />
-          </div>
-        )}
-        {mostrarAprendizaje && (
+        {/* Aprendizaje (solo si la capa está habilitada) */}
+        {capaAprendizaje && (
           <>
-            <Item seccion="asignaturas" contexto="aprendizaje" etiqueta="Espacios" cuenta={colapsada ? undefined : totalAprendizaje} icono="📘" colapsada={colapsada} sangrado />
-            <Item seccion="conceptos" contexto="aprendizaje" etiqueta="Conceptos" icono="💡" colapsada={colapsada} sangrado />
-            <Item seccion="grafo" contexto="aprendizaje" etiqueta="Mapa" icono="🕸️" colapsada={colapsada} sangrado />
-            {/* El repaso es una actividad de aprendizaje: vive en esta capa. */}
-            <Item
-              seccion="estudio"
-              contexto="aprendizaje"
-              etiqueta="Repaso"
-              icono="🎯"
-              colapsada={colapsada}
-              cuenta={colapsada || pendientesRepaso === 0 ? undefined : pendientesRepaso}
-              sangrado
-            />
+            {colapsada && capaDocencia && <div className="mx-auto my-1.5 h-px w-6 bg-slate-200" />}
+            {!colapsada && (
+              <div className={capaDocencia ? 'pt-2' : ''}>
+                <EncabezadoGrupo
+                  icono="📘"
+                  etiqueta="Aprendizaje"
+                  colapsado={aprendizajeColapsada}
+                  onAlternar={() => alternarGrupo('aprendizaje')}
+                />
+              </div>
+            )}
+            {mostrarAprendizaje && (
+              <>
+                <Item seccion="asignaturas" contexto="aprendizaje" etiqueta="Espacios" cuenta={colapsada ? undefined : totalAprendizaje} icono="📘" colapsada={colapsada} sangrado />
+                <Item seccion="conceptos" contexto="aprendizaje" etiqueta="Conceptos" icono="💡" colapsada={colapsada} sangrado />
+                <Item seccion="grafo" contexto="aprendizaje" etiqueta="Mapa" icono="🕸️" colapsada={colapsada} sangrado />
+                {/* El repaso es una actividad de aprendizaje: vive en esta capa. */}
+                <Item
+                  seccion="estudio"
+                  contexto="aprendizaje"
+                  etiqueta="Repaso"
+                  icono="🎯"
+                  colapsada={colapsada}
+                  cuenta={colapsada || pendientesRepaso === 0 ? undefined : pendientesRepaso}
+                  sangrado
+                />
+              </>
+            )}
           </>
         )}
       </nav>
 
       <div className="mt-auto w-full space-y-2 border-t border-slate-100 pt-3">
-        {/* Aviso "sin conexión": trabajas con la copia local; se sincroniza al reconectar. */}
-        {!enLinea && (
-          <div
-            title="Sin conexión. Tus cambios se guardan y se sincronizarán al reconectar."
-            className={`flex items-center rounded-md bg-amber-50 py-1.5 text-xs font-medium text-amber-800 ${
-              colapsada ? 'justify-center px-0' : 'gap-2 px-3'
-            }`}
-          >
-            <span aria-hidden>⚠️</span>
-            {!colapsada && <span>Sin conexión</span>}
-          </div>
-        )}
-
-        {/* Configuración: agrupa Apariencia (modo oscuro), Asistente IA, Datos y copias, Cuenta. */}
+        {/* Configuración: agrupa Apariencia (modo oscuro), Asistente IA, Datos y copias. */}
         <Item
           seccion="configuracion"
           etiqueta="Configuración"
           icono="⚙️"
           colapsada={colapsada}
-          cuenta={colapsada || conflictosPendientes === 0 ? undefined : conflictosPendientes}
           alSeleccionar={alternarConfiguracion}
         />
-
-        {usuario && (
-          <div className={`mt-1 flex items-center pt-1 ${colapsada ? 'justify-center' : 'gap-2 px-1'}`}>
-            {usuario.foto ? (
-              <img
-                src={usuario.foto}
-                alt=""
-                referrerPolicy="no-referrer"
-                className="h-7 w-7 shrink-0 rounded-full"
-              />
-            ) : (
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-marca-100 text-xs font-semibold text-marca-700">
-                {usuario.nombre.charAt(0).toUpperCase()}
-              </span>
-            )}
-            {!colapsada && (
-              <>
-                <span className="min-w-0 flex-1 truncate text-xs text-slate-500" title={usuario.email}>
-                  {usuario.nombre}
-                </span>
-                <button
-                  onClick={() => void cerrarSesion()}
-                  title="Cerrar sesión"
-                  className="shrink-0 rounded-md px-1.5 py-1 text-xs text-slate-400 transition hover:bg-slate-100 hover:text-red-600"
-                >
-                  Salir
-                </button>
-              </>
-            )}
-          </div>
-        )}
         {!colapsada && <div className="px-2 text-xs text-slate-400">PedagoGraph · versión 0.1.0</div>}
       </div>
     </aside>
