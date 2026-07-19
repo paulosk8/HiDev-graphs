@@ -183,6 +183,14 @@ export function AsistentePage(): JSX.Element {
             </li>
           ))}
         </ul>
+        <p className="mt-3 flex items-start gap-2 rounded-lg bg-marca-50 px-4 py-3 text-xs text-marca-700">
+          <span className="shrink-0 text-sm leading-none">💡</span>
+          <span>
+            <strong>Consejo:</strong> no hace falta escribirlas a mano. En el <strong>Mapa</strong>, el
+            botón <strong>«Prompts»</strong> arma estas peticiones por ti a partir de los conceptos que
+            elijas y se las envía a la IA con un clic.
+          </span>
+        </p>
       </section>
     </div>
   )
