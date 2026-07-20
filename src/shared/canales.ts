@@ -62,15 +62,17 @@ export const CANALES = {
   respaldar: 'sistema:respaldar',
   restaurar: 'sistema:restaurar',
 
-  // Autenticación (Supabase)
-  authIniciar: 'auth:iniciar',
-  authCerrar: 'auth:cerrar',
-  authSesion: 'auth:sesion',
+  // Almacenamiento del material (local / carpeta de nube tipo Google Drive)
+  almacenamientoEstado: 'almacenamiento:estado',
+  almacenamientoCarpetasNube: 'almacenamiento:carpetas-nube',
+  almacenamientoElegirCarpeta: 'almacenamiento:elegir-carpeta',
+  almacenamientoUsarNube: 'almacenamiento:usar-nube',
+  almacenamientoUsarLocal: 'almacenamiento:usar-local',
 
-  // Nube (sincronización)
-  nubeSincronizar: 'nube:sincronizar',
-  conflictosListar: 'nube:conflictos-listar',
-  conflictosResolver: 'nube:conflictos-resolver',
+  // Historial de versiones del material
+  historialListar: 'historial:listar',
+  historialVersiones: 'historial:versiones',
+  historialRestaurar: 'historial:restaurar',
 
   // Terminal embebida
   terminalCrear: 'terminal:crear',

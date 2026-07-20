@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, rmSync, copyFileSync, statSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, rmSync, copyFileSync } from 'node:fs'
 import { basename, extname, join, resolve, sep } from 'node:path'
 import { load as leerYaml, dump as escribirYaml } from 'js-yaml'
 
@@ -18,7 +18,6 @@ import { crearSubtema } from '../domain/Subtema'
 import { crearTarea, type Tarea } from '../domain/Tarea'
 import { crearTema, type Tema } from '../domain/Tema'
 import { crearUnidad, type Unidad } from '../domain/Unidad'
-import type { BaseItem, ConflictoGuardado, ItemLocal, TablaAgregado } from './sincronizacion'
 import {
   esTipoRelacion,
   formatoDesdeNombreArchivo,
@@ -47,7 +46,28 @@ function formatoInstruccionesDesde(v: unknown): FormatoInstrucciones {
  * El docente nunca ve estos archivos: la app los escribe y lee por él.
  */
 export class VaultFileSystemService {
-  constructor(private readonly rutaVault: string) {}
+  /**
+   * @param rutaVault  Carpeta del vault (fuente de verdad: YAML + material).
+   * @param rutaIndice Carpeta del índice y estado de sync. Por defecto
+   *   `<vault>/.index`. Se separa (a userData) cuando el vault vive en una
+   *   carpeta de nube, para que el índice NO viaje por Drive/OneDrive: es
+   *   por-equipo, binario y reconstruible.
+   */
+  constructor(
+    private rutaVault: string,
+    private rutaIndiceForzada?: string
+  ) {}
+
+  /**
+   * Re-apunta el vault (y su índice) a otra carpeta en caliente, sin recrear el
+   * objeto. Lo usa el cambio de almacenamiento (mover el material a/desde una
+   * carpeta de nube) para que los handlers IPC y el protocolo `recurso://`, que
+   * conservan esta misma instancia, resuelvan ya contra la nueva ubicación.
+   */
+  reapuntar(rutaVault: string, rutaIndice?: string): void {
+    this.rutaVault = rutaVault
+    this.rutaIndiceForzada = rutaIndice
+  }
 
   get raiz(): string {
     return this.rutaVault
@@ -62,7 +82,7 @@ export class VaultFileSystemService {
     return join(this.rutaVault, 'tareas')
   }
   get dirIndice(): string {
-    return join(this.rutaVault, '.index')
+    return this.rutaIndiceForzada ?? join(this.rutaVault, '.index')
   }
   get rutaBaseDatos(): string {
     return join(this.dirIndice, 'index.db')
@@ -395,130 +415,6 @@ export class VaultFileSystemService {
     const abs = resolve(this.carpetaTarea(tareaId), archivo)
     const base = resolve(this.dirTareas)
     return abs === base || abs.startsWith(base + sep) ? abs : null
-  }
-
-  // ---------------------------------------------------------------------------
-  // Sincronización con la nube: leer/escribir agregados como JSON autocontenido
-  // (misma forma que el `datos jsonb` de Postgres). Las tareas pliegan sus
-  // instrucciones (que viven en archivo aparte) dentro del JSON.
-  // ---------------------------------------------------------------------------
-
-  /** Lee todos los agregados locales de una tabla, con su marca de tiempo. */
-  leerAgregadosLocales(tabla: TablaAgregado): ItemLocal[] {
-    if (tabla === 'conceptos') {
-      return this.listarIdsConceptos().map((id) => this.agregadoConMtime(id, this.rutaConcepto(id)))
-    }
-    if (tabla === 'asignaturas') {
-      return this.listarIdsAsignaturas().map((id) =>
-        this.agregadoConMtime(id, this.rutaAsignatura(id))
-      )
-    }
-    return this.listarIdsTareas().map((id) => {
-      const ruta = this.rutaTarea(id)
-      const plano = leerYaml(readFileSync(ruta, 'utf8')) as Record<string, unknown>
-      const formato = formatoInstruccionesDesde(plano.formato)
-      const rutaLeer = this.rutaInstruccionesExistente(id, formato)
-      const instrucciones = rutaLeer ? readFileSync(rutaLeer, 'utf8') : ''
-      return { id, datos: { ...plano, instrucciones }, mtimeMs: statSync(ruta).mtimeMs }
-    })
-  }
-
-  /** Escribe un agregado (JSON autocontenido, venido de la nube) en el vault. */
-  escribirAgregadoLocal(tabla: TablaAgregado, id: string, datos: Record<string, unknown>): void {
-    if (tabla === 'conceptos') {
-      mkdirSync(this.carpetaConcepto(id), { recursive: true })
-      writeFileSync(this.rutaConcepto(id), escribirYaml(datos, { lineWidth: 100 }), 'utf8')
-      return
-    }
-    if (tabla === 'asignaturas') {
-      mkdirSync(this.carpetaAsignatura(id), { recursive: true })
-      writeFileSync(this.rutaAsignatura(id), escribirYaml(datos, { lineWidth: 100 }), 'utf8')
-      return
-    }
-    // Tarea: separar las instrucciones de vuelta a su propio archivo.
-    mkdirSync(this.carpetaTarea(id), { recursive: true })
-    const { instrucciones, ...plano } = datos as { instrucciones?: unknown } & Record<string, unknown>
-    const formato = formatoInstruccionesDesde(plano.formato)
-    writeFileSync(this.rutaTarea(id), escribirYaml(plano, { lineWidth: 100 }), 'utf8')
-    writeFileSync(
-      this.rutaInstrucciones(id, formato),
-      typeof instrucciones === 'string' ? instrucciones : '',
-      'utf8'
-    )
-    this.limpiarInstruccionesOtras(id, formato)
-  }
-
-  private agregadoConMtime(id: string, ruta: string): ItemLocal {
-    const datos = leerYaml(readFileSync(ruta, 'utf8')) as Record<string, unknown>
-    return { id, datos, mtimeMs: statSync(ruta).mtimeMs }
-  }
-
-  /** Elimina un agregado local (su carpeta) por tabla e id. */
-  eliminarAgregadoLocal(tabla: TablaAgregado, id: string): void {
-    if (tabla === 'conceptos') this.eliminarConcepto(id)
-    else if (tabla === 'asignaturas') this.eliminarAsignatura(id)
-    else this.eliminarTarea(id)
-  }
-
-  private get rutaBaseSync(): string {
-    return join(this.dirIndice, 'sync-base.json')
-  }
-
-  /**
-   * Estado de cada ítem en la última sincronización, por tabla (`{ id, hash }`),
-   * para detectar borrados y distinguir "sin cambios" de "editado". Migra el
-   * formato antiguo (solo ids) a `{ id, hash: '' }` (hash desconocido).
-   */
-  leerBaseSync(): Record<TablaAgregado, BaseItem[]> {
-    const vacio = { conceptos: [], asignaturas: [], tareas: [] }
-    const normalizar = (arr: unknown): BaseItem[] => {
-      if (!Array.isArray(arr)) return []
-      return arr.map((e) =>
-        typeof e === 'string' ? { id: e, hash: '' } : (e as BaseItem)
-      )
-    }
-    try {
-      if (!existsSync(this.rutaBaseSync)) return vacio
-      const o = JSON.parse(readFileSync(this.rutaBaseSync, 'utf8')) as Partial<
-        Record<TablaAgregado, unknown>
-      >
-      return {
-        conceptos: normalizar(o.conceptos),
-        asignaturas: normalizar(o.asignaturas),
-        tareas: normalizar(o.tareas)
-      }
-    } catch {
-      return vacio
-    }
-  }
-
-  guardarBaseSync(base: Record<TablaAgregado, BaseItem[]>): void {
-    mkdirSync(this.dirIndice, { recursive: true })
-    writeFileSync(this.rutaBaseSync, JSON.stringify(base), 'utf8')
-  }
-
-  private get rutaConflictos(): string {
-    return join(this.dirIndice, 'conflictos.json')
-  }
-
-  /**
-   * Conflictos pendientes de resolución manual (ambos lados editaron el mismo
-   * ítem). Se guardan con ambas versiones para poder mostrarlas y elegir. Son
-   * re-detectables: si se pierden, la siguiente sync los vuelve a detectar.
-   */
-  leerConflictos(): ConflictoGuardado[] {
-    try {
-      if (!existsSync(this.rutaConflictos)) return []
-      const arr = JSON.parse(readFileSync(this.rutaConflictos, 'utf8'))
-      return Array.isArray(arr) ? (arr as ConflictoGuardado[]) : []
-    } catch {
-      return []
-    }
-  }
-
-  guardarConflictos(conflictos: ConflictoGuardado[]): void {
-    mkdirSync(this.dirIndice, { recursive: true })
-    writeFileSync(this.rutaConflictos, JSON.stringify(conflictos), 'utf8')
   }
 
   // ---------------------------------------------------------------------------

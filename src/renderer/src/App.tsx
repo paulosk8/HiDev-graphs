@@ -1,7 +1,9 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from './lib/api'
 import { Avisos } from './components/Avisos'
 import { Sidebar } from './components/Sidebar'
+import { Bienvenida } from './features/bienvenida/Bienvenida'
+import { SeleccionCapas } from './features/bienvenida/SeleccionCapas'
 import { FichaConcepto } from './features/conceptos/FichaConcepto'
 import { ListaConceptos } from './features/conceptos/ListaConceptos'
 import { FichaAsignatura } from './features/asignaturas/FichaAsignatura'
@@ -12,13 +14,9 @@ import { ConfiguracionPage } from './features/configuracion/ConfiguracionPage'
 import { ModoEstudioPage } from './features/estudio/ModoEstudioPage'
 import { TerminalPage } from './features/terminal/TerminalPage'
 import { useAsignaturasStore } from './stores/asignaturasStore'
-import { useAuthStore } from './stores/authStore'
 import { useConceptosStore } from './stores/conceptosStore'
 import { useLayoutStore } from './stores/layoutStore'
 import { useUiStore } from './stores/uiStore'
-import { useConflictosStore } from './stores/conflictosStore'
-import { PantallaLogin } from './features/auth/PantallaLogin'
-import { useSincronizarAlReconectar } from './hooks/useConexion'
 
 function Contenido(): JSX.Element {
   const seccion = useUiStore((s) => s.seccion)
@@ -65,38 +63,36 @@ function App(): JSX.Element {
   const cargarConceptos = useConceptosStore((s) => s.cargar)
   const cargarAsignaturas = useAsignaturasStore((s) => s.cargar)
   const tema = useLayoutStore((s) => s.tema)
-  const sesion = useAuthStore((s) => s.sesion)
-  const cargandoSesion = useAuthStore((s) => s.cargando)
-  const cargarSesion = useAuthStore((s) => s.cargar)
-  const cargarConflictos = useConflictosStore((s) => s.cargar)
+  const capasElegidas = useLayoutStore((s) => s.capasElegidas)
+
+  // ¿Ya eligió el docente dónde guardar su material? Si no, mostramos la
+  // pantalla de bienvenida (null = aún comprobando).
+  const [configurado, setConfigurado] = useState<boolean | null>(null)
+  useEffect(() => {
+    void api
+      .estadoAlmacenamiento()
+      .then((e) => setConfigurado(e.configurado))
+      .catch(() => setConfigurado(true)) // ante un fallo, no bloqueamos la app
+  }, [])
 
   // Aplica el tema (claro/oscuro) a la raíz del documento.
   useEffect(() => {
     document.documentElement.classList.toggle('dark', tema === 'oscuro')
   }, [tema])
 
-  // Comprueba si hay sesión iniciada al arrancar (login obligatorio).
-  useEffect(() => {
-    void cargarSesion()
-  }, [cargarSesion])
-
-  // Al recuperar la conexión, sube los cambios hechos offline.
-  useSincronizarAlReconectar()
-
   useEffect(() => {
     void cargarConceptos()
     void cargarAsignaturas()
-    void cargarConflictos()
-  }, [cargarConceptos, cargarAsignaturas, cargarConflictos])
+  }, [cargarConceptos, cargarAsignaturas])
 
   useEffect(() => {
-    // Refresca las vistas cuando el vault cambia en segundo plano (sincronización).
+    // Refresca las vistas cuando el material cambia en segundo plano (p. ej. tu
+    // nube baja cambios desde otro equipo y el vault se actualiza).
     return api.onVaultCambiado(() => {
       void cargarConceptos()
       void cargarAsignaturas()
-      void cargarConflictos()
     })
-  }, [cargarConceptos, cargarAsignaturas, cargarConflictos])
+  }, [cargarConceptos, cargarAsignaturas])
 
   useEffect(() => {
     // Evita que soltar un archivo fuera de una zona válida haga navegar la app.
@@ -109,18 +105,26 @@ function App(): JSX.Element {
     }
   }, [])
 
-  if (cargandoSesion) {
+  // Mientras comprobamos la configuración, no parpadeamos contenido.
+  if (configurado === null) {
+    return <div className="h-full bg-slate-50" />
+  }
+
+  // Primer arranque, paso 1: elegir dónde guardar el material.
+  if (!configurado) {
     return (
-      <div className="flex h-full items-center justify-center bg-slate-50 text-sm text-slate-400">
-        Cargando…
-      </div>
+      <>
+        <Bienvenida onListo={() => setConfigurado(true)} />
+        <Avisos />
+      </>
     )
   }
 
-  if (!sesion) {
+  // Primer arranque, paso 2: elegir qué capas ver (Docencia / Aprendizaje).
+  if (!capasElegidas) {
     return (
       <>
-        <PantallaLogin />
+        <SeleccionCapas />
         <Avisos />
       </>
     )
