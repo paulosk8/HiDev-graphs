@@ -69,6 +69,11 @@ export const CANALES = {
   almacenamientoUsarNube: 'almacenamiento:usar-nube',
   almacenamientoUsarLocal: 'almacenamiento:usar-local',
 
+  // Historial de versiones del material
+  historialListar: 'historial:listar',
+  historialVersiones: 'historial:versiones',
+  historialRestaurar: 'historial:restaurar',
+
   // Terminal embebida
   terminalCrear: 'terminal:crear',
   terminalEscribir: 'terminal:escribir',

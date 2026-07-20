@@ -28,7 +28,10 @@ import type {
   ResumenConceptoDTO,
   ResumenTareaDTO,
   TareaDTO,
-  UsoDeConceptoDTO
+  UsoDeConceptoDTO,
+  ItemHistorialDTO,
+  VersionHistorialDTO,
+  TablaHistorial
 } from './dtos'
 import type { Resultado } from './resultado'
 
@@ -137,6 +140,14 @@ export interface PedagoGraphApi {
   ): Promise<Resultado<ResultadoAlmacenamientoDTO>>
   /** Vuelve a guardar el material en este equipo (carpeta Documentos). */
   usarAlmacenamientoLocal(): Promise<Resultado<ResultadoAlmacenamientoDTO>>
+
+  // --- Historial de versiones ---
+  /** Elementos que tienen historial (han cambiado al menos una vez). */
+  listarHistorial(): Promise<Resultado<ItemHistorialDTO[]>>
+  /** Versiones de un elemento, de la más reciente a la más antigua. */
+  versionesHistorial(tabla: TablaHistorial, id: string): Promise<Resultado<VersionHistorialDTO[]>>
+  /** Restaura una versión anterior de un elemento. */
+  restaurarVersion(tabla: TablaHistorial, id: string, versionId: string): Promise<Resultado<void>>
 
   // --- Sistema ---
   reindexar(): Promise<Resultado<ResultadoReindexadoDTO>>

@@ -78,6 +78,11 @@ export function rutaIndicePorEquipo(): string {
   return join(app.getPath('userData'), 'indice')
 }
 
+/** Carpeta por-equipo donde vive el historial de versiones del material. */
+export function rutaHistorialPorEquipo(): string {
+  return join(app.getPath('userData'), 'historial')
+}
+
 /** Ruta del vault en modo 'local' (carpeta Documentos del usuario). */
 export function rutaVaultLocalPorDefecto(): string {
   return join(app.getPath('documents'), 'PedagoGraph')

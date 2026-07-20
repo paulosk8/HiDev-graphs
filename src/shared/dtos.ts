@@ -390,6 +390,34 @@ export interface ResultadoAlmacenamientoDTO {
   sinCambios: boolean
 }
 
+// --- Historial de versiones del material ---
+
+/** Tipo de elemento versionado. */
+export type TablaHistorial = 'conceptos' | 'asignaturas' | 'tareas'
+
+/** Un elemento con historial (ha cambiado al menos una vez). */
+export interface ItemHistorialDTO {
+  tabla: TablaHistorial
+  id: string
+  nombre: string
+  /** Etiqueta del tipo para la UI: "Concepto" | "Asignatura" | "Tarea". */
+  tipoEtiqueta: string
+  /** Nº de versiones guardadas. */
+  versiones: number
+  /** Marca de tiempo (ms) de la última modificación. */
+  ultimaModificacionMs: number
+}
+
+/** Una versión concreta de un elemento. */
+export interface VersionHistorialDTO {
+  /** Identificador de la versión (para restaurarla). */
+  versionId: string
+  /** Marca de tiempo (ms) en que se capturó. */
+  capturadoEnMs: number
+  /** Resumen legible del contenido de esa versión. */
+  resumen: string
+}
+
 /** Datos para configurar el servidor MCP (asistente IA) en un CLI externo. */
 export type ClienteMcpId = 'gemini' | 'claude'
 

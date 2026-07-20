@@ -8,6 +8,7 @@ import { useLayoutStore } from '../../stores/layoutStore'
 import { useUiStore } from '../../stores/uiStore'
 import { AsistentePage } from '../asistente/AsistentePage'
 import { AlmacenamientoNube } from './AlmacenamientoNube'
+import { HistorialCambios } from './HistorialCambios'
 
 type SeccionConfig = 'apariencia' | 'asistente' | 'datos'
 
@@ -211,6 +212,7 @@ function DatosYCopias(): JSX.Element {
   const [respaldando, setRespaldando] = useState(false)
   const [restaurando, setRestaurando] = useState(false)
   const [confirmandoRestaurar, setConfirmandoRestaurar] = useState(false)
+  const [mostrarHistorial, setMostrarHistorial] = useState(false)
 
   const actualizar = async (): Promise<void> => {
     setActualizando(true)
@@ -274,6 +276,16 @@ function DatosYCopias(): JSX.Element {
       </div>
       <div className="space-y-3">
         <Fila
+          icono="🕘"
+          titulo="Historial de cambios"
+          descripcion="Revisa las modificaciones de tu material y vuelve a una versión anterior."
+          boton={
+            <Boton variante="secundario" onClick={() => setMostrarHistorial(true)}>
+              Ver historial
+            </Boton>
+          }
+        />
+        <Fila
           icono="↻"
           titulo="Actualizar"
           descripcion="Vuelve a leer tu material y asignaturas desde el disco (reindexa)."
@@ -315,6 +327,8 @@ function DatosYCopias(): JSX.Element {
           onCancelar={() => setConfirmandoRestaurar(false)}
         />
       )}
+
+      {mostrarHistorial && <HistorialCambios onCerrar={() => setMostrarHistorial(false)} />}
     </Seccion>
   )
 }

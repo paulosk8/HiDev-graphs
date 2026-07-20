@@ -3,10 +3,16 @@ import { join } from 'path'
 import { inicializarServicios, type Servicios } from './servicios'
 import { registrarHandlersIpc } from './ipc/registrarHandlers'
 import { registrarHandlersAlmacenamiento } from './ipc/registrarHandlersAlmacenamiento'
+import { registrarHandlersHistorial } from './ipc/registrarHandlersHistorial'
 import { registrarHandlersTerminal, cerrarTerminal } from './ipc/terminal'
 import { IndexSyncService } from './infrastructure/IndexSyncService'
+import { HistorialService } from './infrastructure/HistorialService'
 import { reindexarVault } from './application/ReindexarVault'
-import { resolverRutaVault, rutaIndicePorEquipo } from './infrastructure/configApp'
+import {
+  resolverRutaVault,
+  rutaHistorialPorEquipo,
+  rutaIndicePorEquipo
+} from './infrastructure/configApp'
 import {
   habilitarProtocoloRecurso,
   registrarEsquemaRecursoPrivilegiado
@@ -21,6 +27,7 @@ registrarEsquemaRecursoPrivilegiado()
 
 let servicios: Servicios | null = null
 let sincronizador: IndexSyncService | null = null
+let historial: HistorialService | null = null
 let ventanaPrincipal: BrowserWindow | null = null
 
 function createWindow(): void {
@@ -69,6 +76,8 @@ function createWindow(): void {
 function iniciarObservadorVault(): void {
   if (!servicios) return
   sincronizador = new IndexSyncService(servicios.vault, servicios.repositorio, () => {
+    // Tras cada cambio: guarda una versión en el historial y avisa al renderer.
+    historial?.capturar()
     if (ventanaPrincipal && !ventanaPrincipal.isDestroyed()) {
       ventanaPrincipal.webContents.send(CANALES.vaultCambiado)
     }
@@ -89,6 +98,7 @@ async function aplicarCambioAlmacenamiento(): Promise<void> {
   servicios.vault.asegurarVault()
   servicios.repositorio.reabrir(servicios.vault.rutaBaseDatos)
   reindexarVault(servicios.vault, servicios.repositorio)
+  historial?.capturar()
   iniciarObservadorVault()
   if (ventanaPrincipal && !ventanaPrincipal.isDestroyed()) {
     ventanaPrincipal.webContents.reload()
@@ -98,8 +108,11 @@ async function aplicarCambioAlmacenamiento(): Promise<void> {
 app.whenReady().then(() => {
   // Inicializa el núcleo (vault + índice) y registra la API IPC antes de la ventana.
   servicios = inicializarServicios()
+  historial = new HistorialService(servicios.vault, rutaHistorialPorEquipo())
+  historial.capturar() // versión base del estado actual al arrancar
   registrarHandlersIpc(servicios)
   registrarHandlersAlmacenamiento(aplicarCambioAlmacenamiento)
+  registrarHandlersHistorial(historial)
   registrarHandlersTerminal(servicios.vault.raiz)
   habilitarProtocoloRecurso(servicios.vault)
 

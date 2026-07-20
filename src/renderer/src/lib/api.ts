@@ -107,6 +107,14 @@ export const api = {
   usarAlmacenamientoNube: (rutaContenedor: string, nombreCarpeta: string) =>
     desenvolver(window.api.usarAlmacenamientoNube(rutaContenedor, nombreCarpeta)),
   usarAlmacenamientoLocal: () => desenvolver(window.api.usarAlmacenamientoLocal()),
+  listarHistorial: () => desenvolver(window.api.listarHistorial()),
+  versionesHistorial: (tabla: import('@shared/dtos').TablaHistorial, id: string) =>
+    desenvolver(window.api.versionesHistorial(tabla, id)),
+  restaurarVersion: (
+    tabla: import('@shared/dtos').TablaHistorial,
+    id: string,
+    versionId: string
+  ) => desenvolver(window.api.restaurarVersion(tabla, id, versionId)),
   reindexar: () => desenvolver(window.api.reindexar()),
   respaldar: () => desenvolver(window.api.respaldar()),
   restaurar: () => desenvolver(window.api.restaurar()),
