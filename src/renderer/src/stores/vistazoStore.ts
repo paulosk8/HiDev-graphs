@@ -16,7 +16,31 @@ interface VistazoState {
   pila: string[]
   abrir: (conceptoId: string) => void
   volver: () => void
+  /** Salta a una de las pestañas abiertas (recorta la pila hasta ahí). */
+  irA: (indice: number) => void
+  /** Cierra una pestaña concreta. */
+  cerrarUna: (indice: number) => void
   cerrar: () => void
+
+  /**
+   * Cómo llevar algo de un concepto al lienzo. Lo registra el editor mientras
+   * está montado; fuera del lienzo es null y el panel no ofrece la acción.
+   *
+   * Vive en el store porque el panel es global (cuelga de App) y el editor es
+   * una pantalla: no hay forma de pasarle una prop sin subir el estado del
+   * lienzo a toda la aplicación.
+   */
+  llevarAlLienzo:
+    | ((que: {
+        tipo: 'concepto' | 'nota' | 'material'
+        conceptoId: string
+        /** Solo en 'material'. */
+        archivo?: string
+        /** Solo en 'nota'. */
+        notaId?: string
+      }) => void)
+    | null
+  registrarLlevarAlLienzo: (fn: VistazoState['llevarAlLienzo']) => void
 }
 
 export const useVistazoStore = create<VistazoState>((set) => ({
@@ -28,5 +52,9 @@ export const useVistazoStore = create<VistazoState>((set) => ({
       return { pila: [...s.pila, conceptoId] }
     }),
   volver: () => set((s) => ({ pila: s.pila.slice(0, -1) })),
+  irA: (indice) => set((s) => ({ pila: s.pila.slice(0, indice + 1) })),
+  cerrarUna: (indice) => set((s) => ({ pila: s.pila.filter((_, i) => i !== indice) })),
+  llevarAlLienzo: null,
+  registrarLlevarAlLienzo: (fn) => set({ llevarAlLienzo: fn }),
   cerrar: () => set({ pila: [] })
 }))

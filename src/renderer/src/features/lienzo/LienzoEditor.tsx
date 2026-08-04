@@ -1,14 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { LadoNodoDTO, LienzoDTO, NodoLienzoDTO } from '@shared/dtos'
+import type { LadoNodoDTO, LienzoDTO, NodoLienzoDTO, NotaDTO, RecursoDTO } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
+import { Modal } from '../../components/Modal'
+import { ContenidoFormateado } from '../../components/ContenidoFormateado'
 import { api } from '../../lib/api'
 import { useConceptosStore } from '../../stores/conceptosStore'
 import { useUiStore } from '../../stores/uiStore'
 import { useVistazoStore } from '../../stores/vistazoStore'
 import { BuscadorConceptos } from '../vinculos/BuscadorConceptos'
-import { SelectorMaterial } from './SelectorMaterial'
-import { NotaEnTarjeta } from './NotaEnTarjeta'
 import { colorDeArista, COLORES_ARISTA, COLORES_GRUPO, colorDeGrupo } from './coloresLienzo'
+import { TEMAS_OSCUROS, useLayoutStore } from '../../stores/layoutStore'
+import {
+  leerArrastre,
+  TIPO_ARRASTRE,
+  type ContenidoArrastrado
+} from './arrastreAlLienzo'
 
 /**
  * Lienzo: mapa conceptual libre. El docente coloca tarjetas donde quiere y las
@@ -68,6 +74,11 @@ function curva(a: Punto, ladoA: LadoNodoDTO, b: Punto, ladoB: LadoNodoDTO): stri
   return `M ${a.x} ${a.y} C ${t1.x} ${t1.y}, ${t2.x} ${t2.y}, ${b.x} ${b.y}`
 }
 
+/** Tamaño del área de dibujo. Generoso, pero acotado: un lienzo infinito
+ *  impide saber dónde está lo que ya has puesto. */
+const ANCHO_LIENZO = 3000
+const ALTO_LIENZO = 2000
+
 let contador = 0
 const nuevoId = (prefijo: string): string => `${prefijo}-${Date.now().toString(36)}-${++contador}`
 
@@ -81,6 +92,7 @@ export function LienzoEditor({
   const notificarError = useUiStore((s) => s.notificarError)
   const conceptos = useConceptosStore((s) => s.lista)
   const abrirVistazo = useVistazoStore((s) => s.abrir)
+  const registrarLlevar = useVistazoStore((s) => s.registrarLlevarAlLienzo)
 
   const [lienzo, setLienzo] = useState<LienzoDTO | null>(null)
   const [cargando, setCargando] = useState(true)
@@ -91,9 +103,6 @@ export function LienzoEditor({
   const [aristaEditando, setAristaEditando] = useState<string | null>(null)
   /** Tarjeta de texto que se está escribiendo. */
   const [textoEditando, setTextoEditando] = useState<string | null>(null)
-  const [eligiendoMaterial, setEligiendoMaterial] = useState(false)
-  /** Tarjeta de concepto cuya nota se está editando dentro del lienzo. */
-  const [notaEditando, setNotaEditando] = useState<string | null>(null)
   /** Selección múltiple: agrupar exige poder elegir varias tarjetas. */
   const [seleccion, setSeleccion] = useState<Set<string>>(new Set())
   /** Recuadro de selección en curso (arrastrando sobre el fondo). */
@@ -265,6 +274,72 @@ export function LienzoEditor({
       nodes: l.nodes.map((n) => (n.id === id ? { ...n, color: clave || undefined } : n))
     }))
 
+  /**
+   * El panel lateral necesita poder mandar cosas aquí. Se registra mientras el
+   * editor está montado y se limpia al salir, para que fuera del lienzo el
+   * panel no ofrezca una acción que no lleva a ninguna parte.
+   */
+  useEffect(() => {
+    registrarLlevar((que) => {
+      // Sin posición de cursor (vino de un clic, no de un arrastre) se coloca
+      // en una zona visible del lienzo, no en el centro del área de 3000 px.
+      const centro = { x: 320, y: 220 }
+      if (que.tipo === 'concepto') {
+        soltarContenido({ tipo: 'concepto', conceptoId: que.conceptoId }, centro)
+      } else if (que.tipo === 'nota' && que.notaId) {
+        soltarContenido(
+          { tipo: 'nota', conceptoId: que.conceptoId, notaId: que.notaId },
+          centro
+        )
+      } else if (que.tipo === 'material' && que.archivo) {
+        soltarContenido(
+          { tipo: 'material', conceptoId: que.conceptoId, archivo: que.archivo },
+          centro
+        )
+      }
+    })
+    return () => registrarLlevar(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [registrarLlevar, lienzo?.id])
+
+  /**
+   * Crea la tarjeta correspondiente a lo soltado, centrada en el cursor. Es el
+   * único sitio que decide tamaños, para que una nota no salga del tamaño de
+   * un concepto ni al revés.
+   */
+  const soltarContenido = (contenido: ContenidoArrastrado, en: Punto): void => {
+    const medidas =
+      contenido.tipo === 'material'
+        ? { width: 260, height: 220 }
+        : contenido.tipo === 'nota'
+          ? { width: 260, height: 170 }
+          : { width: 260, height: 180 }
+
+    const base = {
+      id: nuevoId('n'),
+      type: 'file' as const,
+      x: Math.round(en.x - medidas.width / 2),
+      y: Math.round(en.y - medidas.height / 2),
+      ...medidas
+    }
+
+    cambiar((l) => ({
+      ...l,
+      nodes: [
+        ...l.nodes,
+        contenido.tipo === 'material'
+          ? { ...base, file: `conceptos/${contenido.conceptoId}/${contenido.archivo}` }
+          : contenido.tipo === 'nota'
+            ? {
+                ...base,
+                file: `conceptos/${contenido.conceptoId}/concepto.yaml`,
+                notaId: contenido.notaId
+              }
+            : { ...base, file: `conceptos/${contenido.conceptoId}/concepto.yaml` }
+      ]
+    }))
+  }
+
   const agregarConcepto = (conceptoId: string): void => {
     const c = nombrePorConcepto.get(conceptoId)
     cambiar((l) => ({
@@ -287,40 +362,36 @@ export function LienzoEditor({
     setAgregando(false)
   }
 
-  /** Tarjeta de texto libre: para lo que no es un concepto (una idea, un aviso). */
+  /**
+   * Nota suelta: texto que vive en el propio lienzo y no pertenece a ningún
+   * concepto. Sirve para lo que no es material —un título de sección, un
+   * recordatorio, una pregunta para clase— y no debería obligar a inventarse
+   * un concepto para poder escribirlo.
+   */
   const agregarTexto = (): void => {
     const id = nuevoId('n')
     cambiar((l) => ({
       ...l,
       nodes: [
         ...l.nodes,
-        { id, type: 'text' as const, x: 80, y: 80 + l.nodes.length * 24, width: 240, height: 120, text: '' }
+        {
+          id,
+          type: 'text' as const,
+          // En escalera, para que varias seguidas no se apilen encima.
+          x: 80 + l.nodes.length * 28,
+          y: 80 + l.nodes.length * 22,
+          width: 240,
+          height: 140,
+          text: ''
+        }
       ]
     }))
+    // Se abre escribiendo: nadie crea una nota vacía para dejarla vacía.
     setTextoEditando(id)
   }
 
   const cambiarTexto = (id: string, texto: string): void =>
     cambiar((l) => ({ ...l, nodes: l.nodes.map((n) => (n.id === id ? { ...n, text: texto } : n)) }))
-
-  const agregarMaterial = (conceptoId: string, recurso: { archivo: string }): void => {
-    cambiar((l) => ({
-      ...l,
-      nodes: [
-        ...l.nodes,
-        {
-          id: nuevoId('n'),
-          type: 'file' as const,
-          x: 80 + l.nodes.length * 28,
-          y: 100 + l.nodes.length * 22,
-          width: 260,
-          height: 200,
-          file: `conceptos/${conceptoId}/${recurso.archivo}`
-        }
-      ]
-    }))
-    setEligiendoMaterial(false)
-  }
 
   const cambiarArista = (id: string, campos: { label?: string; color?: string }): void =>
     cambiar((l) => ({
@@ -395,7 +466,10 @@ export function LienzoEditor({
   const nodoConectando = conectando ? porId.get(conectando.nodo) : undefined
 
   return (
-    <div className="flex h-full flex-col">
+    // `overflow-hidden` + `min-w-0`: sin esto, el área de dibujo (3000 px)
+    // ensancha el <main> de la app y aparece un scroll horizontal en TODA la
+    // ventana, que arrastra el menú lateral fuera de la vista.
+    <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
       <header className="flex items-center gap-3 border-b border-slate-200 px-6 py-3">
         <button onClick={onVolver} className="text-sm text-slate-500 hover:text-slate-800">
           ← Lienzos
@@ -409,9 +483,6 @@ export function LienzoEditor({
             Agrupar ({seleccion.size})
           </Boton>
         )}
-        <Boton variante="secundario" onClick={() => setEligiendoMaterial(true)}>
-          + Material
-        </Boton>
         <Boton variante="secundario" onClick={agregarTexto}>
           + Nota suelta
         </Boton>
@@ -463,11 +534,34 @@ export function LienzoEditor({
           window.addEventListener('mousemove', mover)
           window.addEventListener('mouseup', soltar)
         }}
-        className="relative flex-1 overflow-auto bg-slate-50"
+        className="relative min-h-0 flex-1 overflow-auto bg-slate-50"
         style={{ backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)', backgroundSize: '24px 24px' }}
       >
         {/* Las líneas van DEBAJO de las tarjetas para no tapar su contenido. */}
-        <svg className="pointer-events-none absolute inset-0 h-full w-full" style={{ minHeight: 2000, minWidth: 3000 }}>
+        {/* Área de dibujo con tamaño propio: el scroll ocurre AQUÍ dentro, no
+            en la ventana. Antes lo fijaba el `min-width` del SVG, que al ser
+            absoluto ensanchaba a su vez el contenedor de la aplicación. */}
+        <div
+          className="relative"
+          style={{ width: ANCHO_LIENZO, height: ALTO_LIENZO }}
+          // `preventDefault` en dragOver es lo que habilita el soltar: sin él
+          // el navegador rechaza el drop y no llega el evento.
+          onDragOver={(e) => {
+            if (e.dataTransfer.types.includes(TIPO_ARRASTRE)) {
+              e.preventDefault()
+              e.dataTransfer.dropEffect = 'copy'
+            }
+          }}
+          onDrop={(e) => {
+            const contenido = leerArrastre(e)
+            if (!contenido) return
+            e.preventDefault()
+            // La posición se toma del cursor DENTRO del área de dibujo, no de
+            // la ventana: la tarjeta debe caer donde la soltaste.
+            soltarContenido(contenido, posicionEnLienzo(e))
+          }}
+        >
+        <svg className="pointer-events-none absolute inset-0 h-full w-full">
           <defs>
             <marker id="punta" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
               <path d="M0,0 L0,6 L9,3 z" fill="#94a3b8" />
@@ -584,23 +678,20 @@ export function LienzoEditor({
             concepto={nombrePorConcepto.get(conceptoDeArchivo(n.file) ?? '')}
             onArrastrar={(e) => empezarArrastre(e, n)}
             onAncla={(lado) => (conectando ? conectar(n.id, lado) : setConectando({ nodo: n.id, lado }))}
-            editandoNota={notaEditando === n.id}
             onAbrir={() => {
               // Un material no tiene ficha que abrir: se previsualiza en la tarjeta.
               if (materialDeArchivo(n.file)) return
               const id = conceptoDeArchivo(n.file)
-              // Doble clic edita la nota aquí mismo; el vistazo queda para el
-              // panel lateral, al que se llega desde la propia tarjeta.
-              if (id) setNotaEditando(n.id)
-            }}
-            onCerrarNota={() => setNotaEditando(null)}
-            onVerFicha={() => {
-              const id = conceptoDeArchivo(n.file)
+              // Doble clic abre el PANEL, que es donde se edita todo. La tarjeta
+              // solo muestra: editar dentro de ella obligaba a elegir qué nota
+              // en un espacio de 150 px, y no cabía nada más.
               if (id) abrirVistazo(id)
             }}
             onEliminar={() => eliminarNodo(n.id)}
           />
         ))}
+
+        </div>
 
         {lienzo.nodes.length === 0 && (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
@@ -663,23 +754,22 @@ export function LienzoEditor({
         </div>
       )}
 
-      {eligiendoMaterial && (
-        <div className="absolute right-6 top-20 z-30">
-          <SelectorMaterial
-            onElegir={agregarMaterial}
-            onCerrar={() => setEligiendoMaterial(false)}
-          />
-        </div>
-      )}
 
+      {/* En modal y no flotando sobre el lienzo: el área de dibujo mide 3000 px,
+          así que posicionarlo contra su borde derecho lo mandaba fuera de la
+          vista en cuanto el panel lateral ocupaba sitio. */}
       {agregando && (
-        <div className="absolute right-6 top-20 z-30">
+        <Modal
+          titulo="Añadir un concepto al lienzo"
+          descripcion="Busca uno de los que ya tienes, o crea uno nuevo."
+          onCerrar={() => setAgregando(false)}
+        >
           <BuscadorConceptos
             excluir={lienzo.nodes.map((n) => conceptoDeArchivo(n.file) ?? '').filter(Boolean)}
             onSeleccionar={agregarConcepto}
             onCerrar={() => setAgregando(false)}
           />
-        </div>
+        </Modal>
       )}
     </div>
   )
@@ -704,27 +794,44 @@ function TarjetaLienzo({
   nodo,
   seleccionada,
   concepto,
-  editandoNota,
   onArrastrar,
   onAncla,
   onAbrir,
-  onCerrarNota,
-  onVerFicha,
   onEliminar
 }: {
   nodo: NodoLienzoDTO
   seleccionada: boolean
   concepto?: { nombre: string; descripcion: string; etiquetas: string[]; totalRecursos: number }
-  editandoNota: boolean
   onArrastrar: (e: React.MouseEvent) => void
   onAncla: (lado: LadoNodoDTO) => void
   onAbrir: () => void
-  onCerrarNota: () => void
-  onVerFicha: () => void
   onEliminar: () => void
 }): JSX.Element {
   const material = materialDeArchivo(nodo.file)
   const conceptoId = conceptoDeArchivo(nodo.file)
+  // El listado no trae notas ni material, así que la tarjeta pide su ficha.
+  // Son pocas por lienzo y se recargan al volver a montar, que es cuando el
+  // panel puede haber cambiado algo.
+  const [notas, setNotas] = useState<NotaDTO[]>([])
+  const [recursos, setRecursos] = useState<RecursoDTO[]>([])
+  // Si la tarjeta apunta a una nota concreta, es la que se muestra.
+  const nota = nodo.notaId ? (notas.find((n) => n.id === nodo.notaId) ?? null) : null
+
+  useEffect(() => {
+    if (!conceptoId) return
+    let vivo = true
+    void api
+      .obtenerFichaConcepto(conceptoId)
+      .then((f) => {
+        if (!vivo) return
+        setNotas(f.concepto.notas)
+        setRecursos(f.concepto.recursos)
+      })
+      .catch(() => undefined)
+    return () => {
+      vivo = false
+    }
+  }, [conceptoId])
   const lados: LadoNodoDTO[] = ['top', 'right', 'bottom', 'left']
   const posicionAncla: Record<LadoNodoDTO, string> = {
     top: 'left-1/2 top-0 -translate-x-1/2 -translate-y-1/2',
@@ -735,16 +842,16 @@ function TarjetaLienzo({
 
   return (
     <div
-      onMouseDown={editandoNota ? undefined : onArrastrar}
+      onMouseDown={onArrastrar}
       onDoubleClick={onAbrir}
       style={{ left: nodo.x, top: nodo.y, width: nodo.width, height: nodo.height }}
-      className={`group absolute rounded-xl border bg-white p-3 shadow-sm transition-shadow ${
-        editandoNota ? 'cursor-default' : 'cursor-move'
-      } ${
+      // Columna flexible: con la nota abierta, el editor ocupa el alto que
+      // sobra en vez de desbordar la tarjeta.
+      className={`group absolute flex cursor-move flex-col overflow-hidden rounded-xl border bg-white p-3 shadow-sm transition-shadow ${
         seleccionada ? 'border-marca-500 shadow-md' : 'border-slate-200 hover:shadow'
       }`}
     >
-      <div className="flex items-start gap-2">
+      <div className="flex shrink-0 items-start gap-2">
         {material && (
           <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-slate-500">
             {material.archivo.split('.').pop()}
@@ -753,18 +860,10 @@ function TarjetaLienzo({
         <p className="flex-1 truncate text-sm font-medium text-slate-800">
           {material
             ? material.archivo.split('/').pop()
-            : (concepto?.nombre ?? 'Concepto no encontrado')}
+            : nota
+              ? nota.titulo || `${concepto?.nombre ?? ''} · nota`
+              : (concepto?.nombre ?? 'Concepto no encontrado')}
         </p>
-        {!material && (
-          <button
-            onMouseDown={(e) => e.stopPropagation()}
-            onClick={onVerFicha}
-            title="Ver la ficha completa"
-            className="text-xs text-slate-400 opacity-0 transition group-hover:opacity-100 hover:text-marca-700"
-          >
-            ↗
-          </button>
-        )}
         <button
           onMouseDown={(e) => e.stopPropagation()}
           onClick={onEliminar}
@@ -775,7 +874,17 @@ function TarjetaLienzo({
         </button>
       </div>
 
-      {material ? (
+      {nota ? (
+        // Tarjeta de una nota concreta del concepto: muestra su contenido con
+        // el mismo renderizador que la ficha, así respeta Markdown y HTML.
+        <div className="mt-1 min-h-0 flex-1 overflow-y-auto pr-1">
+          <ContenidoFormateado
+            texto={nota.contenido}
+            formato={nota.formato}
+            vacio="Nota vacía"
+          />
+        </div>
+      ) : material ? (
         // El propio protocolo del vault sirve el archivo; el navegador decide
         // cómo pintarlo (imagen o PDF). Lo que no sabe abrir queda con su
         // nombre y el botón de abrir fuera, que ya existe en la ficha.
@@ -787,29 +896,63 @@ function TarjetaLienzo({
             .join('/')}`}
           className="pointer-events-none mt-2 h-[calc(100%-2.5rem)] w-full rounded border border-slate-100 bg-white"
         />
-      ) : editandoNota && conceptoId ? (
-        <NotaEnTarjeta conceptoId={conceptoId} onCerrar={onCerrarNota} />
       ) : (
-        concepto?.descripcion && (
-          <p className="mt-1 line-clamp-3 text-xs text-slate-500">{concepto.descripcion}</p>
-        )
-      )}
+        // Vista previa con scroll: la tarjeta muestra lo que tiene el concepto
+        // sin crecer sin límite. Para editarlo, doble clic abre el panel.
+        <div className="mt-1 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+          {concepto?.descripcion && (
+            <p className="text-xs text-slate-500">{concepto.descripcion}</p>
+          )}
 
-      {!material && !editandoNota && concepto && concepto.etiquetas.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {concepto.etiquetas.slice(0, 3).map((e) => (
-            <span key={e} className="rounded-full bg-marca-50 px-2 py-0.5 text-[10px] text-marca-700">
-              {e}
-            </span>
-          ))}
+          {concepto && concepto.etiquetas.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {concepto.etiquetas.map((e) => (
+                <span
+                  key={e}
+                  className="rounded-full bg-marca-50 px-2 py-0.5 text-[10px] text-marca-700"
+                >
+                  {e}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {notas.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                Notas
+              </p>
+              <ul className="mt-0.5 space-y-0.5">
+                {notas.map((n) => (
+                  <li key={n.id} className="truncate text-xs text-slate-600">
+                    · {n.titulo || primeraLineaDe(n.contenido) || 'Nota sin título'}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {recursos.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                Material
+              </p>
+              <ul className="mt-0.5 space-y-0.5">
+                {recursos.map((r) => (
+                  <li key={r.id} className="flex items-center gap-1 truncate text-xs text-slate-600">
+                    <span className="rounded bg-slate-100 px-1 text-[9px] uppercase text-slate-500">
+                      {r.formato}
+                    </span>
+                    <span className="truncate">{r.nombre}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 
-      {!material && !editandoNota && concepto && concepto.totalRecursos > 0 && (
-        <p className="absolute bottom-2 left-3 text-[10px] text-slate-400">
-          📎 {concepto.totalRecursos}
-        </p>
-      )}
+
 
       {/* Puntos de conexión: aparecen al pasar el ratón para no ensuciar. */}
       {lados.map((lado) => (
@@ -850,6 +993,10 @@ function GrupoLienzo({
 }): JSX.Element {
   const [editando, setEditando] = useState(false)
   const color = colorDeGrupo(nodo.color)
+  // El título va sobre el lienzo tintado: necesita un tono u otro según si el
+  // fondo es claro u oscuro. El relleno y el borde valen para ambos.
+  const enOscuro = TEMAS_OSCUROS.includes(useLayoutStore((s) => s.tema))
+  const colorTitulo = enOscuro ? color.textoOscuro : color.texto
 
   return (
     <div
@@ -887,7 +1034,7 @@ function GrupoLienzo({
           <button
             onMouseDown={(e) => e.stopPropagation()}
             onDoubleClick={() => setEditando(true)}
-            style={{ color: color.texto }}
+            style={{ color: colorTitulo }}
             title="Doble clic para cambiar el nombre"
             className="truncate text-xs font-semibold uppercase tracking-wide"
           >
@@ -972,10 +1119,19 @@ function TarjetaTexto({
     <div
       onMouseDown={editando ? undefined : onArrastrar}
       onDoubleClick={onEditar}
-      style={{ left: nodo.x, top: nodo.y, width: nodo.width, height: nodo.height }}
-      className={`group absolute rounded-xl border bg-amber-50 p-3 shadow-sm ${
+      // Tinte translúcido, como los grupos: un ámbar sólido solo funciona sobre
+      // lienzo claro y en modo oscuro se veía como una mancha marrón.
+      style={{
+        left: nodo.x,
+        top: nodo.y,
+        width: nodo.width,
+        height: nodo.height,
+        background: '#f59e0b1f',
+        borderColor: seleccionada || editando ? undefined : '#f59e0b66'
+      }}
+      className={`group absolute rounded-xl border p-3 shadow-sm ${
         editando ? 'cursor-text border-marca-500' : 'cursor-move'
-      } ${seleccionada ? 'border-marca-500 shadow-md' : 'border-amber-200'}`}
+      } ${seleccionada ? 'border-marca-500 shadow-md' : ''}`}
     >
       {editando ? (
         <textarea
@@ -1017,4 +1173,11 @@ function TarjetaTexto({
       ))}
     </div>
   )
+}
+
+
+/** Primeras palabras de una nota, para reconocerla cuando no tiene título. */
+function primeraLineaDe(contenido: string): string {
+  const linea = contenido.split('\n').find((l) => l.trim()) ?? ''
+  return linea.trim().slice(0, 40)
 }

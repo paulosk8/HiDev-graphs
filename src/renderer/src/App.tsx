@@ -227,7 +227,7 @@ function App(): JSX.Element {
   return (
     <div className="flex h-full text-slate-800">
       <Sidebar />
-      <main className="flex-1 overflow-auto">
+      <main className="min-w-0 flex-1 overflow-auto">
         <Contenido />
       </main>
       <PanelVistazo />

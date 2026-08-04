@@ -1,51 +1,68 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { ConceptoDTO } from '@shared/dtos'
 import { api } from '../lib/api'
+import { NotasConcepto } from '../features/conceptos/NotasConcepto'
+import { ZonaMaterial } from '../features/conceptos/ZonaMaterial'
 import { useUiStore } from '../stores/uiStore'
 import { useVistazoStore } from '../stores/vistazoStore'
-import { ContenidoFormateado } from './ContenidoFormateado'
+import { empezarArrastreDe } from '../features/lienzo/arrastreAlLienzo'
 
 /**
- * Panel lateral de vistazo: enseña el concepto enlazado sin sacarte de donde
- * estabas leyendo. Se abre al pulsar un `[[enlace]]`.
+ * Panel lateral del concepto: se abre al pulsar un `[[enlace]]` o una tarjeta
+ * del lienzo, y lo enseña sin sacarte de donde estabas.
  *
- * Detalles pensados para no perderse:
- *  - "← volver" recorre la pila de enlaces que has ido abriendo.
- *  - Escape cierra el panel entero.
- *  - "Abrir ficha completa" es la salida explícita cuando ya quieres irte ahí.
+ * **Reutiliza los componentes de la ficha** (`NotasConcepto`, `ZonaMaterial`)
+ * en vez de traer su propio editor. El primer intento tenía uno a medida y se
+ * quedaba corto enseguida: no soportaba los formatos de nota, ni pegar con
+ * formato, ni arrastrar material — por eso las notas "no se dejaban editar".
+ * Reutilizando, lo que se arregle en la ficha llega aquí solo.
+ *
+ * Es una COLUMNA del layout, no un panel flotante: empuja el contenido en vez
+ * de taparlo.
  */
 export function PanelVistazo(): JSX.Element | null {
   const pila = useVistazoStore((s) => s.pila)
   const volver = useVistazoStore((s) => s.volver)
+  const irA = useVistazoStore((s) => s.irA)
   const cerrar = useVistazoStore((s) => s.cerrar)
+  const llevarAlLienzo = useVistazoStore((s) => s.llevarAlLienzo)
   const irAConcepto = useUiStore((s) => s.seleccionarConcepto)
   const irASeccion = useUiStore((s) => s.irASeccion)
 
   const conceptoId = pila[pila.length - 1] ?? null
   const [concepto, setConcepto] = useState<ConceptoDTO | null>(null)
   const [cargando, setCargando] = useState(false)
+  /** Nombre de cada concepto de la pila, para rotular sus pestañas. */
+  const [nombres, setNombres] = useState<Record<string, string>>({})
+
+  const cargar = useCallback(async () => {
+    if (!conceptoId) return
+    setCargando(true)
+    try {
+      const c = (await api.obtenerFichaConcepto(conceptoId)).concepto
+      setConcepto(c)
+      setNombres((n) => ({ ...n, [c.id]: c.nombre }))
+    } catch {
+      setConcepto(null)
+    } finally {
+      setCargando(false)
+    }
+  }, [conceptoId])
 
   useEffect(() => {
     if (!conceptoId) {
       setConcepto(null)
       return
     }
-    let vivo = true
-    setCargando(true)
-    void api
-      .obtenerFichaConcepto(conceptoId)
-      .then((f) => vivo && setConcepto(f.concepto))
-      .catch(() => vivo && setConcepto(null))
-      .finally(() => vivo && setCargando(false))
-    return () => {
-      vivo = false
-    }
-  }, [conceptoId])
+    void cargar()
+  }, [conceptoId, cargar])
 
   useEffect(() => {
     if (!conceptoId) return
     const alTeclear = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') cerrar()
+      // Escape cierra, salvo si se está escribiendo: ahí lo gestiona el editor.
+      const enCampo = (e.target as HTMLElement)?.tagName?.match(/INPUT|TEXTAREA/)
+      if (e.key === 'Escape' && !enCampo) cerrar()
     }
     window.addEventListener('keydown', alTeclear)
     return () => window.removeEventListener('keydown', alTeclear)
@@ -61,11 +78,42 @@ export function PanelVistazo(): JSX.Element | null {
 
   return (
     <aside
-      // No es un modal: el panel convive con la lectura, no la tapa. Por eso no
-      // hay velo oscuro detrás ni se bloquea el resto de la interfaz.
-      className="fixed right-0 top-0 z-40 flex h-full w-[22rem] flex-col border-l border-slate-200 bg-white shadow-xl"
+      className="flex h-full shrink-0 border-l border-slate-200 bg-white"
       aria-label="Vistazo al concepto"
     >
+      {/* Pestañas verticales: al ir tirando de enlaces se acumulan varios
+          conceptos, y con solo "← volver" había que deshacer uno a uno para
+          llegar al primero. Aquí se salta a cualquiera de un clic. */}
+      {pila.length > 1 && (
+        <nav
+          className="flex w-9 shrink-0 flex-col items-center gap-1 border-r border-slate-100 bg-slate-50 py-2"
+          aria-label="Conceptos abiertos"
+        >
+          {pila.map((id, i) => {
+            const activo = i === pila.length - 1
+            const nombre = nombres[id] ?? id
+            return (
+              <button
+                key={`${id}-${i}`}
+                onClick={() => irA(i)}
+                title={nombre}
+                aria-current={activo}
+                className={`w-7 rounded px-1 py-2 text-[10px] font-semibold uppercase transition ${
+                  activo
+                    ? 'bg-marca-600 text-white'
+                    : 'text-slate-500 hover:bg-white hover:text-slate-800'
+                }`}
+              >
+                {/* Dos letras: el ancho de la franja no da para más y el
+                    título completo está en el tooltip. */}
+                {nombre.slice(0, 2)}
+              </button>
+            )
+          })}
+        </nav>
+      )}
+
+      <div className="flex h-full w-[26rem] flex-col">
       <header className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
         {pila.length > 1 && (
           <button
@@ -89,7 +137,7 @@ export function PanelVistazo(): JSX.Element | null {
       </header>
 
       <div className="flex-1 overflow-auto px-4 py-4">
-        {cargando ? (
+        {cargando && !concepto ? (
           <p className="text-sm text-slate-400">Cargando…</p>
         ) : !concepto ? (
           <p className="text-sm text-slate-500">
@@ -114,51 +162,69 @@ export function PanelVistazo(): JSX.Element | null {
               </div>
             )}
 
-            {concepto.notas.length > 0 && (
-              <section className="mt-5">
-                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  Notas
-                </h3>
-                <div className="space-y-3">
-                  {concepto.notas.map((n) => (
-                    <div key={n.id} className="rounded-lg border border-slate-100 p-3">
-                      {n.titulo && (
-                        <p className="mb-1 text-sm font-medium text-slate-800">{n.titulo}</p>
-                      )}
-                      {/* El contenido puede traer más [[enlaces]]: se siguen
-                          dentro del propio panel, apilándose. */}
-                      <ContenidoFormateado texto={n.contenido} formato={n.formato} />
-                    </div>
-                  ))}
+            {/* En un lienzo, todo esto se arrastra allí. Se conserva el clic
+                como alternativa: arrastrar no siempre es cómodo, y quien no
+                descubra el gesto tiene que poder igual. */}
+            {llevarAlLienzo && (
+              <button
+                draggable
+                onDragStart={(e) => empezarArrastreDe(e, { tipo: 'concepto', conceptoId })}
+                onClick={() => llevarAlLienzo({ tipo: 'concepto', conceptoId })}
+                title="Arrástralo al lienzo, o pulsa para añadirlo"
+                className="mt-3 w-full cursor-grab rounded-lg border border-marca-200 bg-marca-50 px-3 py-1.5 text-xs font-medium text-marca-700 transition hover:bg-marca-100 active:cursor-grabbing"
+              >
+                ⠿ Arrastra este concepto al lienzo
+              </button>
+            )}
+
+            <section className="mt-5">
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Material
+              </h3>
+              <ZonaMaterial
+                conceptoId={concepto.id}
+                recursos={concepto.recursos}
+                onActualizado={(c) => setConcepto(c)}
+              />
+
+              {/* Las notas también se arrastran, cada una por separado. */}
+              {llevarAlLienzo && concepto.notas.length > 0 && (
+                <div className="mt-4">
+                  <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Arrastra una nota al lienzo
+                  </h3>
+                  <ul className="space-y-1">
+                    {concepto.notas.map((n) => (
+                      <li key={n.id}>
+                        <button
+                          draggable
+                          onDragStart={(e) =>
+                            empezarArrastreDe(e, {
+                              tipo: 'nota',
+                              conceptoId: concepto.id,
+                              notaId: n.id
+                            })
+                          }
+                          onClick={() =>
+                            llevarAlLienzo({ tipo: 'nota', conceptoId: concepto.id, notaId: n.id })
+                          }
+                          title="Arrástrala al lienzo, o pulsa para añadirla"
+                          className="w-full cursor-grab truncate rounded px-2 py-1 text-left text-xs text-marca-700 hover:bg-marca-50 active:cursor-grabbing"
+                        >
+                          ⠿ {n.titulo || 'Nota sin título'}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-              </section>
-            )}
-
-            {concepto.recursos.length > 0 && (
-              <section className="mt-5">
-                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  Material
-                </h3>
-                <ul className="space-y-1.5">
-                  {concepto.recursos.map((r) => (
-                    <li key={r.id} className="flex items-center gap-2 text-sm text-slate-700">
-                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-slate-500">
-                        {r.formato}
-                      </span>
-                      <span className="truncate">{r.nombre}</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-
-            {!concepto.descripcion &&
-              concepto.notas.length === 0 &&
-              concepto.recursos.length === 0 && (
-                <p className="text-sm text-slate-400">
-                  Este concepto todavía no tiene descripción, notas ni material.
-                </p>
               )}
+            </section>
+
+            {/* El mismo componente de la ficha: formatos, pegado con formato y
+                todo lo que ya funcionaba allí, sin duplicar nada. */}
+            <div className="mt-5">
+              <NotasConcepto concepto={concepto} onGuardado={() => void cargar()} />
+            </div>
           </>
         )}
       </div>
@@ -167,12 +233,13 @@ export function PanelVistazo(): JSX.Element | null {
         <footer className="border-t border-slate-100 px-4 py-3">
           <button
             onClick={abrirFicha}
-            className="w-full rounded-lg bg-marca-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-marca-700"
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
           >
             Abrir ficha completa
           </button>
         </footer>
       )}
+      </div>
     </aside>
   )
 }
