@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { FichaConceptoDTO, ResumenMencionDTO, ResumenTareaDTO } from '@shared/dtos'
+import type {
+  FichaConceptoDTO,
+  ResumenLienzoDTO,
+  ResumenMencionDTO,
+  ResumenTareaDTO
+} from '@shared/dtos'
 import { Boton } from '../../components/Boton'
 import { DialogoConfirmacion } from '../../components/DialogoConfirmacion'
 import { api } from '../../lib/api'
@@ -31,8 +36,11 @@ export function FichaConcepto({ conceptoId }: Props): JSX.Element {
   // "Se menciona en": lo resuelve el proceso principal escaneando las notas del
   // vault (el enlace vive dentro del texto, no en el índice).
   const [menciones, setMenciones] = useState<ResumenMencionDTO[]>([])
+  /** Lienzos donde aparece este concepto (o su material). */
+  const [lienzos, setLienzos] = useState<ResumenLienzoDTO[]>([])
 
   const volver = useUiStore((s) => s.seleccionarConcepto)
+  const irASeccion = useUiStore((s) => s.irASeccion)
   const fijarEtiqueta = useUiStore((s) => s.filtrarPorEtiqueta)
 
   /** Pulsar una etiqueta sale de la ficha y deja el listado ya filtrado por ella. */
@@ -56,6 +64,17 @@ export function FichaConcepto({ conceptoId }: Props): JSX.Element {
   useEffect(() => {
     void cargarTareas()
   }, [cargarTareas])
+
+  useEffect(() => {
+    let vivo = true
+    void api
+      .lienzosDeConcepto(conceptoId)
+      .then((l) => vivo && setLienzos(l))
+      .catch(() => vivo && setLienzos([]))
+    return () => {
+      vivo = false
+    }
+  }, [conceptoId])
 
   useEffect(() => {
     let vivo = true
@@ -179,6 +198,31 @@ export function FichaConcepto({ conceptoId }: Props): JSX.Element {
           </ul>
         )}
       </section>
+
+      {/* En qué lienzos aparece */}
+      {lienzos.length > 0 && (
+        <section className="mt-8">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">
+            Aparece en estos lienzos
+          </h2>
+          <ul className="space-y-2">
+            {lienzos.map((l) => (
+              <li key={l.id}>
+                <button
+                  onClick={() => irASeccion('lienzos', l.contexto)}
+                  className="flex w-full items-center gap-2 rounded-lg border border-slate-200 px-4 py-2.5 text-left text-sm transition hover:border-marca-300 hover:shadow-sm"
+                >
+                  <span aria-hidden>🗺️</span>
+                  <span className="flex-1 truncate font-medium text-slate-700">{l.nombre}</span>
+                  <span className="text-xs text-slate-400">
+                    {l.totalTarjetas} {l.totalTarjetas === 1 ? 'tarjeta' : 'tarjetas'}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* Se menciona en (retroenlaces desde las notas de otros conceptos) */}
       {menciones.length > 0 && (

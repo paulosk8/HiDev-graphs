@@ -45,6 +45,7 @@ export const api = {
   listarEtiquetas: () => desenvolver(window.api.listarEtiquetas()),
   obtenerMenciones: (id: string) => desenvolver(window.api.obtenerMenciones(id)),
   listarLienzos: () => desenvolver(window.api.listarLienzos()),
+  lienzosDeConcepto: (id: string) => desenvolver(window.api.lienzosDeConcepto(id)),
   obtenerLienzo: (id: string) => desenvolver(window.api.obtenerLienzo(id)),
   crearLienzo: (nombre: string, contexto?: 'docencia' | 'aprendizaje') =>
     desenvolver(window.api.crearLienzo(nombre, contexto)),

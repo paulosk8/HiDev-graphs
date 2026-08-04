@@ -33,6 +33,7 @@ import {
   listarLienzos,
   obtenerLienzo
 } from '../application/Lienzos'
+import { lienzosDeConcepto } from '../application/LienzosDeConcepto'
 import { moverNota, moverTema } from '../application/MoverElementos'
 import {
   crearCarpeta,
@@ -159,6 +160,9 @@ export function registrarHandlersIpc(servicios: Servicios): void {
   )
 
   ipcMain.handle(CANALES.lienzosListar, () => envolver(() => listarLienzos(servicios)))
+  ipcMain.handle(CANALES.lienzosDeConcepto, (_e, conceptoId: string) =>
+    envolver(() => lienzosDeConcepto(servicios, conceptoId))
+  )
   ipcMain.handle(CANALES.lienzoObtener, (_e, id: string) =>
     envolver(() => obtenerLienzo(servicios, id))
   )
