@@ -12,6 +12,7 @@
     "start": "electron-vite preview",
     "rebuild": "electron-rebuild -f -w better-sqlite3 -w node-pty",
     "postinstall": "electron-rebuild -f -w better-sqlite3 -w node-pty",
+    "iconos": "esbuild scripts/generar-iconos.ts --bundle --platform=node --format=cjs --external:electron --outfile=node_modules/.cache/iconos.cjs && electron node_modules/.cache/iconos.cjs",
     "sembrar-demo": "esbuild scripts/sembrar-demo.ts --bundle --platform=node --format=cjs --external:js-yaml --outfile=node_modules/.cache/seed.cjs && node node_modules/.cache/seed.cjs",
     "build:mcp": "esbuild src/mcp/servidor.ts --bundle --platform=node --format=esm --outfile=out/mcp/pedagograph-mcp.mjs --banner:js=\"import{createRequire}from'node:module';const require=createRequire(import.meta.url);\"",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
@@ -20,7 +21,6 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "@supabase/supabase-js": "^2.110.2",
     "@types/turndown": "^5.0.6",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",

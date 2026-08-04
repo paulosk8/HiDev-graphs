@@ -349,6 +349,11 @@ export function registrarHandlersIpc(servicios: Servicios): void {
       const ventana = BrowserWindow.fromWebContents(evento.sender)
       const opciones = {
         title: 'Restaurar copia de seguridad',
+        // El aviso va en el propio diálogo del sistema para que se lea venga de
+        // donde venga la acción (botón de Configuración o barra de menú).
+        message:
+          'Elige tu archivo de copia. Su contenido se combinará con lo que ya tienes: los elementos con el mismo nombre se reemplazan y el resto se conserva.',
+        buttonLabel: 'Restaurar',
         properties: ['openFile' as const],
         filters: [{ name: 'Archivo comprimido', extensions: ['zip'] }]
       }

@@ -20,12 +20,24 @@ interface LayoutState {
   /** Grupo «Aprendizaje» del menú plegado. */
   aprendizajeColapsada: boolean
 
+  /** Capa de Docencia habilitada en la interfaz (asignaturas + su material). */
+  capaDocencia: boolean
+  /** Capa de Aprendizaje habilitada (espacios de estudio y repaso). */
+  capaAprendizaje: boolean
+  /** true cuando el docente ya eligió sus capas en la bienvenida. */
+  capasElegidas: boolean
+
   alternarSidebar: () => void
   alternarPanelGrafo: () => void
   setTerminalAltura: (px: number) => void
   alternarTerminal: () => void
   alternarTema: () => void
   alternarGrupo: (grupo: 'docencia' | 'aprendizaje') => void
+  /**
+   * Fija qué capas se muestran (bienvenida y Configuración). Ignora la llamada
+   * si ambas quedaran desactivadas (siempre debe quedar al menos una).
+   */
+  elegirCapas: (docencia: boolean, aprendizaje: boolean) => void
 }
 
 /**
@@ -42,6 +54,9 @@ export const useLayoutStore = create<LayoutState>()(
       tema: 'claro',
       docenciaColapsada: false,
       aprendizajeColapsada: false,
+      capaDocencia: true,
+      capaAprendizaje: true,
+      capasElegidas: false,
 
       alternarSidebar: () => set((s) => ({ sidebarColapsada: !s.sidebarColapsada })),
       alternarPanelGrafo: () => set((s) => ({ panelGrafoColapsado: !s.panelGrafoColapsado })),
@@ -54,6 +69,12 @@ export const useLayoutStore = create<LayoutState>()(
           grupo === 'docencia'
             ? { docenciaColapsada: !s.docenciaColapsada }
             : { aprendizajeColapsada: !s.aprendizajeColapsada }
+        ),
+      elegirCapas: (docencia, aprendizaje) =>
+        set(() =>
+          docencia || aprendizaje
+            ? { capaDocencia: docencia, capaAprendizaje: aprendizaje, capasElegidas: true }
+            : {}
         )
     }),
     { name: 'pedagograph-layout' }

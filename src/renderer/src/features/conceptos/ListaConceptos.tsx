@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ResumenConceptoDTO } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
 import { EstadoVacio } from '../../components/EstadoVacio'
@@ -27,6 +27,8 @@ export function ListaConceptos({ contexto }: Props): JSX.Element {
   const cargando = useConceptosStore((s) => s.cargando)
   const asignaturas = useAsignaturasStore((s) => s.lista)
   const seleccionar = useUiStore((s) => s.seleccionarConcepto)
+  const intencion = useUiStore((s) => s.intencion)
+  const limpiarIntencion = useUiStore((s) => s.limpiarIntencion)
   const [creando, setCreando] = useState(false)
   const [busqueda, setBusqueda] = useState('')
   // Grupos (asignaturas) desplegados. Vacío = todos colapsados por defecto:
@@ -36,6 +38,14 @@ export function ListaConceptos({ contexto }: Props): JSX.Element {
   const [temasAbiertos, setTemasAbiertos] = useState<Set<string>>(new Set())
 
   const esAprendizaje = contexto === 'aprendizaje'
+
+  // "Nuevo concepto" desde la barra de menú: abre aquí el mismo formulario.
+  useEffect(() => {
+    if (intencion === 'nuevo-concepto') {
+      setCreando(true)
+      limpiarIntencion()
+    }
+  }, [intencion, limpiarIntencion])
 
   // Nombres de las asignaturas de ESTE contexto: filtran qué conceptos y grupos
   // se ven. El pool de conceptos es único; esto es solo una vista.

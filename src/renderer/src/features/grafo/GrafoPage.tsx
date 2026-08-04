@@ -282,6 +282,7 @@ function relacionadosDe(grafo: GrafoDTO, conceptoId: string): { id: string; etiq
 /** Plantillas de prompt para el CLI de IA, rellenadas con la selección actual. */
 interface Plantilla {
   clave: string
+  icono: string
   titulo: string
   resumen: string
   construir: (conceptos: string[], temas: string[]) => string
@@ -310,6 +311,7 @@ function fraseGuardar(temas: string[]): string {
 const PLANTILLAS: Plantilla[] = [
   {
     clave: 'tarea',
+    icono: '📝',
     titulo: 'Tarea integradora',
     resumen: 'Una tarea que integre los conceptos relacionados y su material.',
     construir: (c, t) =>
@@ -319,6 +321,7 @@ const PLANTILLAS: Plantilla[] = [
   },
   {
     clave: 'recurso',
+    icono: '📚',
     titulo: 'Recurso didáctico',
     resumen: 'Una guía, resumen o ejercicios que conecte los temas relacionados.',
     construir: (c, t) =>
@@ -328,6 +331,7 @@ const PLANTILLAS: Plantilla[] = [
   },
   {
     clave: 'multi',
+    icono: '🔀',
     titulo: 'Actividad multi-asignatura',
     resumen: 'Una actividad reutilizable entre las asignaturas que comparten estos conceptos.',
     construir: (c) =>
@@ -338,6 +342,7 @@ const PLANTILLAS: Plantilla[] = [
   },
   {
     clave: 'evaluacion',
+    icono: '✅',
     titulo: 'Preguntas de evaluación',
     resumen: 'Preguntas con sus respuestas a partir del material.',
     construir: (c, t) =>
@@ -404,7 +409,12 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
   const [tooltip, setTooltip] = useState<{ x: number; y: number; texto: string } | null>(null)
   const [usosSel, setUsosSel] = useState<UsoDeConceptoDTO[]>([])
   const [modalPrompt, setModalPrompt] = useState(false)
-  const [comando, setComando] = useState('')
+  const [accionSel, setAccionSel] = useState<string>('tarea')
+  const [notaExtra, setNotaExtra] = useState('')
+  const [verDetalle, setVerDetalle] = useState(false)
+  const [conceptosExcluidos, setConceptosExcluidos] = useState<Set<string>>(new Set())
+  const [conceptosExtra, setConceptosExtra] = useState<string[]>([])
+  const [busquedaChip, setBusquedaChip] = useState('')
   const [copiado, setCopiado] = useState(false)
   const [alturaDrag, setAlturaDrag] = useState<number | null>(null)
   const [colorearDominio, setColorearDominio] = useState(false)
@@ -674,24 +684,67 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
   const alturaTerminal = alturaDrag ?? terminalAltura
   const terminalAbierta = alturaTerminal > 0
 
+  // Conceptos que realmente irán al prompt: los del nodo seleccionado (menos los
+  // que el docente quitó) más los que añadió a mano con el buscador.
+  const conceptosEfectivos = useMemo(
+    () => [...conceptosSel.filter((c) => !conceptosExcluidos.has(c)), ...conceptosExtra],
+    [conceptosSel, conceptosExcluidos, conceptosExtra]
+  )
+  const plantillaSel = PLANTILLAS.find((p) => p.clave === accionSel) ?? PLANTILLAS[0]
+  // Instrucción técnica final (oculta por defecto): la plantilla rellenada + la
+  // indicación libre opcional del docente. El usuario no necesita verla.
+  const promptFinal = useMemo(() => {
+    const base = plantillaSel.construir(conceptosEfectivos, temasSel)
+    const nota = notaExtra.trim()
+    return nota ? `${base} Indicación adicional del docente: ${nota}` : base
+  }, [plantillaSel, conceptosEfectivos, temasSel, notaExtra])
+
+  // Conceptos que el docente puede añadir a mano (los visibles que aún no están).
+  const conceptosDisponibles = useMemo(() => {
+    const q = busquedaChip.trim().toLowerCase()
+    const yaIncluidos = new Set(conceptosEfectivos.map((c) => c.toLowerCase()))
+    return (grafo?.nodos ?? [])
+      .filter((n) => n.tipo === 'concepto' && idsConceptoVisibles.has(n.id))
+      .map((n) => n.etiqueta)
+      .filter((e) => !yaIncluidos.has(e.toLowerCase()) && (q === '' || e.toLowerCase().includes(q)))
+      .sort((a, b) => a.localeCompare(b, 'es'))
+      .slice(0, 6)
+  }, [grafo, idsConceptoVisibles, conceptosEfectivos, busquedaChip])
+
   const abrirPrompt = (): void => {
-    if (!comando.trim()) setComando(PLANTILLAS[0].construir(conceptosSel, temasSel))
+    setConceptosExcluidos(new Set())
+    setConceptosExtra([])
+    setNotaExtra('')
+    setVerDetalle(false)
+    setBusquedaChip('')
     setModalPrompt(true)
   }
-  const copiarComando = (): void => {
-    if (!comando.trim()) return
-    void navigator.clipboard.writeText(comando)
+  const quitarChip = (c: string): void => {
+    setConceptosExtra((prev) => prev.filter((x) => x !== c))
+    setConceptosExcluidos((prev) => new Set(prev).add(c))
+  }
+  const agregarChip = (c: string): void => {
+    setConceptosExcluidos((prev) => {
+      const s = new Set(prev)
+      s.delete(c)
+      return s
+    })
+    setConceptosExtra((prev) => (prev.includes(c) || conceptosSel.includes(c) ? prev : [...prev, c]))
+    setBusquedaChip('')
+  }
+  const copiarPrompt = (): void => {
+    void navigator.clipboard.writeText(promptFinal)
     setCopiado(true)
     setTimeout(() => setCopiado(false), 1500)
   }
-  const insertarComando = (): void => {
-    const txt = comando.trim()
+  // Genera la instrucción y la EJECUTA directamente en la terminal de la IA
+  // (Ctrl-U limpia la línea; el \r final envía, sin que el docente pulse Enter).
+  const generarYEnviar = (): void => {
+    const txt = promptFinal.trim()
     if (!txt) return
     const cerrada = terminalAltura === 0
     if (cerrada) alternarTerminal() // abre la terminal si estaba cerrada
-    // Ctrl-U (\x15) limpia la línea actual del CLI antes de escribir, para que al
-    // cambiar de nodos el nuevo prompt reemplace al anterior en vez de acumularse.
-    const enviar = (): void => window.api.terminal.escribir('\x15' + txt)
+    const enviar = (): void => window.api.terminal.escribir('\x15' + txt + '\r')
     if (cerrada) setTimeout(enviar, 700)
     else enviar()
     setModalPrompt(false)
@@ -1307,62 +1360,133 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
 
       {/* Modal para componer el prompt de la IA a partir de la selección */}
       {modalPrompt && (
-        <Modal titulo="Prompts para la IA" ancho="lg" onCerrar={() => setModalPrompt(false)}>
-          <div className="space-y-4 text-sm">
-            <p className="text-xs text-slate-500">
-              {conceptosSel.length > 0 ? (
-                <>
-                  Contexto: <span className="font-medium text-slate-700">{conceptosSel.join(', ')}</span>
-                  {temasSel.length > 0 && <> · Temas: {temasSel.join(', ')}</>}
-                </>
-              ) : (
-                'Selecciona un concepto en el mapa para enlazar sus temas relacionados, o escribe tu propio prompt.'
-              )}
-            </p>
-
+        <Modal titulo="Pídele algo a la IA" ancho="lg" onCerrar={() => setModalPrompt(false)}>
+          <div className="space-y-5 text-sm">
+            {/* 1. Sobre qué trabaja la IA: chips de conceptos, editables */}
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Ejemplos (haz clic para usar)
+                Con estos conceptos
+              </p>
+              {conceptosEfectivos.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {conceptosEfectivos.map((c) => (
+                    <span
+                      key={c}
+                      className="inline-flex items-center gap-1 rounded-full bg-marca-50 py-1 pl-3 pr-1.5 text-xs font-medium text-marca-700"
+                    >
+                      {c}
+                      <button
+                        onClick={() => quitarChip(c)}
+                        title="Quitar"
+                        className="flex h-4 w-4 items-center justify-center rounded-full text-marca-400 transition hover:bg-marca-200 hover:text-marca-700"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400">
+                  Selecciona un concepto en el mapa, o añade uno aquí abajo.
+                </p>
+              )}
+              {temasSel.length > 0 && (
+                <p className="mt-2 text-[11px] text-slate-400">Temas relacionados: {temasSel.join(', ')}</p>
+              )}
+              {/* Añadir un concepto a mano (buscador con sugerencias) */}
+              <div className="relative mt-2">
+                <input
+                  value={busquedaChip}
+                  onChange={(e) => setBusquedaChip(e.target.value)}
+                  placeholder="+ Añadir otro concepto…"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs outline-none focus:border-marca-500 focus:ring-2 focus:ring-marca-100"
+                />
+                {busquedaChip.trim() !== '' && conceptosDisponibles.length > 0 && (
+                  <ul className="absolute z-10 mt-1 max-h-44 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                    {conceptosDisponibles.map((c) => (
+                      <li key={c}>
+                        <button
+                          onClick={() => agregarChip(c)}
+                          className="block w-full px-3 py-1.5 text-left text-xs text-slate-700 transition hover:bg-marca-50"
+                        >
+                          {c}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+
+            {/* 2. Qué quiere el docente: tarjetas de acción en lenguaje pedagógico */}
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Quiero que la IA cree…
               </p>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {PLANTILLAS.map((p) => (
-                  <button
-                    key={p.clave}
-                    onClick={() => setComando(p.construir(conceptosSel, temasSel))}
-                    className="rounded-lg border border-slate-200 p-3 text-left transition hover:border-marca-300 hover:bg-marca-50"
-                  >
-                    <p className="font-medium text-slate-800">{p.titulo}</p>
-                    <p className="mt-0.5 text-xs text-slate-500">{p.resumen}</p>
-                  </button>
-                ))}
+                {PLANTILLAS.map((p) => {
+                  const activa = p.clave === accionSel
+                  return (
+                    <button
+                      key={p.clave}
+                      onClick={() => setAccionSel(p.clave)}
+                      className={`flex items-start gap-2.5 rounded-lg border p-3 text-left transition ${
+                        activa
+                          ? 'border-marca-400 bg-marca-50 ring-1 ring-marca-300'
+                          : 'border-slate-200 hover:border-marca-300 hover:bg-marca-50'
+                      }`}
+                    >
+                      <span className="text-lg leading-none">{p.icono}</span>
+                      <span>
+                        <span className="block font-medium text-slate-800">{p.titulo}</span>
+                        <span className="mt-0.5 block text-xs text-slate-500">{p.resumen}</span>
+                      </span>
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
-            <textarea
-              value={comando}
-              onChange={(e) => setComando(e.target.value)}
-              rows={5}
-              placeholder="Escribe tu prompt o elige un ejemplo…"
-              className="w-full rounded-lg border border-slate-300 p-3 text-sm outline-none focus:border-marca-500 focus:ring-2 focus:ring-marca-100"
-            />
+            {/* 3. Indicación libre opcional (sin necesidad de saber nada técnico) */}
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400">
+                ¿Algo específico? (opcional)
+              </label>
+              <input
+                value={notaExtra}
+                onChange={(e) => setNotaExtra(e.target.value)}
+                placeholder="Ej.: para 2.º semestre, con ejemplos reales, nivel básico…"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-marca-500 focus:ring-2 focus:ring-marca-100"
+              />
+            </div>
 
+            {/* Acciones */}
             <div className="flex items-center justify-between">
-              <button onClick={() => setComando('')} className="text-xs text-slate-500 hover:underline">
-                Limpiar
+              <button
+                onClick={() => setVerDetalle((v) => !v)}
+                className="text-xs text-slate-400 hover:text-slate-600 hover:underline"
+              >
+                {verDetalle ? '▾ Ocultar instrucción técnica' : '▸ Ver instrucción técnica'}
               </button>
               <div className="flex gap-2">
-                <Boton variante="secundario" onClick={copiarComando}>
+                <Boton variante="secundario" onClick={copiarPrompt}>
                   {copiado ? '✓ Copiado' : 'Copiar'}
                 </Boton>
-                <Boton variante="primario" onClick={insertarComando} disabled={!comando.trim()}>
-                  Insertar en la terminal
+                <Boton variante="primario" onClick={generarYEnviar}>
+                  Generar
                 </Boton>
               </div>
             </div>
+
+            {verDetalle && (
+              <pre className="max-h-40 overflow-y-auto whitespace-pre-wrap rounded-lg bg-slate-50 p-3 text-[11px] leading-relaxed text-slate-500">
+                {promptFinal}
+              </pre>
+            )}
+
             <p className="text-[11px] text-slate-400">
-              Cada plantilla le pide a la IA guardar el resultado como tarea en PedagoGraph
-              (herramienta «crear_tarea»), así aparece en la asignatura y puedes reutilizarla.
-              «Insertar» pega el prompt en la terminal; revísalo y pulsa Enter.
+              «Generar» le pide a la IA que haga lo elegido y lo guarde en PedagoGraph, así aparece
+              en tu asignatura y puedes reutilizarlo. Se abre la terminal para que veas el avance.
             </p>
           </div>
         </Modal>

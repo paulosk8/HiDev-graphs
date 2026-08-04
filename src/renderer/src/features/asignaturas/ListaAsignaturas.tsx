@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import type { TipoAsignatura } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
 import { EstadoVacio } from '../../components/EstadoVacio'
@@ -14,12 +14,22 @@ export function ListaAsignaturas({ contexto }: Props): JSX.Element {
   const lista = useAsignaturasStore((s) => s.lista)
   const cargando = useAsignaturasStore((s) => s.cargando)
   const seleccionar = useUiStore((s) => s.seleccionarAsignatura)
+  const intencion = useUiStore((s) => s.intencion)
+  const limpiarIntencion = useUiStore((s) => s.limpiarIntencion)
   const [creando, setCreando] = useState(false)
   const [busqueda, setBusqueda] = useState('')
   const [periodoFiltro, setPeriodoFiltro] = useState('')
 
   const esAprendizaje = contexto === 'aprendizaje'
   const tipo: TipoAsignatura = contexto
+
+  // "Nueva asignatura" desde la barra de menú: abre aquí el mismo asistente.
+  useEffect(() => {
+    if (intencion === 'nueva-asignatura') {
+      setCreando(true)
+      limpiarIntencion()
+    }
+  }, [intencion, limpiarIntencion])
 
   // Solo las de este contexto (docencia o aprendizaje).
   const delContexto = lista.filter((a) =>

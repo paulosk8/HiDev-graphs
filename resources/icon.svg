@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>PedagoGraph</title>
+  <!--
+    Icono de aplicación: la marca (birrete de nodos) en blanco sobre un
+    cuadrado redondeado índigo. Fuente de los .icns/.ico/.png que genera
+    `npm run iconos`; edita este archivo y vuelve a ejecutarlo.
+  -->
+  <defs>
+    <linearGradient id="fondo" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6366f1" />
+      <stop offset="1" stop-color="#4338ca" />
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="229" ry="229" fill="url(#fondo)" />
+  <g transform="translate(194.5 194.5) scale(9.92)">
+    <g fill="none" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M57 25 V46" stroke-width="3.5" />
+      <path d="M32 14 L57 25 L32 36 L7 25 Z" fill="#ffffff" fill-opacity=".18" />
+    </g>
+    <g fill="#ffffff">
+      <circle cx="32" cy="14" r="4.5" />
+      <circle cx="57" cy="25" r="4.5" />
+      <circle cx="32" cy="36" r="4.5" />
+      <circle cx="7" cy="25" r="4.5" />
+      <circle cx="57" cy="50" r="4" />
+    </g>
+  </g>
+</svg>
