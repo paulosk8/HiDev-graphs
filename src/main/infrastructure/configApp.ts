@@ -2,6 +2,8 @@ import { app } from 'electron'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
+import { modoEliminacionDesde, type ModoEliminacion } from './Papelera'
+
 /**
  * Preferencias de la app que viven FUERA del vault (por-equipo), en la carpeta
  * de datos de usuario de Electron. Aquí se guarda dónde quiere el docente que
@@ -33,9 +35,17 @@ export interface ConfigApp {
    * `<rutaContenedorNube>/PedagoGraph`. Solo se lee para migrar a `rutaVaultNube`.
    */
   rutaContenedorNube?: string
+  /**
+   * Qué pasa al eliminar algo: moverlo a la carpeta "Eliminados" del material
+   * (por defecto, recuperable) o borrarlo definitivamente.
+   */
+  modoEliminacion: ModoEliminacion
 }
 
-const CONFIG_POR_DEFECTO: ConfigApp = { modoAlmacenamiento: 'local' }
+const CONFIG_POR_DEFECTO: ConfigApp = {
+  modoAlmacenamiento: 'local',
+  modoEliminacion: 'papelera'
+}
 
 /** Ruta del archivo de configuración por-equipo (userData/config.json). */
 function rutaConfig(): string {
@@ -59,7 +69,9 @@ export function leerConfigApp(): ConfigApp {
       modoAlmacenamiento: modo,
       rutaVaultNube: typeof o.rutaVaultNube === 'string' ? o.rutaVaultNube : undefined,
       rutaContenedorNube:
-        typeof o.rutaContenedorNube === 'string' ? o.rutaContenedorNube : undefined
+        typeof o.rutaContenedorNube === 'string' ? o.rutaContenedorNube : undefined,
+      // Configs anteriores no tenían el campo: se asume la opción segura.
+      modoEliminacion: modoEliminacionDesde(o.modoEliminacion)
     }
   } catch {
     return { ...CONFIG_POR_DEFECTO }

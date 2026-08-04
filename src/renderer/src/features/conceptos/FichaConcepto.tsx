@@ -6,6 +6,10 @@ import { api } from '../../lib/api'
 import { useAsignaturasStore } from '../../stores/asignaturasStore'
 import { useConceptosStore } from '../../stores/conceptosStore'
 import { useUiStore } from '../../stores/uiStore'
+import {
+  avisoDeEliminacion,
+  useEliminacionStore
+} from '../../stores/eliminacionStore'
 import { FormularioConcepto } from './FormularioConcepto'
 import { NotasConcepto } from './NotasConcepto'
 import { ZonaMaterial } from './ZonaMaterial'
@@ -16,6 +20,7 @@ interface Props {
 }
 
 export function FichaConcepto({ conceptoId }: Props): JSX.Element {
+  const modoEliminacion = useEliminacionStore((s) => s.modo)
   const [ficha, setFicha] = useState<FichaConceptoDTO | null>(null)
   const [cargando, setCargando] = useState(true)
   const [editando, setEditando] = useState(false)
@@ -190,7 +195,7 @@ export function FichaConcepto({ conceptoId }: Props): JSX.Element {
       {confirmando && (
         <DialogoConfirmacion
           titulo={`¿Eliminar «${concepto.nombre}»?`}
-          mensaje="Se borrará el concepto y todo su material. Esta acción no se puede deshacer."
+          mensaje={`Se eliminará el concepto y todo su material. ${avisoDeEliminacion(modoEliminacion)}`}
           onConfirmar={confirmarEliminar}
           onCancelar={() => setConfirmando(false)}
         />

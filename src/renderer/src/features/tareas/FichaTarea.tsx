@@ -7,6 +7,10 @@ import { DialogoConfirmacion } from '../../components/DialogoConfirmacion'
 import { api } from '../../lib/api'
 import { useTareasStore } from '../../stores/tareasStore'
 import { useUiStore } from '../../stores/uiStore'
+import {
+  avisoDeEliminacion,
+  useEliminacionStore
+} from '../../stores/eliminacionStore'
 import { FormularioTarea } from './FormularioTarea'
 import { DuplicarTareaDialog } from './DuplicarTareaDialog'
 
@@ -17,6 +21,7 @@ interface Props {
 }
 
 export function FichaTarea({ tareaId, onCerrar, onCambiada }: Props): JSX.Element {
+  const modoEliminacion = useEliminacionStore((s) => s.modo)
   const [tarea, setTarea] = useState<TareaDTO | null>(null)
   const [asignatura, setAsignatura] = useState<AsignaturaDTO | null>(null)
   const [editando, setEditando] = useState(false)
@@ -308,7 +313,7 @@ export function FichaTarea({ tareaId, onCerrar, onCambiada }: Props): JSX.Elemen
       {confirmando && (
         <DialogoConfirmacion
           titulo={`¿Eliminar «${tarea.titulo}»?`}
-          mensaje="Se eliminará la tarea y sus adjuntos. Esta acción no se puede deshacer."
+          mensaje={`Se eliminará la tarea y sus adjuntos. ${avisoDeEliminacion(modoEliminacion)}`}
           onConfirmar={confirmarEliminar}
           onCancelar={() => setConfirmando(false)}
         />
@@ -316,7 +321,7 @@ export function FichaTarea({ tareaId, onCerrar, onCambiada }: Props): JSX.Elemen
       {adjEliminar && (
         <DialogoConfirmacion
           titulo={`¿Quitar «${adjEliminar.nombre}»?`}
-          mensaje="Se eliminará este adjunto de la tarea."
+          mensaje={`Se eliminará este adjunto de la tarea. ${avisoDeEliminacion(modoEliminacion)}`}
           textoConfirmar="Quitar"
           onConfirmar={quitarAdjunto}
           onCancelar={() => setAdjEliminar(null)}

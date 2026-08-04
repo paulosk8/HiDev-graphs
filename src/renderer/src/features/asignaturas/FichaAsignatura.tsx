@@ -6,6 +6,10 @@ import { api } from '../../lib/api'
 import { useAsignaturasStore } from '../../stores/asignaturasStore'
 import { useConceptosStore } from '../../stores/conceptosStore'
 import { useUiStore } from '../../stores/uiStore'
+import {
+  avisoDeEliminacion,
+  useEliminacionStore
+} from '../../stores/eliminacionStore'
 import { FormularioTarea } from '../tareas/FormularioTarea'
 import { FichaTarea } from '../tareas/FichaTarea'
 import { PlanificacionSemanal } from './PlanificacionSemanal'
@@ -18,6 +22,7 @@ interface Props {
 }
 
 export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
+  const modoEliminacion = useEliminacionStore((s) => s.modo)
   const [asignatura, setAsignatura] = useState<AsignaturaDTO | null>(null)
   const [cargando, setCargando] = useState(true)
   const [confirmando, setConfirmando] = useState(false)
@@ -354,7 +359,7 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
       {confirmando && (
         <DialogoConfirmacion
           titulo={`¿Eliminar «${asignatura.nombre}»?`}
-          mensaje="Se eliminará la asignatura y su planificación. Tus conceptos y su material NO se borran."
+          mensaje={`Se eliminará la asignatura y su planificación. Tus conceptos y su material NO se borran. ${avisoDeEliminacion(modoEliminacion)}`}
           onConfirmar={confirmarEliminar}
           onCancelar={() => setConfirmando(false)}
         />

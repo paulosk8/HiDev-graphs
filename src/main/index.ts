@@ -4,6 +4,7 @@ import { join } from 'path'
 import { inicializarServicios, type Servicios } from './servicios'
 import { registrarHandlersIpc } from './ipc/registrarHandlers'
 import { registrarHandlersAlmacenamiento } from './ipc/registrarHandlersAlmacenamiento'
+import { registrarHandlersEliminacion } from './ipc/registrarHandlersEliminacion'
 import { registrarHandlersHistorial } from './ipc/registrarHandlersHistorial'
 import { registrarHandlersTerminal, cerrarTerminal } from './ipc/terminal'
 import { IndexSyncService } from './infrastructure/IndexSyncService'
@@ -132,6 +133,7 @@ app.whenReady().then(() => {
   historial.capturar() // versión base del estado actual al arrancar
   registrarHandlersIpc(servicios)
   registrarHandlersAlmacenamiento(aplicarCambioAlmacenamiento)
+  registrarHandlersEliminacion(servicios.vault)
   registrarHandlersHistorial(historial)
   registrarHandlersTerminal(servicios.vault.raiz)
   habilitarProtocoloRecurso(servicios.vault)

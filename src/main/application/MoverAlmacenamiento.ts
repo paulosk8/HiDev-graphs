@@ -13,6 +13,7 @@ import {
   leerConfigApp,
   resolverRutaVault,
   rutaVaultLocalPorDefecto,
+  type ConfigApp,
   type ModoAlmacenamiento
 } from '../infrastructure/configApp'
 
@@ -92,12 +93,15 @@ function nombreCarpetaSeguro(nombre: string): string {
 }
 
 export function moverAlmacenamiento(destino: DestinoAlmacenamiento): ResultadoMover {
-  const vaultActual = resolverRutaVault(leerConfigApp())
+  const configActual = leerConfigApp()
+  const vaultActual = resolverRutaVault(configActual)
 
   // Calcula la carpeta destino del vault y la configuración a persistir.
   // Elegir un destino cuenta como "configurado" (completa la bienvenida).
+  // Se parte de la config actual para NO perder las demás preferencias del
+  // docente (p. ej. qué pasa al eliminar) al cambiar de sitio el material.
   let vaultDestino: string
-  let config: { configurado: true; modoAlmacenamiento: ModoAlmacenamiento; rutaVaultNube?: string }
+  let config: ConfigApp
   if (destino.modo === 'nube') {
     const contenedor = destino.rutaContenedor
     exigir(
@@ -111,10 +115,15 @@ export function moverAlmacenamiento(destino: DestinoAlmacenamiento): ResultadoMo
       'Asegúrate de que la carpeta existe y de que tu nube esté sincronizando.'
     )
     vaultDestino = join(contenedor, nombreCarpetaSeguro(destino.nombreCarpeta))
-    config = { configurado: true, modoAlmacenamiento: 'nube', rutaVaultNube: vaultDestino }
+    config = {
+      ...configActual,
+      configurado: true,
+      modoAlmacenamiento: 'nube',
+      rutaVaultNube: vaultDestino
+    }
   } else {
     vaultDestino = rutaVaultLocalPorDefecto()
-    config = { configurado: true, modoAlmacenamiento: 'local' }
+    config = { ...configActual, configurado: true, modoAlmacenamiento: 'local' }
   }
 
   // Ya está en ese sitio: solo asegura la preferencia guardada.

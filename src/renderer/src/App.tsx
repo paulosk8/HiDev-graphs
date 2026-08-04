@@ -20,6 +20,7 @@ import { ModoEstudioPage } from './features/estudio/ModoEstudioPage'
 import { TerminalPage } from './features/terminal/TerminalPage'
 import { useAsignaturasStore } from './stores/asignaturasStore'
 import { useConceptosStore } from './stores/conceptosStore'
+import { useEliminacionStore } from './stores/eliminacionStore'
 import { useLayoutStore } from './stores/layoutStore'
 import { useUiStore } from './stores/uiStore'
 
@@ -124,6 +125,7 @@ function App(): JSX.Element {
 
   const cargarConceptos = useConceptosStore((s) => s.cargar)
   const cargarAsignaturas = useAsignaturasStore((s) => s.cargar)
+  const cargarEliminacion = useEliminacionStore((s) => s.cargar)
   const tema = useLayoutStore((s) => s.tema)
   const capasElegidas = useLayoutStore((s) => s.capasElegidas)
 
@@ -145,7 +147,9 @@ function App(): JSX.Element {
   useEffect(() => {
     void cargarConceptos()
     void cargarAsignaturas()
-  }, [cargarConceptos, cargarAsignaturas])
+    // Para que los avisos de "¿seguro que quieres eliminar?" digan la verdad.
+    void cargarEliminacion()
+  }, [cargarConceptos, cargarAsignaturas, cargarEliminacion])
 
   useEffect(() => {
     // Refresca las vistas cuando el material cambia en segundo plano (p. ej. tu

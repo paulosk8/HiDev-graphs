@@ -390,6 +390,23 @@ export interface ResultadoAlmacenamientoDTO {
   sinCambios: boolean
 }
 
+// --- Qué pasa al eliminar ---
+
+/**
+ * `papelera`   → lo eliminado se mueve a la carpeta "Eliminados" del material.
+ * `permanente` → se borra del disco, sin vuelta atrás.
+ */
+export type ModoEliminacion = 'papelera' | 'permanente'
+
+/** Estado de la preferencia de eliminación, para mostrarla en Configuración. */
+export interface EliminacionDTO {
+  modo: ModoEliminacion
+  /** Carpeta de eliminados (para el botón "Abrir la carpeta"). */
+  ruta: string
+  /** true si hay algo dentro (para ofrecer "Vaciar" solo cuando toca). */
+  hayEliminados: boolean
+}
+
 // --- Historial de versiones del material ---
 
 /** Tipo de elemento versionado. */

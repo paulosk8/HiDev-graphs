@@ -5,6 +5,7 @@ import { useLayoutStore } from '../../stores/layoutStore'
 import { AsistentePage } from '../asistente/AsistentePage'
 import { actualizarMaterial, respaldarMaterial, restaurarMaterial } from './accionesDatos'
 import { AlmacenamientoNube } from './AlmacenamientoNube'
+import { Eliminacion } from './Eliminacion'
 import { HistorialCambios } from './HistorialCambios'
 
 type SeccionConfig = 'apariencia' | 'asistente' | 'datos'
@@ -239,6 +240,13 @@ function DatosYCopias(): JSX.Element {
           todos tus dispositivos.
         </p>
         <AlmacenamientoNube />
+      </div>
+      <div className="mb-8">
+        <h2 className="mb-1 text-sm font-semibold text-slate-700">Cuando elimino algo</h2>
+        <p className="mb-3 text-xs text-slate-500">
+          Decide qué pasa con los conceptos, asignaturas, tareas y archivos que elimines.
+        </p>
+        <Eliminacion />
       </div>
       <div className="space-y-3">
         <Fila
