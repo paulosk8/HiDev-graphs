@@ -9,6 +9,7 @@ export const CANALES = {
   conceptosEtiquetas: 'conceptos:etiquetas',
   conceptoMenciones: 'concepto:menciones',
   lienzosListar: 'lienzos:listar',
+  lienzosDeConcepto: 'lienzos:de-concepto',
   lienzoObtener: 'lienzo:obtener',
   lienzoCrear: 'lienzo:crear',
   lienzoGuardar: 'lienzo:guardar',

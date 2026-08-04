@@ -67,6 +67,8 @@ export interface PedagoGraphApi {
   ): Promise<Resultado<ConceptoDTO>>
   // --- Lienzos ---
   listarLienzos(): Promise<Resultado<ResumenLienzoDTO[]>>
+  /** Lienzos donde aparece este concepto (o su material). */
+  lienzosDeConcepto(conceptoId: string): Promise<Resultado<ResumenLienzoDTO[]>>
   obtenerLienzo(id: string): Promise<Resultado<LienzoDTO>>
   crearLienzo(
     nombre: string,
