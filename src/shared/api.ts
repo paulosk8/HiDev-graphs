@@ -68,7 +68,10 @@ export interface PedagoGraphApi {
   // --- Lienzos ---
   listarLienzos(): Promise<Resultado<ResumenLienzoDTO[]>>
   obtenerLienzo(id: string): Promise<Resultado<LienzoDTO>>
-  crearLienzo(nombre: string): Promise<Resultado<ResumenLienzoDTO>>
+  crearLienzo(
+    nombre: string,
+    contexto?: 'docencia' | 'aprendizaje'
+  ): Promise<Resultado<ResumenLienzoDTO>>
   /** Guarda el lienzo entero (posiciones y conexiones). */
   guardarLienzo(lienzo: LienzoDTO): Promise<Resultado<LienzoDTO>>
   eliminarLienzo(id: string): Promise<Resultado<void>>

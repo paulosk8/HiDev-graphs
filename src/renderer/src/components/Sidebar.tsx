@@ -142,7 +142,7 @@ export function Sidebar(): JSX.Element {
                 <Item seccion="asignaturas" contexto="docencia" etiqueta="Asignaturas" cuenta={colapsada ? undefined : totalDocencia} icono="🎓" colapsada={colapsada} sangrado />
                 <Item seccion="conceptos" contexto="docencia" etiqueta="Conceptos" icono="💡" colapsada={colapsada} sangrado />
                 <Item seccion="grafo" contexto="docencia" etiqueta="Mapa" icono="🕸️" colapsada={colapsada} sangrado />
-                <Item seccion="lienzos" etiqueta="Lienzos" icono="🗺️" colapsada={colapsada} sangrado />
+                <Item seccion="lienzos" contexto="docencia" etiqueta="Lienzos" icono="🗺️" colapsada={colapsada} sangrado />
               </>
             )}
           </>
@@ -167,6 +167,7 @@ export function Sidebar(): JSX.Element {
                 <Item seccion="asignaturas" contexto="aprendizaje" etiqueta="Espacios" cuenta={colapsada ? undefined : totalAprendizaje} icono="📘" colapsada={colapsada} sangrado />
                 <Item seccion="conceptos" contexto="aprendizaje" etiqueta="Conceptos" icono="💡" colapsada={colapsada} sangrado />
                 <Item seccion="grafo" contexto="aprendizaje" etiqueta="Mapa" icono="🕸️" colapsada={colapsada} sangrado />
+                <Item seccion="lienzos" contexto="aprendizaje" etiqueta="Lienzos" icono="🗺️" colapsada={colapsada} sangrado />
                 {/* El repaso es una actividad de aprendizaje: vive en esta capa. */}
                 <Item
                   seccion="estudio"

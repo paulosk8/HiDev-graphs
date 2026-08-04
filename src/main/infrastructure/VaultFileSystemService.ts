@@ -359,7 +359,11 @@ export class VaultFileSystemService {
   guardarLienzo(lienzo: Lienzo): void {
     mkdirSync(this.dirLienzos, { recursive: true })
     // `nombre` es nuestro; Obsidian ignora lo que no conoce y usa el archivo.
-    const plano = { nombre: lienzo.nombre, ...lienzoAPlano(lienzo) }
+    const plano = {
+      nombre: lienzo.nombre,
+      ...(lienzo.contexto ? { contexto: lienzo.contexto } : {}),
+      ...lienzoAPlano(lienzo)
+    }
     writeFileSync(this.rutaLienzo(lienzo.id), JSON.stringify(plano, null, 2), 'utf8')
   }
 

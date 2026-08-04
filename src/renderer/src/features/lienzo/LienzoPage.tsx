@@ -16,6 +16,7 @@ import { LienzoEditor } from './LienzoEditor'
  */
 export function LienzoPage(): JSX.Element {
   const notificarError = useUiStore((s) => s.notificarError)
+  const contexto = useUiStore((s) => s.contexto)
   const [lista, setLista] = useState<ResumenLienzoDTO[]>([])
   const [cargando, setCargando] = useState(true)
   const [abierto, setAbierto] = useState<string | null>(null)
@@ -27,13 +28,17 @@ export function LienzoPage(): JSX.Element {
   const cargar = useCallback(async () => {
     setCargando(true)
     try {
-      setLista(await api.listarLienzos())
+      const todos = await api.listarLienzos()
+      // Los que no llevan capa son transversales: se ven en las dos. Es lo que
+      // valen los creados antes de que existiera este campo, y así ninguno
+      // desaparece del menú al actualizar.
+      setLista(todos.filter((l) => !l.contexto || l.contexto === contexto))
     } catch (error) {
       notificarError(error)
     } finally {
       setCargando(false)
     }
-  }, [notificarError])
+  }, [notificarError, contexto])
 
   useEffect(() => {
     void cargar()
@@ -43,7 +48,7 @@ export function LienzoPage(): JSX.Element {
     const n = nombre.trim()
     if (!n) return
     try {
-      const creado = await api.crearLienzo(n)
+      const creado = await api.crearLienzo(n, contexto)
       setNombre('')
       setCreando(false)
       await cargar()
@@ -84,7 +89,11 @@ export function LienzoPage(): JSX.Element {
           <h1 className="text-2xl font-semibold text-slate-900">Lienzos</h1>
           <p className="mt-1 max-w-prose text-sm text-slate-500">
             Mapas que organizas tú: coloca los conceptos que ya tienes y conéctalos como quieras.
-            Puedes tener varios del mismo contenido, uno por cada cosa que prepares.
+            Estos son los de{' '}
+            <strong className="font-medium">
+              {contexto === 'aprendizaje' ? 'Aprendizaje' : 'Docencia'}
+            </strong>
+            ; los de la otra capa se ven al cambiar de sección.
           </p>
         </div>
         {!creando && (
@@ -121,7 +130,7 @@ export function LienzoPage(): JSX.Element {
         <p className="py-10 text-center text-sm text-slate-400">Cargando…</p>
       ) : lista.length === 0 ? (
         <p className="rounded-xl border border-dashed border-slate-200 px-4 py-10 text-center text-sm text-slate-400">
-          Aún no tienes ningún lienzo.
+          Aún no tienes ningún lienzo en esta capa.
         </p>
       ) : (
         <ul className="space-y-2">

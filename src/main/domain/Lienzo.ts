@@ -58,10 +58,18 @@ export interface AristaLienzo {
   readonly color?: string
 }
 
+/**
+ * Capa a la que pertenece el lienzo. `undefined` = transversal, visible en
+ * ambas: es lo que valen los lienzos creados antes de existir este campo, y
+ * evita que uno desaparezca del menú al actualizar.
+ */
+export type ContextoLienzo = 'docencia' | 'aprendizaje'
+
 export interface Lienzo {
   /** Id interno (slug del nombre del archivo). No se muestra. */
   readonly id: string
   readonly nombre: string
+  readonly contexto?: ContextoLienzo
   readonly nodes: readonly NodoLienzo[]
   readonly edges: readonly AristaLienzo[]
 }
@@ -87,6 +95,10 @@ function texto(v: unknown): string {
  */
 export function lienzoDesdePlano(id: string, nombre: string, datos: unknown): Lienzo {
   const raiz = (datos ?? {}) as Record<string, unknown>
+  const contexto =
+    raiz.contexto === 'docencia' || raiz.contexto === 'aprendizaje'
+      ? (raiz.contexto as ContextoLienzo)
+      : undefined
   const nodosBrutos = Array.isArray(raiz.nodes) ? raiz.nodes : []
   const aristasBrutas = Array.isArray(raiz.edges) ? raiz.edges : []
 
@@ -131,7 +143,7 @@ export function lienzoDesdePlano(id: string, nombre: string, datos: unknown): Li
     })
   }
 
-  return { id, nombre, nodes, edges }
+  return { id, nombre, ...(contexto ? { contexto } : {}), nodes, edges }
 }
 
 /** Serializa al formato .canvas. `id` y `nombre` NO se escriben: son el archivo. */
@@ -162,7 +174,11 @@ export function lienzoAPlano(lienzo: Lienzo): { nodes: unknown[]; edges: unknown
   }
 }
 
-export function crearLienzo(datos: { id: string; nombre: string }): Lienzo {
+export function crearLienzo(datos: {
+  id: string
+  nombre: string
+  contexto?: ContextoLienzo
+}): Lienzo {
   const nombre = datos.nombre.trim()
   exigir(datos.id.trim().length > 0, 'El lienzo no tiene identificador.')
   exigir(
@@ -170,7 +186,13 @@ export function crearLienzo(datos: { id: string; nombre: string }): Lienzo {
     'El lienzo necesita un nombre.',
     "Escribe un nombre, por ejemplo 'Repaso del primer parcial'."
   )
-  return { id: datos.id.trim(), nombre, nodes: [], edges: [] }
+  return {
+    id: datos.id.trim(),
+    nombre,
+    ...(datos.contexto ? { contexto: datos.contexto } : {}),
+    nodes: [],
+    edges: []
+  }
 }
 
 /** Ruta que guarda una tarjeta de concepto, en el formato de archivo de Obsidian. */

@@ -1,5 +1,10 @@
 import type { LienzoDTO, ResumenLienzoDTO } from '../../shared/dtos'
-import { crearLienzo, lienzoDesdePlano, type Lienzo } from '../domain/Lienzo'
+import {
+  crearLienzo,
+  lienzoDesdePlano,
+  type ContextoLienzo,
+  type Lienzo
+} from '../domain/Lienzo'
 import { ErrorDeDominio } from '../domain/errores'
 import { slugUnico } from '../domain/slug'
 import type { Servicios } from '../servicios'
@@ -15,6 +20,7 @@ function aResumen(l: Lienzo): ResumenLienzoDTO {
   return {
     id: l.id,
     nombre: l.nombre,
+    ...(l.contexto ? { contexto: l.contexto } : {}),
     totalTarjetas: l.nodes.filter((n) => n.type !== 'group').length,
     totalConexiones: l.edges.length
   }
@@ -32,13 +38,24 @@ export function obtenerLienzo(servicios: Servicios, id: string): LienzoDTO {
     throw new ErrorDeDominio('No encontramos ese lienzo.', 'Puede que ya se haya eliminado.')
   }
   const l = servicios.vault.leerLienzo(id)
-  return { id: l.id, nombre: l.nombre, nodes: [...l.nodes], edges: [...l.edges] }
+  return {
+    id: l.id,
+    nombre: l.nombre,
+    ...(l.contexto ? { contexto: l.contexto } : {}),
+    nodes: [...l.nodes],
+    edges: [...l.edges]
+  }
 }
 
-export function crearLienzoNuevo(servicios: Servicios, nombre: string): ResumenLienzoDTO {
+export function crearLienzoNuevo(
+  servicios: Servicios,
+  nombre: string,
+  /** Capa desde la que se crea; queda asociada al lienzo. */
+  contexto?: ContextoLienzo
+): ResumenLienzoDTO {
   const existentes = new Set(servicios.vault.listarIdsLienzos())
   const id = slugUnico(nombre, existentes, 'lienzo')
-  const lienzo = crearLienzo({ id, nombre })
+  const lienzo = crearLienzo({ id, nombre, contexto })
   servicios.vault.guardarLienzo(lienzo)
   return aResumen(lienzo)
 }
@@ -56,7 +73,13 @@ export function guardarLienzo(servicios: Servicios, dto: LienzoDTO): LienzoDTO {
   // (una conexión a una tarjeta borrada, medidas absurdas…).
   const saneado = lienzoDesdePlano(dto.id, dto.nombre, dto)
   servicios.vault.guardarLienzo(saneado)
-  return { id: saneado.id, nombre: saneado.nombre, nodes: [...saneado.nodes], edges: [...saneado.edges] }
+  return {
+    id: saneado.id,
+    nombre: saneado.nombre,
+    ...(saneado.contexto ? { contexto: saneado.contexto } : {}),
+    nodes: [...saneado.nodes],
+    edges: [...saneado.edges]
+  }
 }
 
 export function eliminarLienzo(servicios: Servicios, id: string): void {
