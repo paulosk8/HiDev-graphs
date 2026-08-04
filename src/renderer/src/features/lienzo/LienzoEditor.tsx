@@ -765,6 +765,7 @@ export function LienzoEditor({
           onCerrar={() => setAgregando(false)}
         >
           <BuscadorConceptos
+            sinMarco
             excluir={lienzo.nodes.map((n) => conceptoDeArchivo(n.file) ?? '').filter(Boolean)}
             onSeleccionar={agregarConcepto}
             onCerrar={() => setAgregando(false)}

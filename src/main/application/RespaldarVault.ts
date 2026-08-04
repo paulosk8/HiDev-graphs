@@ -3,7 +3,7 @@ import { createWriteStream, existsSync } from 'node:fs'
 import type { Servicios } from '../servicios'
 
 /**
- * Crea un archivo .zip con todo el contenido del vault (conceptos y asignaturas,
+ * Crea un archivo .zip con todo el contenido del vault (conceptos, asignaturas,
  * con su material) en `rutaDestino`. No incluye el índice, porque es
  * reconstruible. El diálogo de "Guardar como" lo abre la capa IPC (Electron).
  *
@@ -28,6 +28,8 @@ export async function respaldarVault(servicios: Servicios, rutaDestino: string):
     if (existsSync(vault.dirConceptos)) zip.directory(vault.dirConceptos, 'conceptos')
     if (existsSync(vault.dirAsignaturas)) zip.directory(vault.dirAsignaturas, 'asignaturas')
     if (existsSync(vault.dirTareas)) zip.directory(vault.dirTareas, 'tareas')
+    // Los lienzos son contenido del docente: sin esto, un respaldo los perdía.
+    if (existsSync(vault.dirLienzos)) zip.directory(vault.dirLienzos, 'lienzos')
     void zip.finalize()
   })
 }

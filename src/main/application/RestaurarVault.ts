@@ -12,12 +12,12 @@ export interface ResultadoRestauracion {
 }
 
 /** Carpetas del vault que un respaldo puede restaurar (el resto se ignora). */
-const CARPETAS_VALIDAS = ['conceptos/', 'asignaturas/', 'tareas/']
+const CARPETAS_VALIDAS = ['conceptos/', 'asignaturas/', 'tareas/', 'lienzos/']
 
 /**
  * Restaura un respaldo (.zip creado por `respaldarVault`) dentro del vault.
  *
- * Descomprime `conceptos/`, `asignaturas/` y `tareas/` sobre el vault actual
+ * Descomprime `conceptos/`, `asignaturas/`, `tareas/` y `lienzos/` sobre el vault actual
  * (los elementos con el mismo nombre se sobrescriben; los demás se conservan) y
  * reconstruye el índice. No toca `.index/` (es reconstruible). Portable entre
  * sistemas: el material se referencia por nombre de archivo relativo.
