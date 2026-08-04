@@ -753,13 +753,15 @@ function TarjetaLienzo({
       onMouseDown={editandoNota ? undefined : onArrastrar}
       onDoubleClick={onAbrir}
       style={{ left: nodo.x, top: nodo.y, width: nodo.width, height: nodo.height }}
-      className={`group absolute rounded-xl border bg-white p-3 shadow-sm transition-shadow ${
+      // Columna flexible: con la nota abierta, el editor ocupa el alto que
+      // sobra en vez de desbordar la tarjeta.
+      className={`group absolute flex flex-col overflow-hidden rounded-xl border bg-white p-3 shadow-sm transition-shadow ${
         editandoNota ? 'cursor-default' : 'cursor-move'
       } ${
         seleccionada ? 'border-marca-500 shadow-md' : 'border-slate-200 hover:shadow'
       }`}
     >
-      <div className="flex items-start gap-2">
+      <div className="flex shrink-0 items-start gap-2">
         {material && (
           <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-slate-500">
             {material.archivo.split('.').pop()}
