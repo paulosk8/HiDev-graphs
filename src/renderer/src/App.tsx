@@ -22,7 +22,7 @@ import { TerminalPage } from './features/terminal/TerminalPage'
 import { useAsignaturasStore } from './stores/asignaturasStore'
 import { useConceptosStore } from './stores/conceptosStore'
 import { useEliminacionStore } from './stores/eliminacionStore'
-import { useLayoutStore } from './stores/layoutStore'
+import { TEMAS_OSCUROS, useLayoutStore } from './stores/layoutStore'
 import { useUiStore } from './stores/uiStore'
 
 function Contenido(): JSX.Element {
@@ -152,7 +152,12 @@ function App(): JSX.Element {
 
   // Aplica el tema (claro/oscuro) a la raíz del documento.
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', tema === 'oscuro')
+    const raiz = document.documentElement
+    // `dark` la comparten los dos temas oscuros; `contraste` y `calido` se
+    // superponen encima, así no hay que duplicar las reglas de cada uno.
+    raiz.classList.toggle('dark', TEMAS_OSCUROS.includes(tema))
+    raiz.classList.toggle('contraste', tema === 'contraste' || tema === 'contraste-oscuro')
+    raiz.classList.toggle('calido', tema === 'calido')
   }, [tema])
 
   // Tamaño de la interfaz. Se aplica con `zoom` en la raíz (no con el zoom de

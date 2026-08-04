@@ -17,7 +17,7 @@ import { api } from '../../lib/api'
 import { useAsignaturasStore } from '../../stores/asignaturasStore'
 import { useConceptosStore } from '../../stores/conceptosStore'
 import { useUiStore, type Contexto } from '../../stores/uiStore'
-import { useLayoutStore } from '../../stores/layoutStore'
+import { TEMAS_OSCUROS, useLayoutStore } from '../../stores/layoutStore'
 import { colorDominio } from '../../lib/repaso'
 
 cytoscape.use(fcose)
@@ -607,7 +607,7 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
   useEffect(() => {
     const cy = cyRef.current
     if (!cy) return
-    cy.nodes('[tipo="concepto"]').style('color', tema === 'oscuro' ? '#cbd5e1' : '#334155')
+    cy.nodes('[tipo="concepto"]').style('color', TEMAS_OSCUROS.includes(tema) ? '#e2e8f0' : '#1e293b')
   }, [tema, elementos])
 
   // Resalta las tareas seleccionadas para combinar.
