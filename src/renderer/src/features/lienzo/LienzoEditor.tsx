@@ -362,6 +362,34 @@ export function LienzoEditor({
     setAgregando(false)
   }
 
+  /**
+   * Nota suelta: texto que vive en el propio lienzo y no pertenece a ningún
+   * concepto. Sirve para lo que no es material —un título de sección, un
+   * recordatorio, una pregunta para clase— y no debería obligar a inventarse
+   * un concepto para poder escribirlo.
+   */
+  const agregarTexto = (): void => {
+    const id = nuevoId('n')
+    cambiar((l) => ({
+      ...l,
+      nodes: [
+        ...l.nodes,
+        {
+          id,
+          type: 'text' as const,
+          // En escalera, para que varias seguidas no se apilen encima.
+          x: 80 + l.nodes.length * 28,
+          y: 80 + l.nodes.length * 22,
+          width: 240,
+          height: 140,
+          text: ''
+        }
+      ]
+    }))
+    // Se abre escribiendo: nadie crea una nota vacía para dejarla vacía.
+    setTextoEditando(id)
+  }
+
   const cambiarTexto = (id: string, texto: string): void =>
     cambiar((l) => ({ ...l, nodes: l.nodes.map((n) => (n.id === id ? { ...n, text: texto } : n)) }))
 
@@ -455,6 +483,9 @@ export function LienzoEditor({
             Agrupar ({seleccion.size})
           </Boton>
         )}
+        <Boton variante="secundario" onClick={agregarTexto}>
+          + Nota suelta
+        </Boton>
         <Boton variante="secundario" onClick={() => setAgregando(true)}>
           + Añadir concepto
         </Boton>
