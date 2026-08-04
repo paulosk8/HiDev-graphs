@@ -114,9 +114,10 @@ export function PanelVistazo(): JSX.Element | null {
 
   return (
     <aside
-      // No es un modal: el panel convive con la lectura, no la tapa. Por eso no
-      // hay velo oscuro detrás ni se bloquea el resto de la interfaz.
-      className="fixed right-0 top-0 z-40 flex h-full w-[22rem] flex-col border-l border-slate-200 bg-white shadow-xl"
+      // Es una COLUMNA del layout, no un panel flotante: así empuja el
+      // contenido en vez de montarse encima de la barra superior del lienzo,
+      // que dejaba sus botones inalcanzables.
+      className="flex h-full w-[22rem] shrink-0 flex-col border-l border-slate-200 bg-white"
       aria-label="Vistazo al concepto"
     >
       <header className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">

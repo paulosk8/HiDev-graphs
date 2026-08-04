@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { LadoNodoDTO, LienzoDTO, NodoLienzoDTO } from '@shared/dtos'
+import type { LadoNodoDTO, LienzoDTO, NodoLienzoDTO, NotaDTO, RecursoDTO } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
 import { api } from '../../lib/api'
 import { useConceptosStore } from '../../stores/conceptosStore'
@@ -7,7 +7,6 @@ import { useUiStore } from '../../stores/uiStore'
 import { useVistazoStore } from '../../stores/vistazoStore'
 import { BuscadorConceptos } from '../vinculos/BuscadorConceptos'
 import { SelectorMaterial } from './SelectorMaterial'
-import { NotaEnTarjeta } from './NotaEnTarjeta'
 import { colorDeArista, COLORES_ARISTA, COLORES_GRUPO, colorDeGrupo } from './coloresLienzo'
 import { TEMAS_OSCUROS, useLayoutStore } from '../../stores/layoutStore'
 
@@ -98,8 +97,6 @@ export function LienzoEditor({
   /** Tarjeta de texto que se está escribiendo. */
   const [textoEditando, setTextoEditando] = useState<string | null>(null)
   const [eligiendoMaterial, setEligiendoMaterial] = useState(false)
-  /** Tarjeta de concepto cuya nota se está editando dentro del lienzo. */
-  const [notaEditando, setNotaEditando] = useState<string | null>(null)
   /** Selección múltiple: agrupar exige poder elegir varias tarjetas. */
   const [seleccion, setSeleccion] = useState<Set<string>>(new Set())
   /** Recuadro de selección en curso (arrastrando sobre el fondo). */
@@ -597,18 +594,13 @@ export function LienzoEditor({
             concepto={nombrePorConcepto.get(conceptoDeArchivo(n.file) ?? '')}
             onArrastrar={(e) => empezarArrastre(e, n)}
             onAncla={(lado) => (conectando ? conectar(n.id, lado) : setConectando({ nodo: n.id, lado }))}
-            editandoNota={notaEditando === n.id}
             onAbrir={() => {
               // Un material no tiene ficha que abrir: se previsualiza en la tarjeta.
               if (materialDeArchivo(n.file)) return
               const id = conceptoDeArchivo(n.file)
-              // Doble clic edita la nota aquí mismo; el vistazo queda para el
-              // panel lateral, al que se llega desde la propia tarjeta.
-              if (id) setNotaEditando(n.id)
-            }}
-            onCerrarNota={() => setNotaEditando(null)}
-            onVerFicha={() => {
-              const id = conceptoDeArchivo(n.file)
+              // Doble clic abre el PANEL, que es donde se edita todo. La tarjeta
+              // solo muestra: editar dentro de ella obligaba a elegir qué nota
+              // en un espacio de 150 px, y no cabía nada más.
               if (id) abrirVistazo(id)
             }}
             onEliminar={() => eliminarNodo(n.id)}
@@ -719,27 +711,41 @@ function TarjetaLienzo({
   nodo,
   seleccionada,
   concepto,
-  editandoNota,
   onArrastrar,
   onAncla,
   onAbrir,
-  onCerrarNota,
-  onVerFicha,
   onEliminar
 }: {
   nodo: NodoLienzoDTO
   seleccionada: boolean
   concepto?: { nombre: string; descripcion: string; etiquetas: string[]; totalRecursos: number }
-  editandoNota: boolean
   onArrastrar: (e: React.MouseEvent) => void
   onAncla: (lado: LadoNodoDTO) => void
   onAbrir: () => void
-  onCerrarNota: () => void
-  onVerFicha: () => void
   onEliminar: () => void
 }): JSX.Element {
   const material = materialDeArchivo(nodo.file)
   const conceptoId = conceptoDeArchivo(nodo.file)
+  // El listado no trae notas ni material, así que la tarjeta pide su ficha.
+  // Son pocas por lienzo y se recargan al volver a montar, que es cuando el
+  // panel puede haber cambiado algo.
+  const [notas, setNotas] = useState<NotaDTO[]>([])
+  const [recursos, setRecursos] = useState<RecursoDTO[]>([])
+  useEffect(() => {
+    if (!conceptoId) return
+    let vivo = true
+    void api
+      .obtenerFichaConcepto(conceptoId)
+      .then((f) => {
+        if (!vivo) return
+        setNotas(f.concepto.notas)
+        setRecursos(f.concepto.recursos)
+      })
+      .catch(() => undefined)
+    return () => {
+      vivo = false
+    }
+  }, [conceptoId])
   const lados: LadoNodoDTO[] = ['top', 'right', 'bottom', 'left']
   const posicionAncla: Record<LadoNodoDTO, string> = {
     top: 'left-1/2 top-0 -translate-x-1/2 -translate-y-1/2',
@@ -750,14 +756,12 @@ function TarjetaLienzo({
 
   return (
     <div
-      onMouseDown={editandoNota ? undefined : onArrastrar}
+      onMouseDown={onArrastrar}
       onDoubleClick={onAbrir}
       style={{ left: nodo.x, top: nodo.y, width: nodo.width, height: nodo.height }}
       // Columna flexible: con la nota abierta, el editor ocupa el alto que
       // sobra en vez de desbordar la tarjeta.
-      className={`group absolute flex flex-col overflow-hidden rounded-xl border bg-white p-3 shadow-sm transition-shadow ${
-        editandoNota ? 'cursor-default' : 'cursor-move'
-      } ${
+      className={`group absolute flex cursor-move flex-col overflow-hidden rounded-xl border bg-white p-3 shadow-sm transition-shadow ${
         seleccionada ? 'border-marca-500 shadow-md' : 'border-slate-200 hover:shadow'
       }`}
     >
@@ -772,16 +776,6 @@ function TarjetaLienzo({
             ? material.archivo.split('/').pop()
             : (concepto?.nombre ?? 'Concepto no encontrado')}
         </p>
-        {!material && (
-          <button
-            onMouseDown={(e) => e.stopPropagation()}
-            onClick={onVerFicha}
-            title="Ver la ficha completa"
-            className="text-xs text-slate-400 opacity-0 transition group-hover:opacity-100 hover:text-marca-700"
-          >
-            ↗
-          </button>
-        )}
         <button
           onMouseDown={(e) => e.stopPropagation()}
           onClick={onEliminar}
@@ -804,29 +798,63 @@ function TarjetaLienzo({
             .join('/')}`}
           className="pointer-events-none mt-2 h-[calc(100%-2.5rem)] w-full rounded border border-slate-100 bg-white"
         />
-      ) : editandoNota && conceptoId ? (
-        <NotaEnTarjeta conceptoId={conceptoId} onCerrar={onCerrarNota} />
       ) : (
-        concepto?.descripcion && (
-          <p className="mt-1 line-clamp-3 text-xs text-slate-500">{concepto.descripcion}</p>
-        )
-      )}
+        // Vista previa con scroll: la tarjeta muestra lo que tiene el concepto
+        // sin crecer sin límite. Para editarlo, doble clic abre el panel.
+        <div className="mt-1 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+          {concepto?.descripcion && (
+            <p className="text-xs text-slate-500">{concepto.descripcion}</p>
+          )}
 
-      {!material && !editandoNota && concepto && concepto.etiquetas.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {concepto.etiquetas.slice(0, 3).map((e) => (
-            <span key={e} className="rounded-full bg-marca-50 px-2 py-0.5 text-[10px] text-marca-700">
-              {e}
-            </span>
-          ))}
+          {concepto && concepto.etiquetas.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {concepto.etiquetas.map((e) => (
+                <span
+                  key={e}
+                  className="rounded-full bg-marca-50 px-2 py-0.5 text-[10px] text-marca-700"
+                >
+                  {e}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {notas.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                Notas
+              </p>
+              <ul className="mt-0.5 space-y-0.5">
+                {notas.map((n) => (
+                  <li key={n.id} className="truncate text-xs text-slate-600">
+                    · {n.titulo || primeraLineaDe(n.contenido) || 'Nota sin título'}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {recursos.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                Material
+              </p>
+              <ul className="mt-0.5 space-y-0.5">
+                {recursos.map((r) => (
+                  <li key={r.id} className="flex items-center gap-1 truncate text-xs text-slate-600">
+                    <span className="rounded bg-slate-100 px-1 text-[9px] uppercase text-slate-500">
+                      {r.formato}
+                    </span>
+                    <span className="truncate">{r.nombre}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 
-      {!material && !editandoNota && concepto && concepto.totalRecursos > 0 && (
-        <p className="absolute bottom-2 left-3 text-[10px] text-slate-400">
-          📎 {concepto.totalRecursos}
-        </p>
-      )}
+
 
       {/* Puntos de conexión: aparecen al pasar el ratón para no ensuciar. */}
       {lados.map((lado) => (
@@ -1047,4 +1075,11 @@ function TarjetaTexto({
       ))}
     </div>
   )
+}
+
+
+/** Primeras palabras de una nota, para reconocerla cuando no tiene título. */
+function primeraLineaDe(contenido: string): string {
+  const linea = contenido.split('\n').find((l) => l.trim()) ?? ''
+  return linea.trim().slice(0, 40)
 }
