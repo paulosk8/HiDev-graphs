@@ -8,6 +8,8 @@ export const CANALES = {
   conceptosBuscar: 'conceptos:buscar',
   conceptosEtiquetas: 'conceptos:etiquetas',
   conceptoMenciones: 'concepto:menciones',
+  temaMover: 'tema:mover',
+  notaMover: 'nota:mover',
   conceptoUsos: 'concepto:usos',
   conceptoObtenerFicha: 'concepto:ficha',
   conceptoCrear: 'concepto:crear',

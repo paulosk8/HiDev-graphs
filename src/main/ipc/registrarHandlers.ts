@@ -25,6 +25,7 @@ import { ErrorDeDominio } from '../domain/errores'
 import { crearConcepto } from '../application/CrearConcepto'
 import { editarConcepto } from '../application/EditarConcepto'
 import { obtenerMenciones } from '../application/ObtenerMenciones'
+import { moverNota, moverTema } from '../application/MoverElementos'
 import { eliminarConcepto } from '../application/EliminarConcepto'
 import { obtenerFichaConcepto } from '../application/ObtenerFichaConcepto'
 import { agregarMaterial } from '../application/AgregarMaterial'
@@ -130,6 +131,18 @@ export function registrarHandlersIpc(servicios: Servicios): void {
 
   ipcMain.handle(CANALES.conceptosEtiquetas, () =>
     envolver(() => repositorio.listarEtiquetas())
+  )
+
+  ipcMain.handle(
+    CANALES.temaMover,
+    (_evento, asignaturaId: string, temaId: string, unidadDestinoId: string) =>
+      envolver(() => moverTema(servicios, asignaturaId, temaId, unidadDestinoId))
+  )
+
+  ipcMain.handle(
+    CANALES.notaMover,
+    (_evento, origenId: string, notaId: string, destinoId: string) =>
+      envolver(() => moverNota(servicios, origenId, notaId, destinoId))
   )
 
   ipcMain.handle(CANALES.conceptoMenciones, (_evento, conceptoId: string) =>

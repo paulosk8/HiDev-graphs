@@ -2,6 +2,10 @@ import { useRef, useState } from 'react'
 import type { ConceptoDTO, FormatoInstrucciones, NotaDTO } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
 import { ContenidoFormateado } from '../../components/ContenidoFormateado'
+import { DialogoMover } from '../../components/DialogoMover'
+import { MenuContextual, useMenuContextual } from '../../components/MenuContextual'
+import { api } from '../../lib/api'
+import { useUiStore } from '../../stores/uiStore'
 import { SugerenciasEnlace } from '../../components/SugerenciasEnlace'
 import { VistaCodigo } from '../../components/VistaCodigo'
 import { useConceptosStore } from '../../stores/conceptosStore'
@@ -26,6 +30,10 @@ export function NotasConcepto({
   onGuardado: () => void
 }): JSX.Element {
   const editar = useConceptosStore((s) => s.editar)
+  const conceptos = useConceptosStore((s) => s.lista)
+  const notificarError = useUiStore((s) => s.notificarError)
+  const { menu, abrir: abrirMenu, cerrar: cerrarMenu } = useMenuContextual<NotaDTO>()
+  const [moviendo, setMoviendo] = useState<NotaDTO | null>(null)
   // Id de la nota en edición, 'nuevo' para una nota nueva, o null (solo lista).
   const [editando, setEditando] = useState<string | 'nuevo' | null>(null)
   const [titulo, setTitulo] = useState('')
@@ -187,7 +195,11 @@ export function NotasConcepto({
       ) : (
         <div className="space-y-3">
           {concepto.notas.map((n) => (
-            <div key={n.id} className="rounded-xl border border-slate-200 bg-white p-3">
+            <div
+              key={n.id}
+              onContextMenu={(e) => abrirMenu(e, n)}
+              className="rounded-xl border border-slate-200 bg-white p-3"
+            >
               <div className="mb-1.5 flex items-start justify-between gap-2">
                 {n.titulo ? (
                   <h3 className="text-sm font-medium text-slate-800">{n.titulo}</h3>
@@ -227,6 +239,52 @@ export function NotasConcepto({
             </div>
           ))}
         </div>
+      )}
+
+      {menu && (
+        <MenuContextual
+          x={menu.x}
+          y={menu.y}
+          onCerrar={cerrarMenu}
+          opciones={[
+            {
+              etiqueta: 'Mover a otro concepto…',
+              icono: '→',
+              deshabilitada: conceptos.length < 2,
+              motivo: 'Necesitas al menos otro concepto al que moverla.',
+              onElegir: () => setMoviendo(menu.dato)
+            },
+            {
+              etiqueta: 'Eliminar',
+              icono: '✕',
+              destructiva: true,
+              onElegir: () => void eliminar(menu.dato.id)
+            }
+          ]}
+        />
+      )}
+
+      {moviendo && (
+        <DialogoMover
+          titulo="Mover la nota a otro concepto"
+          queSeMueve={moviendo.titulo || 'esta nota'}
+          destinos={conceptos.map((c) => ({
+            id: c.id,
+            titulo: c.nombre,
+            detalle: c.descripcion || undefined,
+            actual: c.id === concepto.id
+          }))}
+          textoVacio="Crea otro concepto para poder mover aquí la nota."
+          onMover={async (destinoId) => {
+            try {
+              await api.moverNota(concepto.id, moviendo.id, destinoId)
+              onGuardado()
+            } catch (error) {
+              notificarError(error)
+            }
+          }}
+          onCerrar={() => setMoviendo(null)}
+        />
       )}
     </section>
   )

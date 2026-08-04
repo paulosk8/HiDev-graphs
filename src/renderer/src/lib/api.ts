@@ -43,6 +43,10 @@ export const api = {
   buscarConceptos: (texto: string) => desenvolver(window.api.buscarConceptos(texto)),
   listarEtiquetas: () => desenvolver(window.api.listarEtiquetas()),
   obtenerMenciones: (id: string) => desenvolver(window.api.obtenerMenciones(id)),
+  moverTema: (asignaturaId: string, temaId: string, unidadDestinoId: string) =>
+    desenvolver(window.api.moverTema(asignaturaId, temaId, unidadDestinoId)),
+  moverNota: (origenId: string, notaId: string, destinoId: string) =>
+    desenvolver(window.api.moverNota(origenId, notaId, destinoId)),
   usosDeConcepto: (conceptoId: string) => desenvolver(window.api.usosDeConcepto(conceptoId)),
   obtenerFichaConcepto: (conceptoId: string) =>
     desenvolver(window.api.obtenerFichaConcepto(conceptoId)),

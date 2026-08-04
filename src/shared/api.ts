@@ -51,6 +51,18 @@ export interface PedagoGraphApi {
   // --- Conceptos ---
   listarConceptos(): Promise<Resultado<ResumenConceptoDTO[]>>
   buscarConceptos(texto: string): Promise<Resultado<ResumenConceptoDTO[]>>
+  /** Mueve un tema a otra unidad de la MISMA asignatura (conserva su id). */
+  moverTema(
+    asignaturaId: string,
+    temaId: string,
+    unidadDestinoId: string
+  ): Promise<Resultado<AsignaturaDTO>>
+  /** Mueve una nota a otro concepto. Devuelve el concepto de origen ya sin ella. */
+  moverNota(
+    conceptoOrigenId: string,
+    notaId: string,
+    conceptoDestinoId: string
+  ): Promise<Resultado<ConceptoDTO>>
   /** Otros conceptos que enlazan a este desde sus notas con [[Nombre]]. */
   obtenerMenciones(conceptoId: string): Promise<Resultado<ResumenMencionDTO[]>>
   /** Todas las etiquetas usadas, con cuántos conceptos las llevan. */
