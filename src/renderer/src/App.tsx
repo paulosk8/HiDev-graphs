@@ -10,6 +10,11 @@ import { FichaAsignatura } from './features/asignaturas/FichaAsignatura'
 import { ListaAsignaturas } from './features/asignaturas/ListaAsignaturas'
 import { GrafoPage } from './features/grafo/GrafoPage'
 import { AsistentePage } from './features/asistente/AsistentePage'
+import {
+  actualizarMaterial,
+  respaldarMaterial,
+  restaurarMaterial
+} from './features/configuracion/accionesDatos'
 import { ConfiguracionPage } from './features/configuracion/ConfiguracionPage'
 import { ModoEstudioPage } from './features/estudio/ModoEstudioPage'
 import { TerminalPage } from './features/terminal/TerminalPage'
@@ -59,7 +64,64 @@ function Contenido(): JSX.Element {
   )
 }
 
+/**
+ * Atiende las opciones elegidas en la barra de menú del sistema. El menú vive
+ * en el proceso principal y solo manda la intención; aquí se resuelve con la
+ * misma API que usan los botones equivalentes de la interfaz.
+ */
+function useAccionesMenu(): void {
+  useEffect(
+    () =>
+      api.onAccionMenu((accion) => {
+        const { irASeccion, alternarConfiguracion, pedirIntencion, seccion } = useUiStore.getState()
+        switch (accion) {
+          case 'nuevo-concepto':
+            irASeccion('conceptos')
+            pedirIntencion('nuevo-concepto')
+            break
+          case 'nueva-asignatura':
+            irASeccion('asignaturas')
+            pedirIntencion('nueva-asignatura')
+            break
+          case 'ir-asignaturas':
+            irASeccion('asignaturas')
+            break
+          case 'ir-conceptos':
+            irASeccion('conceptos')
+            break
+          case 'ir-mapa':
+            irASeccion('grafo')
+            break
+          case 'ir-repaso':
+            irASeccion('estudio', 'aprendizaje')
+            break
+          case 'ir-asistente':
+            irASeccion('asistente')
+            break
+          case 'ir-terminal':
+            irASeccion('terminal')
+            break
+          case 'ir-configuracion':
+            if (seccion !== 'configuracion') alternarConfiguracion()
+            break
+          case 'actualizar-material':
+            void actualizarMaterial()
+            break
+          case 'respaldar':
+            void respaldarMaterial()
+            break
+          case 'restaurar':
+            void restaurarMaterial()
+            break
+        }
+      }),
+    []
+  )
+}
+
 function App(): JSX.Element {
+  useAccionesMenu()
+
   const cargarConceptos = useConceptosStore((s) => s.cargar)
   const cargarAsignaturas = useAsignaturasStore((s) => s.cargar)
   const tema = useLayoutStore((s) => s.tema)

@@ -1,4 +1,5 @@
 import { app, shell, BrowserWindow } from 'electron'
+import { existsSync } from 'node:fs'
 import { join } from 'path'
 import { inicializarServicios, type Servicios } from './servicios'
 import { registrarHandlersIpc } from './ipc/registrarHandlers'
@@ -13,6 +14,7 @@ import {
   rutaHistorialPorEquipo,
   rutaIndicePorEquipo
 } from './infrastructure/configApp'
+import { instalarMenu } from './menu'
 import {
   habilitarProtocoloRecurso,
   registrarEsquemaRecursoPrivilegiado
@@ -30,16 +32,30 @@ let sincronizador: IndexSyncService | null = null
 let historial: HistorialService | null = null
 let ventanaPrincipal: BrowserWindow | null = null
 
+/**
+ * Icono de la aplicación (el birrete de nodos). En desarrollo vive en el repo;
+ * ya empaquetado, junto a los recursos de la app. Devuelve null si no está
+ * generado todavía (`npm run iconos`) para no romper el arranque.
+ */
+function rutaIcono(): string | null {
+  const candidatos = [
+    join(__dirname, '../../resources/icon.png'),
+    join(process.resourcesPath, 'icon.png')
+  ]
+  return candidatos.find((r) => existsSync(r)) ?? null
+}
+
 function createWindow(): void {
+  const icono = rutaIcono()
   const ventana = new BrowserWindow({
     width: 1200,
     height: 800,
     minWidth: 900,
     minHeight: 600,
     show: false,
-    autoHideMenuBar: true,
     title: 'PedagoGraph',
     backgroundColor: '#ffffff',
+    ...(icono ? { icon: icono } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
@@ -115,6 +131,14 @@ app.whenReady().then(() => {
   registrarHandlersHistorial(historial)
   registrarHandlersTerminal(servicios.vault.raiz)
   habilitarProtocoloRecurso(servicios.vault)
+  // Barra de menú en español (la carpeta del material puede cambiar en caliente,
+  // por eso se pasa como función).
+  instalarMenu(() => resolverRutaVault())
+
+  // En macOS el icono del dock durante el desarrollo es el de Electron; ya
+  // empaquetada, la app lo toma de su propio paquete.
+  const icono = rutaIcono()
+  if (process.platform === 'darwin' && icono) app.dock?.setIcon(icono)
 
   createWindow()
 

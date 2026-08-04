@@ -82,6 +82,7 @@ export const CANALES = {
 
   // Eventos push (main -> renderer)
   vaultCambiado: 'vault:cambiado',
+  menuAccion: 'menu:accion',
   terminalDatos: 'terminal:datos',
   terminalSalida: 'terminal:salida'
 } as const

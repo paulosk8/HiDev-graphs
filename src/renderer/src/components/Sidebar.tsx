@@ -1,3 +1,4 @@
+import { LogoInsignia } from './Logo'
 import { useAsignaturasStore } from '../stores/asignaturasStore'
 import { useConceptosStore } from '../stores/conceptosStore'
 import { useLayoutStore } from '../stores/layoutStore'
@@ -99,9 +100,7 @@ export function Sidebar(): JSX.Element {
       }`}
     >
       <div className={`mb-8 flex items-center ${colapsada ? 'justify-center' : 'gap-2 px-2'}`}>
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-marca-600 text-sm font-bold text-white">
-          P
-        </div>
+        <LogoInsignia className="h-8 w-8" interior="h-5 w-5" />
         {!colapsada && (
           <>
             <span className="text-lg font-semibold text-slate-800">PedagoGraph</span>
@@ -184,6 +183,8 @@ export function Sidebar(): JSX.Element {
       </nav>
 
       <div className="mt-auto w-full space-y-2 border-t border-slate-100 pt-3">
+        {/* El asistente es transversal a las dos capas: vive fuera de los grupos. */}
+        <Item seccion="asistente" etiqueta="Asistente IA" icono="🤖" colapsada={colapsada} />
         {/* Configuración: agrupa Apariencia (modo oscuro), Asistente IA, Datos y copias. */}
         <Item
           seccion="configuracion"

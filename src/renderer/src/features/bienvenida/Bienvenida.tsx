@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { CarpetaNubeDTO } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
+import { LogoInsignia } from '../../components/Logo'
 import { api } from '../../lib/api'
 import { useUiStore } from '../../stores/uiStore'
 import { DialogoGuardarNube } from '../configuracion/DialogoGuardarNube'
@@ -51,9 +52,7 @@ export function Bienvenida({ onListo }: { onListo: () => void }): JSX.Element {
     <div className="flex h-full items-center justify-center bg-slate-50 p-6">
       <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="mb-6 flex flex-col items-center text-center">
-          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-marca-600 text-2xl font-bold text-white">
-            P
-          </div>
+          <LogoInsignia className="mb-4 h-14 w-14 rounded-2xl" interior="h-9 w-9" />
           <h1 className="text-xl font-semibold text-slate-900">Te damos la bienvenida a PedagoGraph</h1>
           <p className="mt-1.5 text-sm text-slate-500">
             Para empezar, elige dónde quieres guardar tu material. Podrás cambiarlo cuando quieras.

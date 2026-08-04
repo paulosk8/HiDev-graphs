@@ -1,4 +1,5 @@
 import type {
+  AccionMenu,
   ClienteMcpId,
   AlmacenamientoDTO,
   CarpetaNubeDTO,
@@ -159,6 +160,12 @@ export interface PedagoGraphApi {
    * Devuelve una función para cancelar la suscripción.
    */
   onVaultCambiado(callback: () => void): () => void
+
+  /**
+   * Se suscribe a las acciones elegidas en la barra de menú del sistema.
+   * Devuelve una función para cancelar la suscripción.
+   */
+  onAccionMenu(callback: (accion: AccionMenu) => void): () => void
 
   // --- Terminal embebida ---
   terminal: {

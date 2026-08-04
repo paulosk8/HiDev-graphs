@@ -1,12 +1,9 @@
 import { useState, type ReactNode } from 'react'
 import { Boton } from '../../components/Boton'
 import { DialogoConfirmacion } from '../../components/DialogoConfirmacion'
-import { api } from '../../lib/api'
-import { useAsignaturasStore } from '../../stores/asignaturasStore'
-import { useConceptosStore } from '../../stores/conceptosStore'
 import { useLayoutStore } from '../../stores/layoutStore'
-import { useUiStore } from '../../stores/uiStore'
 import { AsistentePage } from '../asistente/AsistentePage'
+import { actualizarMaterial, respaldarMaterial, restaurarMaterial } from './accionesDatos'
 import { AlmacenamientoNube } from './AlmacenamientoNube'
 import { HistorialCambios } from './HistorialCambios'
 
@@ -203,62 +200,31 @@ function OpcionTema({
 // --- Datos y copias ---
 
 function DatosYCopias(): JSX.Element {
-  const cargarConceptos = useConceptosStore((s) => s.cargar)
-  const cargarAsignaturas = useAsignaturasStore((s) => s.cargar)
-  const notificar = useUiStore((s) => s.notificar)
-  const notificarError = useUiStore((s) => s.notificarError)
-
   const [actualizando, setActualizando] = useState(false)
   const [respaldando, setRespaldando] = useState(false)
   const [restaurando, setRestaurando] = useState(false)
   const [confirmandoRestaurar, setConfirmandoRestaurar] = useState(false)
   const [mostrarHistorial, setMostrarHistorial] = useState(false)
 
+  // Las tres acciones viven fuera de React (accionesDatos) porque la barra de
+  // menú del sistema ofrece exactamente las mismas: un solo camino para cada una.
   const actualizar = async (): Promise<void> => {
     setActualizando(true)
-    try {
-      const r = await api.reindexar()
-      await Promise.all([cargarConceptos(), cargarAsignaturas()])
-      notificar({
-        tipo: 'exito',
-        mensaje: `Todo actualizado: ${r.conceptos} ${r.conceptos === 1 ? 'concepto' : 'conceptos'} y ${r.asignaturas} ${r.asignaturas === 1 ? 'asignatura' : 'asignaturas'}.`
-      })
-    } catch (error) {
-      notificarError(error)
-    } finally {
-      setActualizando(false)
-    }
+    await actualizarMaterial()
+    setActualizando(false)
   }
 
   const respaldar = async (): Promise<void> => {
     setRespaldando(true)
-    try {
-      const r = await api.respaldar()
-      if (!r.cancelado) notificar({ tipo: 'exito', mensaje: 'Copia de seguridad guardada.' })
-    } catch (error) {
-      notificarError(error)
-    } finally {
-      setRespaldando(false)
-    }
+    await respaldarMaterial()
+    setRespaldando(false)
   }
 
   const restaurar = async (): Promise<void> => {
     setConfirmandoRestaurar(false)
     setRestaurando(true)
-    try {
-      const r = await api.restaurar()
-      if (!r.cancelado) {
-        await Promise.all([cargarConceptos(), cargarAsignaturas()])
-        notificar({
-          tipo: 'exito',
-          mensaje: `Copia restaurada: ${r.conceptos ?? 0} ${r.conceptos === 1 ? 'concepto' : 'conceptos'}, ${r.asignaturas ?? 0} ${r.asignaturas === 1 ? 'asignatura' : 'asignaturas'} y ${r.tareas ?? 0} ${r.tareas === 1 ? 'tarea' : 'tareas'}.`
-        })
-      }
-    } catch (error) {
-      notificarError(error)
-    } finally {
-      setRestaurando(false)
-    }
+    await restaurarMaterial()
+    setRestaurando(false)
   }
 
   return (

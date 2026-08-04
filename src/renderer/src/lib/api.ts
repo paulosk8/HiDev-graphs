@@ -1,4 +1,5 @@
 import type {
+  AccionMenu,
   ClienteMcpId,
   CalidadRepaso,
   CombinarTareasDTO,
@@ -118,5 +119,7 @@ export const api = {
   reindexar: () => desenvolver(window.api.reindexar()),
   respaldar: () => desenvolver(window.api.respaldar()),
   restaurar: () => desenvolver(window.api.restaurar()),
-  onVaultCambiado: (callback: () => void): (() => void) => window.api.onVaultCambiado(callback)
+  onVaultCambiado: (callback: () => void): (() => void) => window.api.onVaultCambiado(callback),
+  onAccionMenu: (callback: (accion: AccionMenu) => void): (() => void) =>
+    window.api.onAccionMenu(callback)
 }

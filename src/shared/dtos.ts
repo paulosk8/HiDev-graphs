@@ -493,3 +493,25 @@ export const COMPONENTES_SUGERIDOS: ReadonlyArray<{ clave: string; nombre: strin
   { clave: 'APE', nombre: 'Aprendizaje práctico experimental' },
   { clave: 'AA', nombre: 'Aprendizaje autónomo' }
 ]
+
+// --- Menú de la aplicación (barra nativa) ---
+
+/**
+ * Acciones que la barra de menú del sistema envía al renderer. El menú vive en
+ * el proceso principal, pero casi todo lo que ofrece son cosas de la interfaz
+ * (navegar, abrir un formulario), así que se resuelven en el renderer con la
+ * misma API que usan los botones equivalentes.
+ */
+export type AccionMenu =
+  | 'nuevo-concepto'
+  | 'nueva-asignatura'
+  | 'ir-asignaturas'
+  | 'ir-conceptos'
+  | 'ir-mapa'
+  | 'ir-repaso'
+  | 'ir-asistente'
+  | 'ir-terminal'
+  | 'ir-configuracion'
+  | 'actualizar-material'
+  | 'respaldar'
+  | 'restaurar'

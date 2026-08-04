@@ -18,6 +18,13 @@ export type Seccion =
  */
 export type Contexto = 'docencia' | 'aprendizaje'
 
+/**
+ * Petición pendiente de la interfaz ("abre el formulario de concepto nuevo").
+ * La lanza quien no puede abrir el formulario directamente —la barra de menú
+ * del sistema— y la recoge la pantalla correspondiente cuando se monta.
+ */
+export type Intencion = 'nuevo-concepto' | 'nueva-asignatura'
+
 export type TipoAviso = 'exito' | 'error' | 'info'
 
 export interface Aviso {
@@ -33,6 +40,8 @@ interface UiState {
   conceptoSeleccionadoId: string | null
   asignaturaSeleccionadaId: string | null
   avisos: Aviso[]
+  /** Formulario que hay que abrir en cuanto la pantalla que lo tiene esté lista. */
+  intencion: Intencion | null
 
   /** Navega a una sección; si se indica, cambia también el contexto (docencia/aprendizaje). */
   irASeccion: (seccion: Seccion, contexto?: Contexto) => void
@@ -40,6 +49,10 @@ interface UiState {
   alternarConfiguracion: () => void
   seleccionarConcepto: (id: string | null) => void
   seleccionarAsignatura: (id: string | null) => void
+  /** Pide abrir un formulario (lo atiende la pantalla correspondiente). */
+  pedirIntencion: (intencion: Intencion) => void
+  /** La pantalla marca la petición como atendida. */
+  limpiarIntencion: () => void
 
   notificar: (aviso: Omit<Aviso, 'id'>) => void
   /** Traduce un error capturado a un aviso humano (mensaje + sugerencia). */
@@ -62,6 +75,7 @@ export const useUiStore = create<UiState>((set) => ({
   conceptoSeleccionadoId: null,
   asignaturaSeleccionadaId: null,
   avisos: [],
+  intencion: null,
 
   irASeccion: (seccion, contexto) =>
     set((estado) => ({
@@ -92,6 +106,9 @@ export const useUiStore = create<UiState>((set) => ({
     }),
   seleccionarConcepto: (id) => set({ conceptoSeleccionadoId: id }),
   seleccionarAsignatura: (id) => set({ asignaturaSeleccionadaId: id }),
+
+  pedirIntencion: (intencion) => set({ intencion }),
+  limpiarIntencion: () => set({ intencion: null }),
 
   notificar: (aviso) =>
     set((estado) => ({ avisos: [...estado.avisos, { ...aviso, id: ++secuenciaAviso }] })),
