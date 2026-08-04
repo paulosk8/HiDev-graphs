@@ -23,6 +23,7 @@ import { empezarArrastreDe } from '../features/lienzo/arrastreAlLienzo'
 export function PanelVistazo(): JSX.Element | null {
   const pila = useVistazoStore((s) => s.pila)
   const volver = useVistazoStore((s) => s.volver)
+  const irA = useVistazoStore((s) => s.irA)
   const cerrar = useVistazoStore((s) => s.cerrar)
   const llevarAlLienzo = useVistazoStore((s) => s.llevarAlLienzo)
   const irAConcepto = useUiStore((s) => s.seleccionarConcepto)
@@ -31,12 +32,16 @@ export function PanelVistazo(): JSX.Element | null {
   const conceptoId = pila[pila.length - 1] ?? null
   const [concepto, setConcepto] = useState<ConceptoDTO | null>(null)
   const [cargando, setCargando] = useState(false)
+  /** Nombre de cada concepto de la pila, para rotular sus pestañas. */
+  const [nombres, setNombres] = useState<Record<string, string>>({})
 
   const cargar = useCallback(async () => {
     if (!conceptoId) return
     setCargando(true)
     try {
-      setConcepto((await api.obtenerFichaConcepto(conceptoId)).concepto)
+      const c = (await api.obtenerFichaConcepto(conceptoId)).concepto
+      setConcepto(c)
+      setNombres((n) => ({ ...n, [c.id]: c.nombre }))
     } catch {
       setConcepto(null)
     } finally {
@@ -73,9 +78,42 @@ export function PanelVistazo(): JSX.Element | null {
 
   return (
     <aside
-      className="flex h-full w-[26rem] shrink-0 flex-col border-l border-slate-200 bg-white"
+      className="flex h-full shrink-0 border-l border-slate-200 bg-white"
       aria-label="Vistazo al concepto"
     >
+      {/* Pestañas verticales: al ir tirando de enlaces se acumulan varios
+          conceptos, y con solo "← volver" había que deshacer uno a uno para
+          llegar al primero. Aquí se salta a cualquiera de un clic. */}
+      {pila.length > 1 && (
+        <nav
+          className="flex w-9 shrink-0 flex-col items-center gap-1 border-r border-slate-100 bg-slate-50 py-2"
+          aria-label="Conceptos abiertos"
+        >
+          {pila.map((id, i) => {
+            const activo = i === pila.length - 1
+            const nombre = nombres[id] ?? id
+            return (
+              <button
+                key={`${id}-${i}`}
+                onClick={() => irA(i)}
+                title={nombre}
+                aria-current={activo}
+                className={`w-7 rounded px-1 py-2 text-[10px] font-semibold uppercase transition ${
+                  activo
+                    ? 'bg-marca-600 text-white'
+                    : 'text-slate-500 hover:bg-white hover:text-slate-800'
+                }`}
+              >
+                {/* Dos letras: el ancho de la franja no da para más y el
+                    título completo está en el tooltip. */}
+                {nombre.slice(0, 2)}
+              </button>
+            )
+          })}
+        </nav>
+      )}
+
+      <div className="flex h-full w-[26rem] flex-col">
       <header className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
         {pila.length > 1 && (
           <button
@@ -201,6 +239,7 @@ export function PanelVistazo(): JSX.Element | null {
           </button>
         </footer>
       )}
+      </div>
     </aside>
   )
 }

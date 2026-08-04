@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { LadoNodoDTO, LienzoDTO, NodoLienzoDTO, NotaDTO, RecursoDTO } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
+import { Modal } from '../../components/Modal'
 import { ContenidoFormateado } from '../../components/ContenidoFormateado'
 import { api } from '../../lib/api'
 import { useConceptosStore } from '../../stores/conceptosStore'
@@ -723,16 +724,21 @@ export function LienzoEditor({
       )}
 
 
-      {/* Anclado al área del lienzo, no a la ventana: con el panel lateral
-          abierto, el borde derecho de la ventana caía fuera de la vista. */}
+      {/* En modal y no flotando sobre el lienzo: el área de dibujo mide 3000 px,
+          así que posicionarlo contra su borde derecho lo mandaba fuera de la
+          vista en cuanto el panel lateral ocupaba sitio. */}
       {agregando && (
-        <div className="absolute right-6 top-4 z-30">
+        <Modal
+          titulo="Añadir un concepto al lienzo"
+          descripcion="Busca uno de los que ya tienes, o crea uno nuevo."
+          onCerrar={() => setAgregando(false)}
+        >
           <BuscadorConceptos
             excluir={lienzo.nodes.map((n) => conceptoDeArchivo(n.file) ?? '').filter(Boolean)}
             onSeleccionar={agregarConcepto}
             onCerrar={() => setAgregando(false)}
           />
-        </div>
+        </Modal>
       )}
     </div>
   )

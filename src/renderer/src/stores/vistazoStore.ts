@@ -16,6 +16,10 @@ interface VistazoState {
   pila: string[]
   abrir: (conceptoId: string) => void
   volver: () => void
+  /** Salta a una de las pestañas abiertas (recorta la pila hasta ahí). */
+  irA: (indice: number) => void
+  /** Cierra una pestaña concreta. */
+  cerrarUna: (indice: number) => void
   cerrar: () => void
 
   /**
@@ -48,6 +52,8 @@ export const useVistazoStore = create<VistazoState>((set) => ({
       return { pila: [...s.pila, conceptoId] }
     }),
   volver: () => set((s) => ({ pila: s.pila.slice(0, -1) })),
+  irA: (indice) => set((s) => ({ pila: s.pila.slice(0, indice + 1) })),
+  cerrarUna: (indice) => set((s) => ({ pila: s.pila.filter((_, i) => i !== indice) })),
   llevarAlLienzo: null,
   registrarLlevarAlLienzo: (fn) => set({ llevarAlLienzo: fn }),
   cerrar: () => set({ pila: [] })
