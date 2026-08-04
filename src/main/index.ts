@@ -21,8 +21,12 @@ import {
 } from './protocoloRecurso'
 import { CANALES } from '../shared/canales'
 
-// Nombre visible de la app (menú de macOS, avisos del sistema).
+// Nombre visible de la app (avisos del sistema, carpeta de datos).
 app.setName('PedagoGraph')
+// Identidad en la barra de tareas de Windows: sin esto agrupa la ventana bajo
+// "Electron" y el aviso emergente muestra ese nombre. En macOS el nombre sale
+// del paquete de la app (ver scripts/marca-dev.ts para el modo desarrollo).
+app.setAppUserModelId('com.pedagograph.app')
 
 // El esquema recurso:// debe registrarse antes de que la app esté lista.
 registrarEsquemaRecursoPrivilegiado()
