@@ -6,7 +6,6 @@ import { useConceptosStore } from '../../stores/conceptosStore'
 import { useUiStore } from '../../stores/uiStore'
 import { useVistazoStore } from '../../stores/vistazoStore'
 import { BuscadorConceptos } from '../vinculos/BuscadorConceptos'
-import { SelectorMaterial } from './SelectorMaterial'
 import { colorDeArista, COLORES_ARISTA, COLORES_GRUPO, colorDeGrupo } from './coloresLienzo'
 import { TEMAS_OSCUROS, useLayoutStore } from '../../stores/layoutStore'
 
@@ -86,6 +85,7 @@ export function LienzoEditor({
   const notificarError = useUiStore((s) => s.notificarError)
   const conceptos = useConceptosStore((s) => s.lista)
   const abrirVistazo = useVistazoStore((s) => s.abrir)
+  const registrarLlevar = useVistazoStore((s) => s.registrarLlevarAlLienzo)
 
   const [lienzo, setLienzo] = useState<LienzoDTO | null>(null)
   const [cargando, setCargando] = useState(true)
@@ -96,7 +96,6 @@ export function LienzoEditor({
   const [aristaEditando, setAristaEditando] = useState<string | null>(null)
   /** Tarjeta de texto que se está escribiendo. */
   const [textoEditando, setTextoEditando] = useState<string | null>(null)
-  const [eligiendoMaterial, setEligiendoMaterial] = useState(false)
   /** Selección múltiple: agrupar exige poder elegir varias tarjetas. */
   const [seleccion, setSeleccion] = useState<Set<string>>(new Set())
   /** Recuadro de selección en curso (arrastrando sobre el fondo). */
@@ -268,6 +267,20 @@ export function LienzoEditor({
       nodes: l.nodes.map((n) => (n.id === id ? { ...n, color: clave || undefined } : n))
     }))
 
+  /**
+   * El panel lateral necesita poder mandar cosas aquí. Se registra mientras el
+   * editor está montado y se limpia al salir, para que fuera del lienzo el
+   * panel no ofrezca una acción que no lleva a ninguna parte.
+   */
+  useEffect(() => {
+    registrarLlevar((que) => {
+      if (que.tipo === 'concepto') agregarConcepto(que.conceptoId)
+      else if (que.archivo) agregarMaterial(que.conceptoId, { archivo: que.archivo })
+    })
+    return () => registrarLlevar(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [registrarLlevar, lienzo?.id])
+
   const agregarConcepto = (conceptoId: string): void => {
     const c = nombrePorConcepto.get(conceptoId)
     cambiar((l) => ({
@@ -290,19 +303,6 @@ export function LienzoEditor({
     setAgregando(false)
   }
 
-  /** Tarjeta de texto libre: para lo que no es un concepto (una idea, un aviso). */
-  const agregarTexto = (): void => {
-    const id = nuevoId('n')
-    cambiar((l) => ({
-      ...l,
-      nodes: [
-        ...l.nodes,
-        { id, type: 'text' as const, x: 80, y: 80 + l.nodes.length * 24, width: 240, height: 120, text: '' }
-      ]
-    }))
-    setTextoEditando(id)
-  }
-
   const cambiarTexto = (id: string, texto: string): void =>
     cambiar((l) => ({ ...l, nodes: l.nodes.map((n) => (n.id === id ? { ...n, text: texto } : n)) }))
 
@@ -322,7 +322,6 @@ export function LienzoEditor({
         }
       ]
     }))
-    setEligiendoMaterial(false)
   }
 
   const cambiarArista = (id: string, campos: { label?: string; color?: string }): void =>
@@ -415,12 +414,6 @@ export function LienzoEditor({
             Agrupar ({seleccion.size})
           </Boton>
         )}
-        <Boton variante="secundario" onClick={() => setEligiendoMaterial(true)}>
-          + Material
-        </Boton>
-        <Boton variante="secundario" onClick={agregarTexto}>
-          + Nota suelta
-        </Boton>
         <Boton variante="secundario" onClick={() => setAgregando(true)}>
           + Añadir concepto
         </Boton>
@@ -670,14 +663,6 @@ export function LienzoEditor({
         </div>
       )}
 
-      {eligiendoMaterial && (
-        <div className="absolute right-6 top-20 z-30">
-          <SelectorMaterial
-            onElegir={agregarMaterial}
-            onCerrar={() => setEligiendoMaterial(false)}
-          />
-        </div>
-      )}
 
       {agregando && (
         <div className="absolute right-6 top-20 z-30">
