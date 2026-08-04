@@ -43,10 +43,18 @@ El usuario objetivo **no es técnico**. Nunca ve archivos, YAML, rutas, ni jerga
 ## 3. Persistencia
 
 ### Fuente de verdad: el sistema de archivos (vault YAML)
-La app crea automáticamente, **sin preguntar nada**, un "vault" en la carpeta Documentos del usuario:
+La app crea automáticamente una carpeta de material (el "vault"). En el **primer arranque**
+pregunta una sola cosa —**dónde guardarla**— y ofrece dos opciones:
+
+- **En este equipo**: `Documentos/PedagoGraph/` (opción por defecto).
+- **En mi nube**: dentro de una carpeta de **Google Drive / OneDrive** que el cliente de
+  escritorio ya sincroniza (modelo Obsidian: la nube sincroniza, la app no). Se puede cambiar
+  después, y de una nube a otra, en Configuración → Datos y copias.
+
+En cualquiera de los dos casos la estructura es la misma:
 
 ```
-Documentos/PedagoGraph/
+<carpeta del material>/     # Documentos/PedagoGraph  o  <tu nube>/<nombre elegido>
   conceptos/
     <slug>/
       concepto.yaml         # metadatos + relaciones + lista de recursos
@@ -54,15 +62,16 @@ Documentos/PedagoGraph/
   asignaturas/
     <slug>/
       pea.yaml              # plan de estudios de la asignatura (unidades/temas/semanas/componentes/vínculos a conceptos)
-  .index/
-    index.db               # índice SQLite (derivado, reconstruible)
+  tareas/
 ```
 
 - El **usuario nunca ve ni edita YAML**. Toda entrada de datos es por formularios y drag & drop. **La app escribe los YAML.**
 - `slug` es un detalle interno (nombre de carpeta seguro). Nunca se muestra al usuario.
 
 ### Índice: SQLite (better-sqlite3)
-- Vive en `vault/.index/index.db`, en el **main process**.
+- Vive **fuera del vault**, en la carpeta de datos de usuario de Electron (`index.db`), en el
+  **main process**. Es por-equipo a propósito: es derivado y reconstruible, y no debe viajar
+  por la nube ni provocar conflictos del cliente de sincronización.
 - Es **siempre reconstruible** escaneando el vault → comando **"Reindexar"**.
 - Sincronización **unidireccional**: `filesystem (YAML) → índice (SQLite)`. Nunca al revés. Los YAML mandan.
 - Se mantiene vivo observando el vault con **chokidar**.
@@ -123,7 +132,9 @@ src/
 
 ## 6. Principios UX (críticos — el usuario es un docente no técnico)
 
-- **Cero configuración**: funciona al primer arranque. Sin pantallas de settings en el MVP.
+- **Casi cero configuración**: funciona al primer arranque. La única pregunta inicial es dónde
+  guardar el material (este equipo o tu nube) y qué capas usar; ambas tienen respuesta por
+  defecto y se cambian después en Configuración.
 - **Lenguaje pedagógico, nunca técnico**: "Mis asignaturas", "Conceptos", "Material", "Semana".
   Prohibido en la UI: "nodo", "slug", "índice", "YAML", "vault", "repositorio", "base de datos".
 - **Crear cualquier cosa = 2-3 campos + botón guardar.** Lo compuesto (crear asignatura) usa **wizard paso a paso** (unidades → temas → semanas con componentes).
@@ -164,7 +175,7 @@ src/
 > Cada bloque se entregó en su rama `feat/*` con PR. Siguiente: Fase 2 (grafo).
 
 
-1. `npm run dev` abre la app y crea el vault en `Documentos/PedagoGraph` si no existe.
+1. `npm run dev` abre la app y crea la carpeta de material si no existe (por defecto `Documentos/PedagoGraph`).
 2. Puedo crear el concepto "Divide y vencerás", arrastrarle un PDF y verlo listado en su ficha.
 3. Puedo crear la asignatura "Algoritmos 2026A" con 1 unidad, 2 temas y componentes CD/APE/AA, en menos de 2 minutos y sin leer documentación.
 4. Puedo vincular el tema 1 al concepto y la ficha del concepto muestra "Se usa en: Algoritmos 2026A › Unidad 1 › Tema 1".
