@@ -10,15 +10,17 @@
 ## Qué cambia
 Reemplaza la sincronización por backend propio (Supabase) por el **modelo Obsidian**: el material vive en una carpeta que el cliente de Google Drive / OneDrive ya sincroniza. Sincroniza también los archivos (antes no), sin login ni backend. Añade **bienvenida de primer arranque** e **historial de versiones**.
 
-## Contenido (3 commits)
+## Contenido (4 commits)
 1. `feat(almacenamiento)` — almacenamiento en nube + bienvenida + capas + eliminación de Supabase
 2. `feat(historial)` — historial de versiones del material con restaurar
 3. `chore(scripts)` — datos de prueba (5 conceptos conectados + asignatura)
+4. `feat(almacenamiento)` — cambiar de carpeta de nube cuando ya se usa una (Drive ↔ OneDrive)
 
 ## Nuevo: almacenamiento
 - Elegir dónde se guarda el material (este equipo / carpeta de nube) en Configuración → Datos y copias.
 - Autodetección de carpetas de Google Drive y OneDrive (macOS y Windows).
 - Diálogo tipo Obsidian: ubicación + nombre de carpeta + vista previa + selector nativo (crear carpeta).
+- **Cambiar de carpeta o de nube cuando ya se usa una** (p. ej. pasar de Google Drive a OneDrive): la opción "En mi nube" ofrece "Cambiar…" además de marcarse como actual; el diálogo preselecciona la ubicación de hoy ("Ahora aquí"), precarga el nombre de la carpeta y avisa de que la carpeta anterior se conserva como respaldo.
 - Índice SQLite por-equipo (userData), fuera de la carpeta de nube; cambio de almacenamiento en caliente (re-apunta el núcleo y recarga la ventana, sin reiniciar el proceso).
 
 ## Nuevo: bienvenida de primer arranque

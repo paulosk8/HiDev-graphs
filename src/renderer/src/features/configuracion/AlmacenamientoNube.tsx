@@ -77,6 +77,9 @@ export function AlmacenamientoNube(): JSX.Element {
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-slate-800">
             Tu material se guarda en {estado?.nombreVisible ?? 'este equipo'}
+            {estado?.modo === 'nube' && estado.ruta && (
+              <> › {nombreDeCarpeta(estado.ruta)}</>
+            )}
           </p>
           <p className="mt-0.5 text-xs text-slate-500">
             {estado?.modo === 'nube'
@@ -97,14 +100,21 @@ export function AlmacenamientoNube(): JSX.Element {
           titulo="Este equipo"
           descripcion="Guarda tu material en la carpeta Documentos de este ordenador."
           actual={estado?.modo === 'local'}
+          // En este equipo la carpeta es siempre Documentos: si ya está ahí, no hay nada que cambiar.
+          etiquetaAccion={estado?.modo === 'local' ? null : 'Usar'}
           onElegir={() => setConfirmandoLocal(true)}
         />
 
         <OpcionAlmacenamiento
           icono="☁️"
           titulo="En mi nube (Google Drive / OneDrive)"
-          descripcion="Elige la ubicación y crea la carpeta. Tu nube lo sincroniza entre tus equipos."
+          descripcion={
+            estado?.modo === 'nube'
+              ? 'Puedes cambiar de carpeta o de nube cuando quieras (por ejemplo, pasar a OneDrive).'
+              : 'Elige la ubicación y crea la carpeta. Tu nube lo sincroniza entre tus equipos.'
+          }
           actual={estado?.modo === 'nube'}
+          etiquetaAccion={estado?.modo === 'nube' ? 'Cambiar…' : 'Elegir…'}
           onElegir={() => setAbrirNube(true)}
         />
       </div>
@@ -127,10 +137,20 @@ export function AlmacenamientoNube(): JSX.Element {
       )}
 
       {abrirNube && (
-        <DialogoGuardarNube carpetas={carpetas} onCerrar={() => setAbrirNube(false)} />
+        <DialogoGuardarNube
+          carpetas={carpetas}
+          carpetaActual={estado?.modo === 'nube' ? estado.ruta : undefined}
+          onCerrar={() => setAbrirNube(false)}
+        />
       )}
     </div>
   )
+}
+
+/** Último segmento de una ruta: el nombre de la carpeta, lo único que se muestra. */
+function nombreDeCarpeta(ruta: string): string {
+  const partes = ruta.split(/[\\/]/).filter(Boolean)
+  return partes[partes.length - 1] ?? ruta
 }
 
 function OpcionAlmacenamiento({
@@ -138,12 +158,15 @@ function OpcionAlmacenamiento({
   titulo,
   descripcion,
   actual,
+  etiquetaAccion,
   onElegir
 }: {
   icono: string
   titulo: string
   descripcion: string
   actual: boolean
+  /** Texto del botón; `null` cuando esta opción no admite ninguna acción. */
+  etiquetaAccion: string | null
   onElegir: () => void
 }): JSX.Element {
   return (
@@ -159,14 +182,15 @@ function OpcionAlmacenamiento({
         <p className="text-sm font-medium text-slate-800">{titulo}</p>
         <p className="mt-0.5 text-xs text-slate-500">{descripcion}</p>
       </div>
-      <div className="shrink-0">
-        {actual ? (
+      <div className="flex shrink-0 items-center gap-2">
+        {actual && (
           <span className="rounded-full bg-marca-100 px-3 py-1 text-xs font-medium text-marca-700">
             Actual
           </span>
-        ) : (
+        )}
+        {etiquetaAccion && (
           <Boton variante="secundario" onClick={onElegir}>
-            {titulo.startsWith('En mi nube') ? 'Elegir…' : 'Usar'}
+            {etiquetaAccion}
           </Boton>
         )}
       </div>
