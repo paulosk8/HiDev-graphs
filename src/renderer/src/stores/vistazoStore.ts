@@ -27,7 +27,14 @@ interface VistazoState {
    * lienzo a toda la aplicación.
    */
   llevarAlLienzo:
-    | ((que: { tipo: 'concepto' | 'material'; conceptoId: string; archivo?: string }) => void)
+    | ((que: {
+        tipo: 'concepto' | 'nota' | 'material'
+        conceptoId: string
+        /** Solo en 'material'. */
+        archivo?: string
+        /** Solo en 'nota'. */
+        notaId?: string
+      }) => void)
     | null
   registrarLlevarAlLienzo: (fn: VistazoState['llevarAlLienzo']) => void
 }

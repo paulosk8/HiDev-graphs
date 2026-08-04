@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { LadoNodoDTO, LienzoDTO, NodoLienzoDTO, NotaDTO, RecursoDTO } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
+import { ContenidoFormateado } from '../../components/ContenidoFormateado'
 import { api } from '../../lib/api'
 import { useConceptosStore } from '../../stores/conceptosStore'
 import { useUiStore } from '../../stores/uiStore'
@@ -8,6 +9,11 @@ import { useVistazoStore } from '../../stores/vistazoStore'
 import { BuscadorConceptos } from '../vinculos/BuscadorConceptos'
 import { colorDeArista, COLORES_ARISTA, COLORES_GRUPO, colorDeGrupo } from './coloresLienzo'
 import { TEMAS_OSCUROS, useLayoutStore } from '../../stores/layoutStore'
+import {
+  leerArrastre,
+  TIPO_ARRASTRE,
+  type ContenidoArrastrado
+} from './arrastreAlLienzo'
 
 /**
  * Lienzo: mapa conceptual libre. El docente coloca tarjetas donde quiere y las
@@ -274,12 +280,64 @@ export function LienzoEditor({
    */
   useEffect(() => {
     registrarLlevar((que) => {
-      if (que.tipo === 'concepto') agregarConcepto(que.conceptoId)
-      else if (que.archivo) agregarMaterial(que.conceptoId, { archivo: que.archivo })
+      // Sin posición de cursor (vino de un clic, no de un arrastre) se coloca
+      // en una zona visible del lienzo, no en el centro del área de 3000 px.
+      const centro = { x: 320, y: 220 }
+      if (que.tipo === 'concepto') {
+        soltarContenido({ tipo: 'concepto', conceptoId: que.conceptoId }, centro)
+      } else if (que.tipo === 'nota' && que.notaId) {
+        soltarContenido(
+          { tipo: 'nota', conceptoId: que.conceptoId, notaId: que.notaId },
+          centro
+        )
+      } else if (que.tipo === 'material' && que.archivo) {
+        soltarContenido(
+          { tipo: 'material', conceptoId: que.conceptoId, archivo: que.archivo },
+          centro
+        )
+      }
     })
     return () => registrarLlevar(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [registrarLlevar, lienzo?.id])
+
+  /**
+   * Crea la tarjeta correspondiente a lo soltado, centrada en el cursor. Es el
+   * único sitio que decide tamaños, para que una nota no salga del tamaño de
+   * un concepto ni al revés.
+   */
+  const soltarContenido = (contenido: ContenidoArrastrado, en: Punto): void => {
+    const medidas =
+      contenido.tipo === 'material'
+        ? { width: 260, height: 220 }
+        : contenido.tipo === 'nota'
+          ? { width: 260, height: 170 }
+          : { width: 260, height: 180 }
+
+    const base = {
+      id: nuevoId('n'),
+      type: 'file' as const,
+      x: Math.round(en.x - medidas.width / 2),
+      y: Math.round(en.y - medidas.height / 2),
+      ...medidas
+    }
+
+    cambiar((l) => ({
+      ...l,
+      nodes: [
+        ...l.nodes,
+        contenido.tipo === 'material'
+          ? { ...base, file: `conceptos/${contenido.conceptoId}/${contenido.archivo}` }
+          : contenido.tipo === 'nota'
+            ? {
+                ...base,
+                file: `conceptos/${contenido.conceptoId}/concepto.yaml`,
+                notaId: contenido.notaId
+              }
+            : { ...base, file: `conceptos/${contenido.conceptoId}/concepto.yaml` }
+      ]
+    }))
+  }
 
   const agregarConcepto = (conceptoId: string): void => {
     const c = nombrePorConcepto.get(conceptoId)
@@ -305,24 +363,6 @@ export function LienzoEditor({
 
   const cambiarTexto = (id: string, texto: string): void =>
     cambiar((l) => ({ ...l, nodes: l.nodes.map((n) => (n.id === id ? { ...n, text: texto } : n)) }))
-
-  const agregarMaterial = (conceptoId: string, recurso: { archivo: string }): void => {
-    cambiar((l) => ({
-      ...l,
-      nodes: [
-        ...l.nodes,
-        {
-          id: nuevoId('n'),
-          type: 'file' as const,
-          x: 80 + l.nodes.length * 28,
-          y: 100 + l.nodes.length * 22,
-          width: 260,
-          height: 200,
-          file: `conceptos/${conceptoId}/${recurso.archivo}`
-        }
-      ]
-    }))
-  }
 
   const cambiarArista = (id: string, campos: { label?: string; color?: string }): void =>
     cambiar((l) => ({
@@ -469,7 +509,26 @@ export function LienzoEditor({
         {/* Área de dibujo con tamaño propio: el scroll ocurre AQUÍ dentro, no
             en la ventana. Antes lo fijaba el `min-width` del SVG, que al ser
             absoluto ensanchaba a su vez el contenedor de la aplicación. */}
-        <div className="relative" style={{ width: ANCHO_LIENZO, height: ALTO_LIENZO }}>
+        <div
+          className="relative"
+          style={{ width: ANCHO_LIENZO, height: ALTO_LIENZO }}
+          // `preventDefault` en dragOver es lo que habilita el soltar: sin él
+          // el navegador rechaza el drop y no llega el evento.
+          onDragOver={(e) => {
+            if (e.dataTransfer.types.includes(TIPO_ARRASTRE)) {
+              e.preventDefault()
+              e.dataTransfer.dropEffect = 'copy'
+            }
+          }}
+          onDrop={(e) => {
+            const contenido = leerArrastre(e)
+            if (!contenido) return
+            e.preventDefault()
+            // La posición se toma del cursor DENTRO del área de dibujo, no de
+            // la ventana: la tarjeta debe caer donde la soltaste.
+            soltarContenido(contenido, posicionEnLienzo(e))
+          }}
+        >
         <svg className="pointer-events-none absolute inset-0 h-full w-full">
           <defs>
             <marker id="punta" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
@@ -716,6 +775,9 @@ function TarjetaLienzo({
   // panel puede haber cambiado algo.
   const [notas, setNotas] = useState<NotaDTO[]>([])
   const [recursos, setRecursos] = useState<RecursoDTO[]>([])
+  // Si la tarjeta apunta a una nota concreta, es la que se muestra.
+  const nota = nodo.notaId ? (notas.find((n) => n.id === nodo.notaId) ?? null) : null
+
   useEffect(() => {
     if (!conceptoId) return
     let vivo = true
@@ -759,7 +821,9 @@ function TarjetaLienzo({
         <p className="flex-1 truncate text-sm font-medium text-slate-800">
           {material
             ? material.archivo.split('/').pop()
-            : (concepto?.nombre ?? 'Concepto no encontrado')}
+            : nota
+              ? nota.titulo || `${concepto?.nombre ?? ''} · nota`
+              : (concepto?.nombre ?? 'Concepto no encontrado')}
         </p>
         <button
           onMouseDown={(e) => e.stopPropagation()}
@@ -771,7 +835,17 @@ function TarjetaLienzo({
         </button>
       </div>
 
-      {material ? (
+      {nota ? (
+        // Tarjeta de una nota concreta del concepto: muestra su contenido con
+        // el mismo renderizador que la ficha, así respeta Markdown y HTML.
+        <div className="mt-1 min-h-0 flex-1 overflow-y-auto pr-1">
+          <ContenidoFormateado
+            texto={nota.contenido}
+            formato={nota.formato}
+            vacio="Nota vacía"
+          />
+        </div>
+      ) : material ? (
         // El propio protocolo del vault sirve el archivo; el navegador decide
         // cómo pintarlo (imagen o PDF). Lo que no sabe abrir queda con su
         // nombre y el botón de abrir fuera, que ya existe en la ficha.

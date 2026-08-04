@@ -5,6 +5,7 @@ import { NotasConcepto } from '../features/conceptos/NotasConcepto'
 import { ZonaMaterial } from '../features/conceptos/ZonaMaterial'
 import { useUiStore } from '../stores/uiStore'
 import { useVistazoStore } from '../stores/vistazoStore'
+import { empezarArrastreDe } from '../features/lienzo/arrastreAlLienzo'
 
 /**
  * Panel lateral del concepto: se abre al pulsar un `[[enlace]]` o una tarjeta
@@ -123,13 +124,18 @@ export function PanelVistazo(): JSX.Element | null {
               </div>
             )}
 
-            {/* Estando en un lienzo, el concepto entero se puede llevar allí. */}
+            {/* En un lienzo, todo esto se arrastra allí. Se conserva el clic
+                como alternativa: arrastrar no siempre es cómodo, y quien no
+                descubra el gesto tiene que poder igual. */}
             {llevarAlLienzo && (
               <button
+                draggable
+                onDragStart={(e) => empezarArrastreDe(e, { tipo: 'concepto', conceptoId })}
                 onClick={() => llevarAlLienzo({ tipo: 'concepto', conceptoId })}
-                className="mt-3 w-full rounded-lg border border-marca-200 bg-marca-50 px-3 py-1.5 text-xs font-medium text-marca-700 transition hover:bg-marca-100"
+                title="Arrástralo al lienzo, o pulsa para añadirlo"
+                className="mt-3 w-full cursor-grab rounded-lg border border-marca-200 bg-marca-50 px-3 py-1.5 text-xs font-medium text-marca-700 transition hover:bg-marca-100 active:cursor-grabbing"
               >
-                + Llevar este concepto al lienzo
+                ⠿ Arrastra este concepto al lienzo
               </button>
             )}
 
@@ -147,6 +153,14 @@ export function PanelVistazo(): JSX.Element | null {
                   {concepto.recursos.map((r) => (
                     <li key={r.id}>
                       <button
+                        draggable
+                        onDragStart={(e) =>
+                          empezarArrastreDe(e, {
+                            tipo: 'material',
+                            conceptoId: concepto.id,
+                            archivo: r.archivo
+                          })
+                        }
                         onClick={() =>
                           llevarAlLienzo({
                             tipo: 'material',
@@ -154,13 +168,46 @@ export function PanelVistazo(): JSX.Element | null {
                             archivo: r.archivo
                           })
                         }
-                        className="w-full truncate rounded px-2 py-1 text-left text-xs text-marca-700 hover:bg-marca-50"
+                        title="Arrástralo al lienzo, o pulsa para añadirlo"
+                        className="w-full cursor-grab truncate rounded px-2 py-1 text-left text-xs text-marca-700 hover:bg-marca-50 active:cursor-grabbing"
                       >
-                        + Llevar «{r.nombre}» al lienzo
+                        ⠿ {r.nombre}
                       </button>
                     </li>
                   ))}
                 </ul>
+              )}
+
+              {/* Las notas también se arrastran, cada una por separado. */}
+              {llevarAlLienzo && concepto.notas.length > 0 && (
+                <div className="mt-4">
+                  <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Arrastra una nota al lienzo
+                  </h3>
+                  <ul className="space-y-1">
+                    {concepto.notas.map((n) => (
+                      <li key={n.id}>
+                        <button
+                          draggable
+                          onDragStart={(e) =>
+                            empezarArrastreDe(e, {
+                              tipo: 'nota',
+                              conceptoId: concepto.id,
+                              notaId: n.id
+                            })
+                          }
+                          onClick={() =>
+                            llevarAlLienzo({ tipo: 'nota', conceptoId: concepto.id, notaId: n.id })
+                          }
+                          title="Arrástrala al lienzo, o pulsa para añadirla"
+                          className="w-full cursor-grab truncate rounded px-2 py-1 text-left text-xs text-marca-700 hover:bg-marca-50 active:cursor-grabbing"
+                        >
+                          ⠿ {n.titulo || 'Nota sin título'}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
             </section>
 
