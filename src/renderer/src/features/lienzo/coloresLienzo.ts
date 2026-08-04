@@ -2,42 +2,52 @@
  * Colores de los grupos del lienzo.
  *
  * Obsidian numera sus colores del "1" al "6" y los guardamos igual, para que
- * un lienzo abierto allí conserve el color. Lo que NO copiamos son sus tonos:
- * se han elegido para que el título del grupo se lea sobre su fondo con al
- * menos 4,5:1 (el mínimo recomendado para texto pequeño), que es el mismo
- * criterio de los temas de accesibilidad de la app.
+ * un lienzo abierto allí conserve el color.
  *
- * `fondo` va muy tenue a propósito: el grupo se pinta DEBAJO de las tarjetas y
- * un fondo saturado dejaría ilegible lo que contiene. El color fuerte se
- * reserva para el borde y el título, que es donde se distingue el grupo.
+ * Decisión clave: el relleno es **translúcido**, no un color sólido. Un relleno
+ * opaco solo puede estar bien sobre UN fondo — el primer intento se calculó
+ * sobre lienzo claro y en modo oscuro aparecía como una mancha casi blanca,
+ * más llamativa que las propias tarjetas. Al tintar con alfa bajo, el grupo se
+ * mezcla con el lienzo que haya debajo y funciona igual en claro, oscuro,
+ * cálido y alto contraste, sin una paleta por tema.
+ *
+ * El color fuerte se reserva para el borde y el título: es donde se distingue
+ * un grupo de otro sin competir con lo que contiene.
  */
+
 export interface ColorGrupo {
   /** Clave de Obsidian ("1".."6"). */
   clave: string
   nombre: string
-  /** Relleno del grupo, muy tenue para no tapar las tarjetas. */
+  /** Tinte translúcido del relleno; se mezcla con el lienzo que haya debajo. */
   fondo: string
   borde: string
-  /** Texto del título: mide >= 4,5:1 sobre `fondo`. */
+  /** Título sobre lienzo claro. */
   texto: string
+  /** Título sobre lienzo oscuro: el tono de arriba no se leería. */
+  textoOscuro: string
 }
 
+/** Alfa del relleno. Suficiente para agrupar de un vistazo, no para gritar. */
+const TINTE = '1f' // 12 %
+
 export const COLORES_GRUPO: readonly ColorGrupo[] = [
-  { clave: '1', nombre: 'Rojo', fondo: '#fdeaea', borde: '#c0392b', texto: '#8c1f14' },
-  { clave: '2', nombre: 'Naranja', fondo: '#fdf0e3', borde: '#b35309', texto: '#7c3a06' },
-  { clave: '3', nombre: 'Amarillo', fondo: '#fbf4d9', borde: '#8a6d1a', texto: '#5c4810' },
-  { clave: '4', nombre: 'Verde', fondo: '#e7f5ec', borde: '#1e7a45', texto: '#14562f' },
-  { clave: '5', nombre: 'Azul', fondo: '#e8effb', borde: '#1d4ed8', texto: '#15379b' },
-  { clave: '6', nombre: 'Morado', fondo: '#f0eafb', borde: '#6d28d9', texto: '#4c1d95' }
+  { clave: '1', nombre: 'Rojo', fondo: `#c0392b${TINTE}`, borde: '#c0392b', texto: '#8c1f14', textoOscuro: '#f5a99f' },
+  { clave: '2', nombre: 'Naranja', fondo: `#b35309${TINTE}`, borde: '#b35309', texto: '#7c3a06', textoOscuro: '#f0b380' },
+  { clave: '3', nombre: 'Amarillo', fondo: `#8a6d1a${TINTE}`, borde: '#8a6d1a', texto: '#5c4810', textoOscuro: '#e3cd84' },
+  { clave: '4', nombre: 'Verde', fondo: `#1e7a45${TINTE}`, borde: '#1e7a45', texto: '#14562f', textoOscuro: '#8fd9ab' },
+  { clave: '5', nombre: 'Azul', fondo: `#1d4ed8${TINTE}`, borde: '#1d4ed8', texto: '#15379b', textoOscuro: '#a8c1f7' },
+  { clave: '6', nombre: 'Morado', fondo: `#6d28d9${TINTE}`, borde: '#6d28d9', texto: '#4c1d95', textoOscuro: '#c9b0f5' }
 ]
 
 /** Color por defecto de un grupo nuevo: neutro, no compite con nada. */
 export const COLOR_GRUPO_NEUTRO: ColorGrupo = {
   clave: '',
   nombre: 'Sin color',
-  fondo: '#f1f5f9',
+  fondo: `#64748b${TINTE}`,
   borde: '#64748b',
-  texto: '#334155'
+  texto: '#334155',
+  textoOscuro: '#cbd5e1'
 }
 
 export function colorDeGrupo(clave: string | undefined): ColorGrupo {

@@ -9,6 +9,7 @@ import { BuscadorConceptos } from '../vinculos/BuscadorConceptos'
 import { SelectorMaterial } from './SelectorMaterial'
 import { NotaEnTarjeta } from './NotaEnTarjeta'
 import { colorDeArista, COLORES_ARISTA, COLORES_GRUPO, colorDeGrupo } from './coloresLienzo'
+import { TEMAS_OSCUROS, useLayoutStore } from '../../stores/layoutStore'
 
 /**
  * Lienzo: mapa conceptual libre. El docente coloca tarjetas donde quiere y las
@@ -67,6 +68,11 @@ function curva(a: Punto, ladoA: LadoNodoDTO, b: Punto, ladoB: LadoNodoDTO): stri
   const t2 = tirador(b, ladoB)
   return `M ${a.x} ${a.y} C ${t1.x} ${t1.y}, ${t2.x} ${t2.y}, ${b.x} ${b.y}`
 }
+
+/** Tamaño del área de dibujo. Generoso, pero acotado: un lienzo infinito
+ *  impide saber dónde está lo que ya has puesto. */
+const ANCHO_LIENZO = 3000
+const ALTO_LIENZO = 2000
 
 let contador = 0
 const nuevoId = (prefijo: string): string => `${prefijo}-${Date.now().toString(36)}-${++contador}`
@@ -395,7 +401,10 @@ export function LienzoEditor({
   const nodoConectando = conectando ? porId.get(conectando.nodo) : undefined
 
   return (
-    <div className="flex h-full flex-col">
+    // `overflow-hidden` + `min-w-0`: sin esto, el área de dibujo (3000 px)
+    // ensancha el <main> de la app y aparece un scroll horizontal en TODA la
+    // ventana, que arrastra el menú lateral fuera de la vista.
+    <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
       <header className="flex items-center gap-3 border-b border-slate-200 px-6 py-3">
         <button onClick={onVolver} className="text-sm text-slate-500 hover:text-slate-800">
           ← Lienzos
@@ -463,11 +472,15 @@ export function LienzoEditor({
           window.addEventListener('mousemove', mover)
           window.addEventListener('mouseup', soltar)
         }}
-        className="relative flex-1 overflow-auto bg-slate-50"
+        className="relative min-h-0 flex-1 overflow-auto bg-slate-50"
         style={{ backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)', backgroundSize: '24px 24px' }}
       >
         {/* Las líneas van DEBAJO de las tarjetas para no tapar su contenido. */}
-        <svg className="pointer-events-none absolute inset-0 h-full w-full" style={{ minHeight: 2000, minWidth: 3000 }}>
+        {/* Área de dibujo con tamaño propio: el scroll ocurre AQUÍ dentro, no
+            en la ventana. Antes lo fijaba el `min-width` del SVG, que al ser
+            absoluto ensanchaba a su vez el contenedor de la aplicación. */}
+        <div className="relative" style={{ width: ANCHO_LIENZO, height: ALTO_LIENZO }}>
+        <svg className="pointer-events-none absolute inset-0 h-full w-full">
           <defs>
             <marker id="punta" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
               <path d="M0,0 L0,6 L9,3 z" fill="#94a3b8" />
@@ -601,6 +614,8 @@ export function LienzoEditor({
             onEliminar={() => eliminarNodo(n.id)}
           />
         ))}
+
+        </div>
 
         {lienzo.nodes.length === 0 && (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
@@ -850,6 +865,10 @@ function GrupoLienzo({
 }): JSX.Element {
   const [editando, setEditando] = useState(false)
   const color = colorDeGrupo(nodo.color)
+  // El título va sobre el lienzo tintado: necesita un tono u otro según si el
+  // fondo es claro u oscuro. El relleno y el borde valen para ambos.
+  const enOscuro = TEMAS_OSCUROS.includes(useLayoutStore((s) => s.tema))
+  const colorTitulo = enOscuro ? color.textoOscuro : color.texto
 
   return (
     <div
@@ -887,7 +906,7 @@ function GrupoLienzo({
           <button
             onMouseDown={(e) => e.stopPropagation()}
             onDoubleClick={() => setEditando(true)}
-            style={{ color: color.texto }}
+            style={{ color: colorTitulo }}
             title="Doble clic para cambiar el nombre"
             className="truncate text-xs font-semibold uppercase tracking-wide"
           >
@@ -972,10 +991,19 @@ function TarjetaTexto({
     <div
       onMouseDown={editando ? undefined : onArrastrar}
       onDoubleClick={onEditar}
-      style={{ left: nodo.x, top: nodo.y, width: nodo.width, height: nodo.height }}
-      className={`group absolute rounded-xl border bg-amber-50 p-3 shadow-sm ${
+      // Tinte translúcido, como los grupos: un ámbar sólido solo funciona sobre
+      // lienzo claro y en modo oscuro se veía como una mancha marrón.
+      style={{
+        left: nodo.x,
+        top: nodo.y,
+        width: nodo.width,
+        height: nodo.height,
+        background: '#f59e0b1f',
+        borderColor: seleccionada || editando ? undefined : '#f59e0b66'
+      }}
+      className={`group absolute rounded-xl border p-3 shadow-sm ${
         editando ? 'cursor-text border-marca-500' : 'cursor-move'
-      } ${seleccionada ? 'border-marca-500 shadow-md' : 'border-amber-200'}`}
+      } ${seleccionada ? 'border-marca-500 shadow-md' : ''}`}
     >
       {editando ? (
         <textarea
