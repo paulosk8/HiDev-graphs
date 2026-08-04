@@ -167,14 +167,24 @@ historial de git (rama `feat/almacenamiento-nube`, PR #18) por si hay que recupe
 - Las acciones de datos (actualizar, respaldar, restaurar) se extrajeron a
   `features/configuracion/accionesDatos.ts` y las comparten Configuración y el menú.
 - **El nombre "PedagoGraph" en el dock** (`fix/nombre-app`): en macOS el nombre visible NO sale
-  de `app.setName()`, sale del **paquete que ejecuta la app** — en desarrollo, el `Electron.app`
-  de `node_modules`, por eso se veía "Electron". `npm run marca-dev` (`scripts/marca-dev.ts`)
-  reescribe `CFBundleName`/`CFBundleDisplayName` y el icono de esa copia local (solo
-  `node_modules`, nada del sistema; se rehace en cada instalación, por eso va también en
-  `postinstall`) y le toca la fecha al paquete, porque macOS cachea nombre e icono por mtime.
-  Para la app **empaquetada** el arreglo real es `productName: "PedagoGraph"` en
-  `package.json`; en Windows, `app.setAppUserModelId` evita que la barra de tareas agrupe la
-  ventana bajo "Electron". **Hay que reiniciar la app para verlo.**
+  de `app.setName()`, sale del **paquete que ejecuta la app** — en desarrollo, el Electron de
+  `node_modules`, por eso se veía "Electron". `npm run marca-dev` (`scripts/marca-dev.ts`) marca
+  esa copia local (solo `node_modules`, nada del sistema; se rehace en cada instalación, por eso
+  va también en `postinstall`):
+  1. **Renombra el paquete** a `PedagoGraph.app` y reapunta `node_modules/electron/path.txt`
+     (donde el paquete npm guarda la ruta de su ejecutable), así `npm run dev` sigue igual.
+     **Esto es lo que de verdad arregla el tile del Dock**: reescribir el plist NO basta,
+     porque macOS usa también el nombre del propio paquete (se comprobó: con `Electron.app`
+     el Dock seguía diciendo "Electron" pese a tener `CFBundleDisplayName` correcto).
+  2. Reescribe `CFBundleName`/`CFBundleDisplayName`, copia el icono, toca la fecha del paquete
+     (macOS cachea nombre e icono por mtime) y hace `lsregister -f` para que LaunchServices
+     lo relea sin esperar a que caduque su caché.
+  - **Cómo verificarlo sin capturas**: `lsappinfo info -only name <pid>` sobre la app en
+    ejecución devuelve el nombre que pinta el Dock (`LSDisplayName`). Ojo: `mdls` consulta el
+    índice de Spotlight, que va por su cuenta y sigue diciendo "Electron" — no sirve.
+  - Para la app **empaquetada** el arreglo real es `productName: "PedagoGraph"` en
+    `package.json`; en Windows, `app.setAppUserModelId` evita que la barra de tareas agrupe la
+    ventana bajo "Electron". **Hay que reiniciar la app para verlo.**
 
 ## Datos de prueba
 
