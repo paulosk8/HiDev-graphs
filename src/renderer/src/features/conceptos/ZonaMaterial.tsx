@@ -5,7 +5,7 @@ import { DialogoConfirmacion } from '../../components/DialogoConfirmacion'
 import { DialogoMover } from '../../components/DialogoMover'
 import { MenuContextual, useMenuContextual } from '../../components/MenuContextual'
 import { api } from '../../lib/api'
-import { empezarArrastreDe } from '../lienzo/arrastreAlLienzo'
+import { empezarArrastreDe, leerArrastre } from '../lienzo/arrastreAlLienzo'
 import { useConceptosStore } from '../../stores/conceptosStore'
 import { useUiStore } from '../../stores/uiStore'
 import {
@@ -44,6 +44,9 @@ export function ZonaMaterial({ conceptoId, recursos, onActualizado }: Props): JS
   const [aMover, setAMover] = useState<RecursoDTO | null>(null)
   const [carpetas, setCarpetas] = useState<string[]>([])
   const [creandoCarpeta, setCreandoCarpeta] = useState(false)
+  /** Carpetas desplegadas. Empiezan cerradas: el panel del lienzo es estrecho
+   *  y con varias carpetas abiertas no se ve nada de un vistazo. */
+  const [abiertas, setAbiertas] = useState<Set<string>>(new Set())
   const [nombreCarpeta, setNombreCarpeta] = useState('')
   /** Carpeta destino del selector nativo (no cabe en su evento). */
   const destinoRef = useRef<string>(RAIZ)
@@ -104,7 +107,29 @@ export function ZonaMaterial({ conceptoId, recursos, onActualizado }: Props): JS
     // Sin esto, soltar en una carpeta dispararía además el de la zona entera.
     e.stopPropagation()
     setArrastrando(null)
+
+    // Dos arrastres distintos caen en el mismo sitio y NO deben confundirse:
+    // uno trae archivos del sistema (añadir material) y otro un material que
+    // ya está en el concepto (moverlo de carpeta). Se distinguen por el tipo
+    // que lleva el arrastre, no por adivinar.
+    const interno = leerArrastre(e)
+    if (interno && interno.tipo === 'material' && interno.conceptoId === conceptoId) {
+      void moverACarpeta(interno.archivo, carpeta)
+      return
+    }
     void procesarArchivos(e.dataTransfer.files, carpeta)
+  }
+
+  /** Mueve un material ya existente a otra carpeta del mismo concepto. */
+  const moverACarpeta = async (archivo: string, carpeta: string): Promise<void> => {
+    const recurso = recursos.find((r) => r.archivo === archivo)
+    if (!recurso || (recurso.carpeta || '') === carpeta) return
+    try {
+      onActualizado(await api.moverMaterialACarpeta(conceptoId, recurso.id, carpeta))
+      void cargarCarpetas()
+    } catch (error) {
+      notificarError(error)
+    }
   }
 
   const elegirArchivos = (carpeta: string): void => {
@@ -192,10 +217,25 @@ export function ZonaMaterial({ conceptoId, recursos, onActualizado }: Props): JS
             >
               {carpeta !== RAIZ && (
                 <div className="flex items-center gap-2 px-3 pt-2">
-                  <span aria-hidden>📁</span>
-                  <span className="flex-1 truncate text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    {carpeta}
-                  </span>
+                  <button
+                    onClick={() =>
+                      setAbiertas((s) => {
+                        const n = new Set(s)
+                        n.has(carpeta) ? n.delete(carpeta) : n.add(carpeta)
+                        return n
+                      })
+                    }
+                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                  >
+                    <span aria-hidden className="text-slate-400">
+                      {abiertas.has(carpeta) ? '▾' : '▸'}
+                    </span>
+                    <span aria-hidden>📁</span>
+                    <span className="truncate text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {carpeta}
+                    </span>
+                    <span className="text-xs text-slate-400">{items.length}</span>
+                  </button>
                   <button
                     onClick={() => elegirArchivos(carpeta)}
                     className="text-xs text-slate-400 transition hover:text-marca-700"
@@ -205,7 +245,13 @@ export function ZonaMaterial({ conceptoId, recursos, onActualizado }: Props): JS
                 </div>
               )}
 
-              {items.length === 0 ? (
+              {carpeta !== RAIZ && !abiertas.has(carpeta) ? (
+                // Cerrada: sigue siendo zona de destino, para poder soltarle
+                // algo sin tener que abrirla antes.
+                <p className="px-3 py-1.5 text-xs text-slate-300">
+                  {arrastrando === carpeta ? 'Suelta aquí para guardarlo dentro' : ''}
+                </p>
+              ) : items.length === 0 ? (
                 <p className="px-3 py-2 text-xs text-slate-300">
                   {arrastrando === carpeta
                     ? 'Suelta aquí para guardarlo en esta carpeta'
