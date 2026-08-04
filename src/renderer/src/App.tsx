@@ -10,6 +10,7 @@ import { ListaConceptos } from './features/conceptos/ListaConceptos'
 import { FichaAsignatura } from './features/asignaturas/FichaAsignatura'
 import { ListaAsignaturas } from './features/asignaturas/ListaAsignaturas'
 import { GrafoPage } from './features/grafo/GrafoPage'
+import { LienzoPage } from './features/lienzo/LienzoPage'
 import { AsistentePage } from './features/asistente/AsistentePage'
 import {
   actualizarMaterial,
@@ -37,6 +38,10 @@ function Contenido(): JSX.Element {
 
   if (seccion === 'estudio') {
     return <ModoEstudioPage />
+  }
+
+  if (seccion === 'lienzos') {
+    return <LienzoPage />
   }
 
   if (seccion === 'configuracion') {

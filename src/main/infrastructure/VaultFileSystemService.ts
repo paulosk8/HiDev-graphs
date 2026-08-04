@@ -21,6 +21,7 @@ import {
   type NotaConcepto
 } from '../domain/Concepto'
 import { repasoDesdePlano } from '../domain/Repaso'
+import { lienzoAPlano, lienzoDesdePlano, type Lienzo } from '../domain/Lienzo'
 import {
   eliminarRuta,
   NOMBRE_CARPETA_ELIMINADOS,
@@ -105,6 +106,9 @@ export class VaultFileSystemService {
   get dirTareas(): string {
     return join(this.rutaVault, 'tareas')
   }
+  get dirLienzos(): string {
+    return join(this.rutaVault, 'lienzos')
+  }
   get dirIndice(): string {
     return this.rutaIndiceForzada ?? join(this.rutaVault, '.index')
   }
@@ -139,6 +143,7 @@ export class VaultFileSystemService {
     mkdirSync(this.dirConceptos, { recursive: true })
     mkdirSync(this.dirAsignaturas, { recursive: true })
     mkdirSync(this.dirTareas, { recursive: true })
+    mkdirSync(this.dirLienzos, { recursive: true })
     mkdirSync(this.dirIndice, { recursive: true })
   }
 
@@ -316,6 +321,64 @@ export class VaultFileSystemService {
     // Se agrupa por concepto para no mezclar archivos del mismo nombre venidos
     // de conceptos distintos (y para saber de dónde salió cada uno).
     this.borrar(join(this.carpetaConcepto(conceptoId), archivo), join('material', conceptoId))
+  }
+
+  // ---------------------------------------------------------------------------
+  // Lienzos (.canvas, formato de Obsidian)
+  // ---------------------------------------------------------------------------
+
+  private rutaLienzo(id: string): string {
+    return join(this.dirLienzos, `${id}.canvas`)
+  }
+
+  existeLienzo(id: string): boolean {
+    return existsSync(this.rutaLienzo(id))
+  }
+
+  listarIdsLienzos(): string[] {
+    if (!existsSync(this.dirLienzos)) return []
+    return readdirSync(this.dirLienzos, { withFileTypes: true })
+      .filter((e) => e.isFile() && e.name.endsWith('.canvas'))
+      .map((e) => e.name.slice(0, -'.canvas'.length))
+      .sort((a, b) => a.localeCompare(b, 'es'))
+  }
+
+  leerLienzo(id: string): Lienzo {
+    const crudo = readFileSync(this.rutaLienzo(id), 'utf8')
+    let datos: unknown = {}
+    try {
+      datos = JSON.parse(crudo)
+    } catch {
+      // Un .canvas corrupto o vacío se abre vacío en vez de reventar la app.
+      datos = {}
+    }
+    // El nombre visible es el del archivo: es lo que ve en su nube.
+    return lienzoDesdePlano(id, (datos as { nombre?: string }).nombre ?? id, datos)
+  }
+
+  guardarLienzo(lienzo: Lienzo): void {
+    mkdirSync(this.dirLienzos, { recursive: true })
+    // `nombre` es nuestro; Obsidian ignora lo que no conoce y usa el archivo.
+    const plano = { nombre: lienzo.nombre, ...lienzoAPlano(lienzo) }
+    writeFileSync(this.rutaLienzo(lienzo.id), JSON.stringify(plano, null, 2), 'utf8')
+  }
+
+  eliminarLienzo(id: string): void {
+    const ruta = this.rutaLienzo(id)
+    if (existsSync(ruta)) rmSync(ruta, { force: true })
+  }
+
+  leerTodosLienzos(): Lienzo[] {
+    return this.listarIdsLienzos()
+      .map((id) => {
+        try {
+          return this.leerLienzo(id)
+        } catch (error) {
+          console.warn(`No se pudo leer el lienzo "${id}":`, error)
+          return null
+        }
+      })
+      .filter((l): l is Lienzo => l !== null)
   }
 
   private leerToleranteConcepto(id: string): Concepto | null {

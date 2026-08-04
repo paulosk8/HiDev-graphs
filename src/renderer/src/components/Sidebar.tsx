@@ -142,6 +142,7 @@ export function Sidebar(): JSX.Element {
                 <Item seccion="asignaturas" contexto="docencia" etiqueta="Asignaturas" cuenta={colapsada ? undefined : totalDocencia} icono="🎓" colapsada={colapsada} sangrado />
                 <Item seccion="conceptos" contexto="docencia" etiqueta="Conceptos" icono="💡" colapsada={colapsada} sangrado />
                 <Item seccion="grafo" contexto="docencia" etiqueta="Mapa" icono="🕸️" colapsada={colapsada} sangrado />
+                <Item seccion="lienzos" etiqueta="Lienzos" icono="🗺️" colapsada={colapsada} sangrado />
               </>
             )}
           </>
