@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { Boton } from '../../components/Boton'
 import { DialogoConfirmacion } from '../../components/DialogoConfirmacion'
-import { useLayoutStore } from '../../stores/layoutStore'
+import { useLayoutStore, ZOOM_MAX, ZOOM_MIN } from '../../stores/layoutStore'
 import { AsistentePage } from '../asistente/AsistentePage'
 import { actualizarMaterial, respaldarMaterial, restaurarMaterial } from './accionesDatos'
 import { AlmacenamientoNube } from './AlmacenamientoNube'
@@ -84,6 +84,12 @@ function Apariencia(): JSX.Element {
   const capaDocencia = useLayoutStore((s) => s.capaDocencia)
   const capaAprendizaje = useLayoutStore((s) => s.capaAprendizaje)
   const elegirCapas = useLayoutStore((s) => s.elegirCapas)
+  const zoomPorcentaje = useLayoutStore((s) => s.zoomPorcentaje)
+  const ajustarZoom = useLayoutStore((s) => s.ajustarZoom)
+  const setZoom = useLayoutStore((s) => s.setZoom)
+
+  // El nombre de la tecla, para no decirle "Cmd" a quien usa Windows.
+  const atajo = navigator.platform.startsWith('Mac') ? '⌘' : 'Ctrl'
 
   return (
     <Seccion titulo="Apariencia" descripcion="Ajusta cómo se ve PedagoGraph.">
@@ -96,6 +102,37 @@ function Apariencia(): JSX.Element {
           <div className="mt-3 inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
             <OpcionTema activo={tema === 'claro'} onClick={() => tema !== 'claro' && alternarTema()} icono="☀️" etiqueta="Claro" />
             <OpcionTema activo={tema === 'oscuro'} onClick={() => tema !== 'oscuro' && alternarTema()} icono="🌙" etiqueta="Oscuro" />
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <p className="text-sm font-medium text-slate-800">Tamaño de la interfaz</p>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Agranda o reduce todo PedagoGraph. También con {atajo}+ y {atajo}− desde el menú Ver.
+          </p>
+          <div className="mt-3 flex items-center gap-3">
+            <div className="inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 p-1">
+              <BotonZoom
+                etiqueta="Reducir el tamaño"
+                simbolo="−"
+                onClick={() => ajustarZoom(-1)}
+                disabled={zoomPorcentaje <= ZOOM_MIN}
+              />
+              <span className="w-16 text-center text-sm font-medium tabular-nums text-slate-700">
+                {zoomPorcentaje} %
+              </span>
+              <BotonZoom
+                etiqueta="Aumentar el tamaño"
+                simbolo="+"
+                onClick={() => ajustarZoom(1)}
+                disabled={zoomPorcentaje >= ZOOM_MAX}
+              />
+            </div>
+            {zoomPorcentaje !== 100 && (
+              <Boton variante="fantasma" onClick={() => setZoom(100)}>
+                Restablecer
+              </Boton>
+            )}
           </div>
         </div>
 
@@ -194,6 +231,31 @@ function OpcionTema({
     >
       <span aria-hidden>{icono}</span>
       {etiqueta}
+    </button>
+  )
+}
+
+function BotonZoom({
+  etiqueta,
+  simbolo,
+  onClick,
+  disabled
+}: {
+  etiqueta: string
+  simbolo: string
+  onClick: () => void
+  disabled: boolean
+}): JSX.Element {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={etiqueta}
+      title={etiqueta}
+      className="h-7 w-8 rounded-md text-base font-medium text-slate-600 transition hover:bg-white hover:text-slate-900 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent"
+    >
+      {simbolo}
     </button>
   )
 }

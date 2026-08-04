@@ -1,6 +1,7 @@
 import { marked } from 'marked'
 import type { FormatoInstrucciones } from '@shared/dtos'
 import { VistaCodigo } from './VistaCodigo'
+import { VistaHtml } from './VistaHtml'
 
 /**
  * Renderiza contenido según su formato: Markdown (a HTML), HTML (en un iframe
@@ -29,14 +30,7 @@ export function ContenidoFormateado({
   if (formato === 'html') {
     // El iframe SIEMPRE ocupa todo el ancho (w-full) y tiene un alto mínimo;
     // `className` solo añade estilos (antes lo reemplazaba y perdía el ancho).
-    return (
-      <iframe
-        title="Contenido"
-        sandbox="allow-scripts"
-        srcDoc={texto}
-        className={`min-h-[16rem] w-full rounded-lg border border-slate-200 bg-white ${className ?? ''}`}
-      />
-    )
+    return <VistaHtml html={texto} className={className} />
   }
   return (
     <div

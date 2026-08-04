@@ -5,9 +5,11 @@ import { Boton } from '../../components/Boton'
 import { CampoTexto } from '../../components/Campos'
 import { Modal } from '../../components/Modal'
 import { VistaCodigo } from '../../components/VistaCodigo'
+import { VistaHtml } from '../../components/VistaHtml'
 import { api } from '../../lib/api'
 import { manejarPegadoRico } from '../../lib/pegadoRico'
 import { useTareasStore } from '../../stores/tareasStore'
+import { BarraFormato } from './BarraFormato'
 
 /** Fragmentos que inserta la barra de formato. */
 const PLANTILLA_TABLA = '\n| Criterio | Puntos |\n| --- | --- |\n| … | … |\n| … | … |\n'
@@ -66,6 +68,25 @@ export function FormularioTarea({
       el.focus()
       const pos = inicio + texto.length
       el.setSelectionRange(pos, pos)
+    })
+  }
+
+  /**
+   * Envuelve el texto seleccionado (o inserta un ejemplo si no hay selección).
+   * Es lo que hace falta para dar color: colorear "lo que acabo de escribir".
+   */
+  const envolver = (antes: string, despues: string, ejemplo: string): void => {
+    const el = areaRef.current
+    const inicio = el?.selectionStart ?? instrucciones.length
+    const fin = el?.selectionEnd ?? instrucciones.length
+    const seleccion = instrucciones.slice(inicio, fin) || ejemplo
+    const nuevo = antes + seleccion + despues
+    setInstrucciones(instrucciones.slice(0, inicio) + nuevo + instrucciones.slice(fin))
+    requestAnimationFrame(() => {
+      if (!el) return
+      el.focus()
+      // Deja seleccionado el texto coloreado, para poder seguir escribiendo encima.
+      el.setSelectionRange(inicio + antes.length, inicio + antes.length + seleccion.length)
     })
   }
 
@@ -191,11 +212,14 @@ export function FormularioTarea({
           </div>
           {previa ? (
             formato === 'html' ? (
-              <iframe
-                title="Vista previa"
-                sandbox="allow-scripts"
-                srcDoc={instrucciones || '<p style="color:#94a3b8;font-family:sans-serif">Sin contenido</p>'}
-                className="min-h-[12rem] w-full rounded-lg border border-slate-200 bg-white"
+              // Mismo visor que la ficha ya guardada: lo que ves aquí es
+              // exactamente lo que verás al guardar, incrustados incluidos.
+              <VistaHtml
+                titulo="Vista previa"
+                html={
+                  instrucciones || '<p style="color:#94a3b8;font-family:sans-serif">Sin contenido</p>'
+                }
+                className="min-h-[12rem]"
               />
             ) : formato === 'codigo' ? (
               <VistaCodigo texto={instrucciones || '// Sin contenido'} />
@@ -207,6 +231,16 @@ export function FormularioTarea({
             )
           ) : (
             <>
+              {/* Color y contenido incrustado: sirven en Markdown y en HTML,
+                  porque el Markdown de la app admite HTML dentro. En modo
+                  Código no, que ahí el texto no se interpreta. */}
+              {formato !== 'codigo' && (
+                <BarraFormato
+                  onEnvolver={envolver}
+                  onInsertar={insertar}
+                  mostrarIncrustado={formato === 'html'}
+                />
+              )}
               {formato === 'markdown' ? (
                 <div className="mb-1.5 flex flex-wrap gap-1">
                   {[
@@ -229,8 +263,10 @@ export function FormularioTarea({
                 </div>
               ) : formato === 'html' ? (
                 <p className="mb-1.5 text-xs text-slate-500">
-                  Modo HTML: pega o escribe HTML; admite <code>&lt;style&gt;</code> y{' '}
-                  <code>&lt;script&gt;</code>. Se guarda tal cual para copiarlo en Moodle.
+                  Modo HTML: pega o escribe HTML; admite <code>&lt;style&gt;</code>,{' '}
+                  <code>&lt;script&gt;</code> y contenido incrustado con{' '}
+                  <code>&lt;iframe&gt;</code> (Excalidraw, YouTube, GeoGebra…). Se guarda tal cual
+                  para copiarlo en Moodle.
                 </p>
               ) : (
                 <p className="mb-1.5 text-xs text-slate-500">
