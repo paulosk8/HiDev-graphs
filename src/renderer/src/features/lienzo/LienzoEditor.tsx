@@ -6,6 +6,8 @@ import { useConceptosStore } from '../../stores/conceptosStore'
 import { useUiStore } from '../../stores/uiStore'
 import { useVistazoStore } from '../../stores/vistazoStore'
 import { BuscadorConceptos } from '../vinculos/BuscadorConceptos'
+import { SelectorMaterial } from './SelectorMaterial'
+import { NotaEnTarjeta } from './NotaEnTarjeta'
 import { colorDeArista, COLORES_ARISTA, COLORES_GRUPO, colorDeGrupo } from './coloresLienzo'
 
 /**
@@ -89,6 +91,9 @@ export function LienzoEditor({
   const [aristaEditando, setAristaEditando] = useState<string | null>(null)
   /** Tarjeta de texto que se está escribiendo. */
   const [textoEditando, setTextoEditando] = useState<string | null>(null)
+  const [eligiendoMaterial, setEligiendoMaterial] = useState(false)
+  /** Tarjeta de concepto cuya nota se está editando dentro del lienzo. */
+  const [notaEditando, setNotaEditando] = useState<string | null>(null)
   /** Selección múltiple: agrupar exige poder elegir varias tarjetas. */
   const [seleccion, setSeleccion] = useState<Set<string>>(new Set())
   /** Recuadro de selección en curso (arrastrando sobre el fondo). */
@@ -298,6 +303,25 @@ export function LienzoEditor({
   const cambiarTexto = (id: string, texto: string): void =>
     cambiar((l) => ({ ...l, nodes: l.nodes.map((n) => (n.id === id ? { ...n, text: texto } : n)) }))
 
+  const agregarMaterial = (conceptoId: string, recurso: { archivo: string }): void => {
+    cambiar((l) => ({
+      ...l,
+      nodes: [
+        ...l.nodes,
+        {
+          id: nuevoId('n'),
+          type: 'file' as const,
+          x: 80 + l.nodes.length * 28,
+          y: 100 + l.nodes.length * 22,
+          width: 260,
+          height: 200,
+          file: `conceptos/${conceptoId}/${recurso.archivo}`
+        }
+      ]
+    }))
+    setEligiendoMaterial(false)
+  }
+
   const cambiarArista = (id: string, campos: { label?: string; color?: string }): void =>
     cambiar((l) => ({
       ...l,
@@ -385,6 +409,9 @@ export function LienzoEditor({
             Agrupar ({seleccion.size})
           </Boton>
         )}
+        <Boton variante="secundario" onClick={() => setEligiendoMaterial(true)}>
+          + Material
+        </Boton>
         <Boton variante="secundario" onClick={agregarTexto}>
           + Nota suelta
         </Boton>
@@ -557,7 +584,17 @@ export function LienzoEditor({
             concepto={nombrePorConcepto.get(conceptoDeArchivo(n.file) ?? '')}
             onArrastrar={(e) => empezarArrastre(e, n)}
             onAncla={(lado) => (conectando ? conectar(n.id, lado) : setConectando({ nodo: n.id, lado }))}
+            editandoNota={notaEditando === n.id}
             onAbrir={() => {
+              // Un material no tiene ficha que abrir: se previsualiza en la tarjeta.
+              if (materialDeArchivo(n.file)) return
+              const id = conceptoDeArchivo(n.file)
+              // Doble clic edita la nota aquí mismo; el vistazo queda para el
+              // panel lateral, al que se llega desde la propia tarjeta.
+              if (id) setNotaEditando(n.id)
+            }}
+            onCerrarNota={() => setNotaEditando(null)}
+            onVerFicha={() => {
               const id = conceptoDeArchivo(n.file)
               if (id) abrirVistazo(id)
             }}
@@ -626,6 +663,15 @@ export function LienzoEditor({
         </div>
       )}
 
+      {eligiendoMaterial && (
+        <div className="absolute right-6 top-20 z-30">
+          <SelectorMaterial
+            onElegir={agregarMaterial}
+            onCerrar={() => setEligiendoMaterial(false)}
+          />
+        </div>
+      )}
+
       {agregando && (
         <div className="absolute right-6 top-20 z-30">
           <BuscadorConceptos
@@ -639,6 +685,14 @@ export function LienzoEditor({
   )
 }
 
+/** Concepto y archivo de una tarjeta de material, o null si no lo es. */
+function materialDeArchivo(file: string | undefined): { conceptoId: string; archivo: string } | null {
+  if (!file) return null
+  const m = /^conceptos\/([^/]+)\/(.+)$/.exec(file)
+  if (!m || m[2] === 'concepto.yaml') return null
+  return { conceptoId: m[1], archivo: m[2] }
+}
+
 /** Id del concepto al que apunta una tarjeta, o null. */
 function conceptoDeArchivo(file: string | undefined): string | null {
   if (!file) return null
@@ -650,19 +704,27 @@ function TarjetaLienzo({
   nodo,
   seleccionada,
   concepto,
+  editandoNota,
   onArrastrar,
   onAncla,
   onAbrir,
+  onCerrarNota,
+  onVerFicha,
   onEliminar
 }: {
   nodo: NodoLienzoDTO
   seleccionada: boolean
   concepto?: { nombre: string; descripcion: string; etiquetas: string[]; totalRecursos: number }
+  editandoNota: boolean
   onArrastrar: (e: React.MouseEvent) => void
   onAncla: (lado: LadoNodoDTO) => void
   onAbrir: () => void
+  onCerrarNota: () => void
+  onVerFicha: () => void
   onEliminar: () => void
 }): JSX.Element {
+  const material = materialDeArchivo(nodo.file)
+  const conceptoId = conceptoDeArchivo(nodo.file)
   const lados: LadoNodoDTO[] = ['top', 'right', 'bottom', 'left']
   const posicionAncla: Record<LadoNodoDTO, string> = {
     top: 'left-1/2 top-0 -translate-x-1/2 -translate-y-1/2',
@@ -673,17 +735,36 @@ function TarjetaLienzo({
 
   return (
     <div
-      onMouseDown={onArrastrar}
+      onMouseDown={editandoNota ? undefined : onArrastrar}
       onDoubleClick={onAbrir}
       style={{ left: nodo.x, top: nodo.y, width: nodo.width, height: nodo.height }}
-      className={`group absolute cursor-move rounded-xl border bg-white p-3 shadow-sm transition-shadow ${
+      className={`group absolute rounded-xl border bg-white p-3 shadow-sm transition-shadow ${
+        editandoNota ? 'cursor-default' : 'cursor-move'
+      } ${
         seleccionada ? 'border-marca-500 shadow-md' : 'border-slate-200 hover:shadow'
       }`}
     >
       <div className="flex items-start gap-2">
+        {material && (
+          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-slate-500">
+            {material.archivo.split('.').pop()}
+          </span>
+        )}
         <p className="flex-1 truncate text-sm font-medium text-slate-800">
-          {concepto?.nombre ?? 'Concepto no encontrado'}
+          {material
+            ? material.archivo.split('/').pop()
+            : (concepto?.nombre ?? 'Concepto no encontrado')}
         </p>
+        {!material && (
+          <button
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={onVerFicha}
+            title="Ver la ficha completa"
+            className="text-xs text-slate-400 opacity-0 transition group-hover:opacity-100 hover:text-marca-700"
+          >
+            ↗
+          </button>
+        )}
         <button
           onMouseDown={(e) => e.stopPropagation()}
           onClick={onEliminar}
@@ -694,11 +775,27 @@ function TarjetaLienzo({
         </button>
       </div>
 
-      {concepto?.descripcion && (
-        <p className="mt-1 line-clamp-3 text-xs text-slate-500">{concepto.descripcion}</p>
+      {material ? (
+        // El propio protocolo del vault sirve el archivo; el navegador decide
+        // cómo pintarlo (imagen o PDF). Lo que no sabe abrir queda con su
+        // nombre y el botón de abrir fuera, que ya existe en la ficha.
+        <iframe
+          title={material.archivo}
+          src={`recurso://c/${material.conceptoId}/${material.archivo
+            .split('/')
+            .map(encodeURIComponent)
+            .join('/')}`}
+          className="pointer-events-none mt-2 h-[calc(100%-2.5rem)] w-full rounded border border-slate-100 bg-white"
+        />
+      ) : editandoNota && conceptoId ? (
+        <NotaEnTarjeta conceptoId={conceptoId} onCerrar={onCerrarNota} />
+      ) : (
+        concepto?.descripcion && (
+          <p className="mt-1 line-clamp-3 text-xs text-slate-500">{concepto.descripcion}</p>
+        )
       )}
 
-      {concepto && concepto.etiquetas.length > 0 && (
+      {!material && !editandoNota && concepto && concepto.etiquetas.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">
           {concepto.etiquetas.slice(0, 3).map((e) => (
             <span key={e} className="rounded-full bg-marca-50 px-2 py-0.5 text-[10px] text-marca-700">
@@ -708,7 +805,7 @@ function TarjetaLienzo({
         </div>
       )}
 
-      {concepto && concepto.totalRecursos > 0 && (
+      {!material && !editandoNota && concepto && concepto.totalRecursos > 0 && (
         <p className="absolute bottom-2 left-3 text-[10px] text-slate-400">
           📎 {concepto.totalRecursos}
         </p>
