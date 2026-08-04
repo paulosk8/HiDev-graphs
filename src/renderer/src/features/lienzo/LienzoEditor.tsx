@@ -6,6 +6,7 @@ import { useConceptosStore } from '../../stores/conceptosStore'
 import { useUiStore } from '../../stores/uiStore'
 import { useVistazoStore } from '../../stores/vistazoStore'
 import { BuscadorConceptos } from '../vinculos/BuscadorConceptos'
+import { COLORES_GRUPO, colorDeGrupo } from './coloresLienzo'
 
 /**
  * Lienzo: mapa conceptual libre. El docente coloca tarjetas donde quiere y las
@@ -84,7 +85,10 @@ export function LienzoEditor({
   const [guardando, setGuardando] = useState(false)
   const [sinGuardar, setSinGuardar] = useState(false)
   const [agregando, setAgregando] = useState(false)
-  const [seleccion, setSeleccion] = useState<string | null>(null)
+  /** Selección múltiple: agrupar exige poder elegir varias tarjetas. */
+  const [seleccion, setSeleccion] = useState<Set<string>>(new Set())
+  /** Recuadro de selección en curso (arrastrando sobre el fondo). */
+  const [recuadro, setRecuadro] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null)
   /** Conexión a medias: de qué tarjeta y lado salió. */
   const [conectando, setConectando] = useState<{ nodo: string; lado: LadoNodoDTO } | null>(null)
   const [raton, setRaton] = useState<Punto>({ x: 0, y: 0 })
@@ -153,19 +157,39 @@ export function LienzoEditor({
   const empezarArrastre = (e: React.MouseEvent, nodo: NodoLienzoDTO): void => {
     if (e.button !== 0) return
     e.preventDefault()
-    setSeleccion(nodo.id)
+
+    // Mayúsculas suma o quita de la selección; un clic normal la reemplaza,
+    // salvo que la tarjeta ya estuviera dentro (para arrastrar el conjunto).
+    let objetivos: string[]
+    if (e.shiftKey) {
+      const s = new Set(seleccion)
+      s.has(nodo.id) ? s.delete(nodo.id) : s.add(nodo.id)
+      setSeleccion(s)
+      objetivos = [...s]
+    } else if (seleccion.has(nodo.id)) {
+      objetivos = [...seleccion]
+    } else {
+      setSeleccion(new Set([nodo.id]))
+      objetivos = [nodo.id]
+    }
+
+    // Un grupo arrastra lo que contiene: si no, moverlo lo vaciaría.
+    const arrastrados = new Set(objetivos)
+    if (nodo.type === 'group') for (const c of contenidosEn(nodo)) arrastrados.add(c)
+
     const inicio = posicionEnLienzo(e)
-    const original = { x: nodo.x, y: nodo.y }
+    const originales = new Map(
+      (lienzo?.nodes ?? []).filter((n) => arrastrados.has(n.id)).map((n) => [n.id, { x: n.x, y: n.y }])
+    )
 
     const mover = (ev: MouseEvent): void => {
       const p = posicionEnLienzo(ev)
       cambiar((l) => ({
         ...l,
-        nodes: l.nodes.map((n) =>
-          n.id === nodo.id
-            ? { ...n, x: original.x + (p.x - inicio.x), y: original.y + (p.y - inicio.y) }
-            : n
-        )
+        nodes: l.nodes.map((n) => {
+          const o = originales.get(n.id)
+          return o ? { ...n, x: o.x + (p.x - inicio.x), y: o.y + (p.y - inicio.y) } : n
+        })
       }))
     }
     const soltar = (): void => {
@@ -175,6 +199,62 @@ export function LienzoEditor({
     window.addEventListener('mousemove', mover)
     window.addEventListener('mouseup', soltar)
   }
+
+  /** Ids de las tarjetas que caen dentro de un grupo (no otros grupos). */
+  const contenidosEn = (grupo: NodoLienzoDTO): string[] =>
+    (lienzo?.nodes ?? [])
+      .filter(
+        (n) =>
+          n.id !== grupo.id &&
+          n.type !== 'group' &&
+          n.x >= grupo.x &&
+          n.y >= grupo.y &&
+          n.x + n.width <= grupo.x + grupo.width &&
+          n.y + n.height <= grupo.y + grupo.height
+      )
+      .map((n) => n.id)
+
+  /** Crea un grupo que envuelve lo seleccionado, con un margen para su título. */
+  const agrupar = (): void => {
+    if (!lienzo || seleccion.size < 2) return
+    const dentro = lienzo.nodes.filter((n) => seleccion.has(n.id) && n.type !== 'group')
+    if (dentro.length < 2) return
+
+    const margen = 24
+    const x = Math.min(...dentro.map((n) => n.x)) - margen
+    // Arriba hace falta más hueco: ahí va el título del grupo.
+    const y = Math.min(...dentro.map((n) => n.y)) - margen - 20
+    const x2 = Math.max(...dentro.map((n) => n.x + n.width)) + margen
+    const y2 = Math.max(...dentro.map((n) => n.y + n.height)) + margen
+
+    const id = nuevoId('g')
+    cambiar((l) => ({
+      ...l,
+      // El grupo va PRIMERO en la lista para pintarse debajo de las tarjetas.
+      nodes: [
+        { id, type: 'group' as const, x, y, width: x2 - x, height: y2 - y, label: 'Grupo' },
+        ...l.nodes
+      ]
+    }))
+    setSeleccion(new Set([id]))
+  }
+
+  /** Quita el grupo pero conserva sus tarjetas: agrupar no es meter en una caja. */
+  const desagrupar = (id: string): void =>
+    cambiar((l) => ({
+      ...l,
+      nodes: l.nodes.filter((n) => n.id !== id),
+      edges: l.edges.filter((e) => e.fromNode !== id && e.toNode !== id)
+    }))
+
+  const renombrarGrupo = (id: string, label: string): void =>
+    cambiar((l) => ({ ...l, nodes: l.nodes.map((n) => (n.id === id ? { ...n, label } : n)) }))
+
+  const colorearGrupo = (id: string, clave: string): void =>
+    cambiar((l) => ({
+      ...l,
+      nodes: l.nodes.map((n) => (n.id === id ? { ...n, color: clave || undefined } : n))
+    }))
 
   const agregarConcepto = (conceptoId: string): void => {
     const c = nombrePorConcepto.get(conceptoId)
@@ -235,9 +315,14 @@ export function LienzoEditor({
     const alTeclear = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') setConectando(null)
       const enCampo = (e.target as HTMLElement)?.tagName?.match(/INPUT|TEXTAREA/)
-      if ((e.key === 'Delete' || e.key === 'Backspace') && seleccion && !enCampo) {
-        eliminarNodo(seleccion)
-        setSeleccion(null)
+      if ((e.key === 'Delete' || e.key === 'Backspace') && seleccion.size > 0 && !enCampo) {
+        for (const id of seleccion) eliminarNodo(id)
+        setSeleccion(new Set())
+      }
+      // Ctrl/Cmd+G agrupa, como en cualquier herramienta de dibujo.
+      if ((e.key === 'g' || e.key === 'G') && (e.ctrlKey || e.metaKey) && !enCampo) {
+        e.preventDefault()
+        agrupar()
       }
     }
     window.addEventListener('keydown', alTeclear)
@@ -261,6 +346,11 @@ export function LienzoEditor({
         <span className="text-xs text-slate-400">
           {guardando ? 'Guardando…' : sinGuardar ? 'Cambios sin guardar' : 'Guardado'}
         </span>
+        {seleccion.size >= 2 && (
+          <Boton variante="secundario" onClick={agrupar}>
+            Agrupar ({seleccion.size})
+          </Boton>
+        )}
         <Boton variante="secundario" onClick={() => setAgregando(true)}>
           + Añadir concepto
         </Boton>
@@ -277,10 +367,37 @@ export function LienzoEditor({
         onMouseMove={(e) => conectando && setRaton(posicionEnLienzo(e))}
         onMouseDown={(e) => {
           // Pinchar el fondo deselecciona y cancela lo que estuviera a medias.
-          if (e.target === e.currentTarget) {
-            setSeleccion(null)
-            setConectando(null)
+          if (e.target !== e.currentTarget || e.button !== 0) return
+          setConectando(null)
+          if (!e.shiftKey) setSeleccion(new Set())
+
+          // Arrastrar sobre el fondo dibuja un recuadro y selecciona lo que toca.
+          const inicio = posicionEnLienzo(e)
+          const mover = (ev: MouseEvent): void => {
+            const p = posicionEnLienzo(ev)
+            setRecuadro({ x1: inicio.x, y1: inicio.y, x2: p.x, y2: p.y })
           }
+          const soltar = (ev: MouseEvent): void => {
+            window.removeEventListener('mousemove', mover)
+            window.removeEventListener('mouseup', soltar)
+            const p = posicionEnLienzo(ev)
+            const izq = Math.min(inicio.x, p.x)
+            const arr = Math.min(inicio.y, p.y)
+            const der = Math.max(inicio.x, p.x)
+            const aba = Math.max(inicio.y, p.y)
+            setRecuadro(null)
+            // Un recuadro minúsculo es un clic, no una selección.
+            if (der - izq < 5 && aba - arr < 5) return
+            const tocados = (lienzo?.nodes ?? [])
+              .filter(
+                (n) =>
+                  n.x < der && n.x + n.width > izq && n.y < aba && n.y + n.height > arr
+              )
+              .map((n) => n.id)
+            setSeleccion((s) => new Set(ev.shiftKey ? [...s, ...tocados] : tocados))
+          }
+          window.addEventListener('mousemove', mover)
+          window.addEventListener('mouseup', soltar)
         }}
         className="relative flex-1 overflow-auto bg-slate-50"
         style={{ backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)', backgroundSize: '24px 24px' }}
@@ -334,11 +451,39 @@ export function LienzoEditor({
           )}
         </svg>
 
-        {lienzo.nodes.map((n) => (
+        {lienzo.nodes
+          .filter((n) => n.type === 'group')
+          .map((g) => (
+            <GrupoLienzo
+              key={g.id}
+              nodo={g}
+              seleccionado={seleccion.has(g.id)}
+              onArrastrar={(e) => empezarArrastre(e, g)}
+              onRenombrar={(v) => renombrarGrupo(g.id, v)}
+              onColor={(c) => colorearGrupo(g.id, c)}
+              onQuitar={() => desagrupar(g.id)}
+            />
+          ))}
+
+        {recuadro && (
+          <div
+            className="pointer-events-none absolute border-2 border-marca-500 bg-marca-500/10"
+            style={{
+              left: Math.min(recuadro.x1, recuadro.x2),
+              top: Math.min(recuadro.y1, recuadro.y2),
+              width: Math.abs(recuadro.x2 - recuadro.x1),
+              height: Math.abs(recuadro.y2 - recuadro.y1)
+            }}
+          />
+        )}
+
+        {lienzo.nodes
+          .filter((n) => n.type !== 'group')
+          .map((n) => (
           <TarjetaLienzo
             key={n.id}
             nodo={n}
-            seleccionada={seleccion === n.id}
+            seleccionada={seleccion.has(n.id)}
             concepto={nombrePorConcepto.get(conceptoDeArchivo(n.file) ?? '')}
             onArrastrar={(e) => empezarArrastre(e, n)}
             onAncla={(lado) => (conectando ? conectar(n.id, lado) : setConectando({ nodo: n.id, lado }))}
@@ -467,6 +612,110 @@ function TarjetaLienzo({
           className={`absolute h-3 w-3 rounded-full border-2 border-white bg-marca-500 opacity-0 transition group-hover:opacity-100 ${posicionAncla[lado]}`}
         />
       ))}
+    </div>
+  )
+}
+
+/**
+ * Caja de un grupo. Se pinta DEBAJO de las tarjetas, así que el relleno va muy
+ * tenue: el color fuerte se reserva para el borde y el título, que es donde de
+ * verdad se distingue un grupo de otro. Los tonos están elegidos para que el
+ * título mida al menos 4,5:1 sobre su propio fondo (ver `coloresLienzo.ts`).
+ */
+function GrupoLienzo({
+  nodo,
+  seleccionado,
+  onArrastrar,
+  onRenombrar,
+  onColor,
+  onQuitar
+}: {
+  nodo: NodoLienzoDTO
+  seleccionado: boolean
+  onArrastrar: (e: React.MouseEvent) => void
+  onRenombrar: (label: string) => void
+  onColor: (clave: string) => void
+  onQuitar: () => void
+}): JSX.Element {
+  const [editando, setEditando] = useState(false)
+  const color = colorDeGrupo(nodo.color)
+
+  return (
+    <div
+      onMouseDown={onArrastrar}
+      style={{
+        left: nodo.x,
+        top: nodo.y,
+        width: nodo.width,
+        height: nodo.height,
+        background: color.fondo,
+        borderColor: color.borde
+      }}
+      className={`group/grupo absolute cursor-move rounded-xl border-2 ${
+        seleccionado ? 'ring-2 ring-marca-500 ring-offset-2' : ''
+      }`}
+    >
+      <div className="flex items-center gap-1 px-3 py-1">
+        {editando ? (
+          <input
+            autoFocus
+            defaultValue={nodo.label ?? ''}
+            onMouseDown={(e) => e.stopPropagation()}
+            onBlur={(e) => {
+              onRenombrar(e.target.value.trim() || 'Grupo')
+              setEditando(false)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.currentTarget.blur()
+              if (e.key === 'Escape') setEditando(false)
+            }}
+            maxLength={60}
+            className="w-40 rounded border border-slate-300 bg-white px-1.5 py-0.5 text-xs outline-none"
+          />
+        ) : (
+          <button
+            onMouseDown={(e) => e.stopPropagation()}
+            onDoubleClick={() => setEditando(true)}
+            style={{ color: color.texto }}
+            title="Doble clic para cambiar el nombre"
+            className="truncate text-xs font-semibold uppercase tracking-wide"
+          >
+            {nodo.label || 'Grupo'}
+          </button>
+        )}
+
+        <span className="flex-1" />
+
+        {/* Paleta y quitar: solo al pasar el ratón, para no ensuciar el lienzo. */}
+        <span className="flex items-center gap-1 opacity-0 transition group-hover/grupo:opacity-100">
+          {COLORES_GRUPO.map((c) => (
+            <button
+              key={c.clave}
+              onMouseDown={(e) => {
+                e.stopPropagation()
+                onColor(nodo.color === c.clave ? '' : c.clave)
+              }}
+              title={c.nombre}
+              aria-label={`Color ${c.nombre}`}
+              style={{ background: c.borde }}
+              className={`h-3 w-3 rounded-full border border-white ${
+                nodo.color === c.clave ? 'ring-2 ring-slate-600' : ''
+              }`}
+            />
+          ))}
+          <button
+            onMouseDown={(e) => {
+              e.stopPropagation()
+              onQuitar()
+            }}
+            style={{ color: color.texto }}
+            title="Quitar el grupo (las tarjetas se conservan)"
+            className="ml-1 text-xs"
+          >
+            ✕
+          </button>
+        </span>
+      </div>
     </div>
   )
 }
