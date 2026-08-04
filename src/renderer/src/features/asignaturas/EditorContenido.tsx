@@ -94,6 +94,18 @@ export function EditorContenido({
   onGuardar
 }: Props): JSX.Element {
   const [arbol, setArbol] = useState<UniN[]>(() => desdeAsignatura(asignatura))
+  /**
+   * Qué está plegado. Se guarda lo CERRADO y no lo abierto: así una unidad o
+   * un tema recién creados salen abiertos, que es lo que se espera al crearlos.
+   */
+  const [cerrados, setCerrados] = useState<Set<string>>(new Set())
+  const plegado = (id: string): boolean => cerrados.has(id)
+  const alternarPlegado = (id: string): void =>
+    setCerrados((s) => {
+      const n = new Set(s)
+      n.has(id) ? n.delete(id) : n.add(id)
+      return n
+    })
   const { menu, abrir: abrirMenu, cerrar: cerrarMenu } = useMenuContextual<{
     unidadId: string
     tema: TemaN
@@ -296,10 +308,43 @@ export function EditorContenido({
         ) : null}
       </div>
 
+      {/* Con muchas unidades y temas la lista se hace larguísima; esto da una
+          vista de conjunto de un clic. */}
+      {arbol.length > 0 && (
+        <div className="flex justify-end">
+          <button
+            onClick={() =>
+              setCerrados((s) =>
+                s.size > 0
+                  ? new Set()
+                  : new Set(arbol.flatMap((u) => [u.id, ...u.temas.map((x) => x.id)]))
+              )
+            }
+            className="text-xs text-slate-500 underline-offset-2 hover:text-slate-800 hover:underline"
+          >
+            {cerrados.size > 0 ? 'Desplegar todo' : 'Plegar todo'}
+          </button>
+        </div>
+      )}
+
       {arbol.map((u) => (
         <div key={u.id} className="rounded-xl border border-slate-200 p-4">
           <div className="mb-2 flex items-center gap-1">
+            <button
+              onClick={() => alternarPlegado(u.id)}
+              title={plegado(u.id) ? `Desplegar ${N1}` : `Plegar ${N1}`}
+              aria-expanded={!plegado(u.id)}
+              className="shrink-0 rounded px-1 text-slate-400 transition hover:text-slate-700"
+            >
+              {plegado(u.id) ? '▸' : '▾'}
+            </button>
             {inputTitulo(u.titulo, u.id, (v) => setTitulo(1, [u.id], v), `Título del ${N1} (ej. Unidad 1)`, 'flex-1 font-medium text-slate-800')}
+            {plegado(u.id) && (
+              // Plegada, el recuento es lo único que dice qué hay dentro.
+              <span className="shrink-0 px-1 text-xs text-slate-400">
+                {u.temas.length} {u.temas.length === 1 ? N2.toLowerCase() : `${N2.toLowerCase()}s`}
+              </span>
+            )}
             <button
               onClick={() => pedirQuitarUnidad(u)}
               title={`Quitar ${N1}`}
@@ -309,7 +354,7 @@ export function EditorContenido({
             </button>
           </div>
 
-          <ul className="space-y-3 pl-3">
+          <ul className={`space-y-3 pl-3 ${plegado(u.id) ? 'hidden' : ''}`}>
             {u.temas.map((t) => {
               const real = temaReal(t.id)
               const tareasTema = tareas.filter((x) => x.temas.includes(t.id))
@@ -320,7 +365,20 @@ export function EditorContenido({
                   className="border-l-2 border-slate-100 pl-3 text-sm"
                 >
                   <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => alternarPlegado(t.id)}
+                      title={plegado(t.id) ? `Desplegar ${N2}` : `Plegar ${N2}`}
+                      aria-expanded={!plegado(t.id)}
+                      className="shrink-0 rounded px-1 text-slate-400 transition hover:text-slate-700"
+                    >
+                      {plegado(t.id) ? '▸' : '▾'}
+                    </button>
                     {inputTitulo(t.titulo, t.id, (v) => setTitulo(2, [u.id, t.id], v), `Título del ${N2}`, 'flex-1 font-medium text-slate-700')}
+                    {plegado(t.id) && t.subtemas.length > 0 && (
+                      <span className="shrink-0 px-1 text-xs text-slate-400">
+                        {t.subtemas.length}
+                      </span>
+                    )}
                     <button
                       onClick={() => pedirQuitarTema(u.id, t)}
                       title={`Quitar ${N2}`}
@@ -330,6 +388,7 @@ export function EditorContenido({
                     </button>
                   </div>
 
+                  <div className={plegado(t.id) ? 'hidden' : ''}>
                   {/* Conceptos vinculados (puente), solo para temas existentes */}
                   {real && (
                     <div className="mt-1.5 flex flex-wrap items-center gap-1.5 pl-2">
@@ -398,6 +457,7 @@ export function EditorContenido({
                   <button onClick={() => addSub(u.id, t.id)} className="mt-1.5 pl-2 text-xs text-marca-600 hover:text-marca-700">
                     + Agregar {N3}
                   </button>
+                  </div>
                 </li>
               )
             })}
