@@ -111,9 +111,12 @@ export function instalarMenu(rutaVault: () => string): void {
         item('Repaso', 'ir-repaso', 'CmdOrCtrl+4'),
         item('Asistente IA', 'ir-asistente', 'CmdOrCtrl+5'),
         { type: 'separator' },
-        { role: 'resetZoom', label: 'Tamaño normal' },
-        { role: 'zoomIn', label: 'Aumentar el texto' },
-        { role: 'zoomOut', label: 'Reducir el texto' },
+        // No se usan los roles nativos de zoom: tendríamos dos mecanismos
+        // distintos (el de Chromium y el control de Apariencia) pisándose. El
+        // menú manda la acción y el tamaño lo gobierna un único sitio.
+        item('Tamaño normal', 'zoom-normal', 'CmdOrCtrl+0'),
+        item('Aumentar el tamaño', 'zoom-mas', 'CmdOrCtrl+Plus'),
+        item('Reducir el tamaño', 'zoom-menos', 'CmdOrCtrl+-'),
         { type: 'separator' },
         { role: 'togglefullscreen', label: 'Pantalla completa' }
       ]

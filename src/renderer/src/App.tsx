@@ -113,6 +113,15 @@ function useAccionesMenu(): void {
           case 'restaurar':
             void restaurarMaterial()
             break
+          case 'zoom-mas':
+            useLayoutStore.getState().ajustarZoom(1)
+            break
+          case 'zoom-menos':
+            useLayoutStore.getState().ajustarZoom(-1)
+            break
+          case 'zoom-normal':
+            useLayoutStore.getState().setZoom(100)
+            break
         }
       }),
     []
@@ -125,6 +134,7 @@ function App(): JSX.Element {
   const cargarConceptos = useConceptosStore((s) => s.cargar)
   const cargarAsignaturas = useAsignaturasStore((s) => s.cargar)
   const tema = useLayoutStore((s) => s.tema)
+  const zoomPorcentaje = useLayoutStore((s) => s.zoomPorcentaje)
   const capasElegidas = useLayoutStore((s) => s.capasElegidas)
 
   // ¿Ya eligió el docente dónde guardar su material? Si no, mostramos la
@@ -141,6 +151,13 @@ function App(): JSX.Element {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', tema === 'oscuro')
   }, [tema])
+
+  // Tamaño de la interfaz. Se aplica con `zoom` en la raíz (no con el zoom de
+  // Chromium) para que sea un único mecanismo, compartido por el control de
+  // Apariencia y los atajos del menú, y quede guardado como una preferencia más.
+  useEffect(() => {
+    document.documentElement.style.zoom = `${zoomPorcentaje}%`
+  }, [zoomPorcentaje])
 
   useEffect(() => {
     void cargarConceptos()

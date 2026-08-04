@@ -515,3 +515,6 @@ export type AccionMenu =
   | 'actualizar-material'
   | 'respaldar'
   | 'restaurar'
+  | 'zoom-mas'
+  | 'zoom-menos'
+  | 'zoom-normal'
