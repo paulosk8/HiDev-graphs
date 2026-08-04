@@ -184,6 +184,79 @@ historial de git (rama `feat/almacenamiento-nube`, PR #18) por si hay que recupe
   **vault activo** (lee `config.json`: nube o local) y es **aditivo** (solo crea lo que falta).
   Se ejecuta bundleándolo con esbuild (ver la cabecera del archivo).
 
+## Lienzos (mapa conceptual libre)
+
+Sección **Lienzos**, una por capa (Docencia / Aprendizaje). A diferencia del
+Mapa de conceptos —que CALCULA la disposición con fcose— aquí la decide el
+docente y se guarda.
+
+- **Formato `.canvas` de Obsidian** (JSON) en `lienzos/<slug>.canvas`. Claves en
+  inglés (`nodes`, `edges`, `fromSide`) porque son las suyas. `nombre` y
+  `contexto` son extensiones nuestras; Obsidian ignora lo que no conoce.
+- **DOM + SVG, sin dependencias nuevas.** Cytoscape no sirve: no da tarjetas
+  ricas ni editables. Tarjetas en DOM, líneas en un SVG debajo.
+- **Las tarjetas son REFERENCIAS**, no copias: `conceptos/<id>/concepto.yaml`
+  (concepto), + `notaId` (una nota concreta), o `conceptos/<id>/<archivo>`
+  (material). Lo que se ve sale del concepto de verdad.
+- Tipos de tarjeta: concepto, nota de un concepto, material (con vista previa
+  vía `recurso://`), texto libre («nota suelta») y grupo.
+- **Grupos**: selección múltiple con recuadro o Mayús+clic, Ctrl/⌘+G agrupa.
+  Mover el grupo arrastra su contenido; quitarlo CONSERVA las tarjetas.
+- **Conexiones**: se arrastra desde uno de los cuatro puntos de una tarjeta.
+  Bézier perpendicular al lado (una recta se confunde con el borde). Clic sobre
+  la línea para nombre y color; doble clic la quita.
+- **Arrastrar desde el panel lateral**: concepto, nota o material caen donde se
+  suelten. El dato viaja bajo `application/pedagograph-lienzo` (ver
+  `features/lienzo/arrastreAlLienzo.ts`) y NO bajo `text/plain`, para que
+  soltar texto de fuera no cree tarjetas fantasma.
+- **Colores translúcidos (12 %)** en grupos y notas sueltas: un relleno sólido
+  solo vale para UN fondo y en modo oscuro se veía como mancha blanca. Los
+  contrastes están MEDIDOS (ver `features/lienzo/coloresLienzo.ts`).
+- El buscador de conceptos va en **modal**: el área de dibujo mide 3000 px, así
+  que posicionarlo contra su borde derecho lo mandaba fuera de la vista.
+- **Gotcha resuelto**: el `min-width` del SVG ensanchaba el `<main>` de la app y
+  provocaba scroll horizontal en TODA la ventana. El área de dibujo es ahora un
+  div con tamaño propio y la raíz del editor lleva `overflow-hidden`.
+
+## Panel lateral del concepto (`components/PanelVistazo.tsx`)
+
+Se abre al pulsar un `[[enlace]]` o una tarjeta del lienzo. **Reutiliza
+`NotasConcepto` y `ZonaMaterial` de la ficha** en vez de tener su propio
+editor: el primero que escribí no soportaba formatos de nota, pegado con
+formato ni arrastrar material. Es una COLUMNA del layout, no flotante (antes
+tapaba la barra del lienzo). Pestañas verticales cuando hay varios conceptos
+abiertos, para no deshacer la pila uno a uno.
+
+## Etiquetas, enlaces y organización
+
+- **Etiquetas** (`Concepto.etiquetas`, tabla `tags` en el índice): campo del
+  concepto, no texto en la nota. Se comparan sin tildes ni mayúsculas y se
+  sugieren las ya usadas. `buscarConceptos` mira nombre, descripción Y
+  etiquetas.
+- **Enlaces `[[Concepto]]`** en las notas: se teclea `[[` y autocompleta. Un
+  enlace roto se pinta en ámbar, no desaparece. «Se menciona en» (retroenlaces)
+  y «Aparece en estos lienzos» se resuelven ESCANEANDO el vault, no el índice:
+  el enlace vive dentro del texto y indexarlo obligaría a re-escanear en cada
+  tecla.
+- **Carpetas de material**: reales en disco (`conceptos/<slug>/Lecturas/x.pdf`),
+  un solo nivel, plegables. Se arrastra un archivo a otra carpeta; el arrastre
+  interno se distingue del de archivos del sistema POR EL TIPO, no adivinando.
+- **Mover con clic derecho**: menú propio (el nativo no permite buscar el
+  destino). Los temas se mueven dentro de su asignatura; cruzar de asignatura
+  rompería las tareas y la planificación que los referencian.
+- **Papelera**: lo eliminado va a `Eliminados/` dentro del vault (recuperable,
+  viaja por la nube) o se borra. Configurable.
+- **Temas accesibles**: claro, cálido, alto contraste (claro y oscuro), oscuro.
+  Contrastes MEDIDOS con smoke. Se arregló de paso que `text-slate-400` daba
+  2,56:1 en el tema por defecto.
+
+## Trampas del vault que ya han mordido
+
+`RespaldarVault`, `RestaurarVault` y `MoverAlmacenamiento` llevan **su lista de
+carpetas escrita a mano**. Al añadir `lienzos/` nadie las actualizó y los
+lienzos se perdían al respaldar, restaurar o mover el material. **Si añades una
+carpeta nueva al vault, actualiza las tres.**
+
 ## Decisiones de producto registradas
 
 - La IA **no** analiza automáticamente al agregar un concepto (razonamiento on-demand vía CLI/MCP; el dato es local). Al vincular se valida estructuralmente, no semánticamente.
