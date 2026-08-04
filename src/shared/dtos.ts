@@ -46,6 +46,50 @@ export interface ResumenConceptoDTO {
   proximaRevision: string | null
 }
 
+// --- Lienzos (mapas conceptuales libres, formato .canvas de Obsidian) ---
+
+export type LadoNodoDTO = 'top' | 'right' | 'bottom' | 'left'
+
+export interface NodoLienzoDTO {
+  id: string
+  type: 'file' | 'text' | 'group'
+  x: number
+  y: number
+  width: number
+  height: number
+  /** Ruta relativa al vault; en las tarjetas de concepto/nota. */
+  file?: string
+  /** Nota concreta dentro del concepto, si la tarjeta es de una nota. */
+  notaId?: string
+  text?: string
+  label?: string
+  color?: string
+}
+
+export interface AristaLienzoDTO {
+  id: string
+  fromNode: string
+  fromSide: LadoNodoDTO
+  toNode: string
+  toSide: LadoNodoDTO
+  label?: string
+  color?: string
+}
+
+export interface LienzoDTO {
+  id: string
+  nombre: string
+  nodes: NodoLienzoDTO[]
+  edges: AristaLienzoDTO[]
+}
+
+export interface ResumenLienzoDTO {
+  id: string
+  nombre: string
+  totalTarjetas: number
+  totalConexiones: number
+}
+
 /** Un concepto que menciona a otro con [[enlaces]] desde sus notas. */
 export interface ResumenMencionDTO {
   id: string

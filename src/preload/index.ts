@@ -13,6 +13,11 @@ const api: PedagoGraphApi = {
   buscarConceptos: (texto) => ipcRenderer.invoke(CANALES.conceptosBuscar, texto),
   listarEtiquetas: () => ipcRenderer.invoke(CANALES.conceptosEtiquetas),
   obtenerMenciones: (id) => ipcRenderer.invoke(CANALES.conceptoMenciones, id),
+  listarLienzos: () => ipcRenderer.invoke(CANALES.lienzosListar),
+  obtenerLienzo: (id) => ipcRenderer.invoke(CANALES.lienzoObtener, id),
+  crearLienzo: (nombre) => ipcRenderer.invoke(CANALES.lienzoCrear, nombre),
+  guardarLienzo: (lienzo) => ipcRenderer.invoke(CANALES.lienzoGuardar, lienzo),
+  eliminarLienzo: (id) => ipcRenderer.invoke(CANALES.lienzoEliminar, id),
   moverTema: (asignaturaId, temaId, unidadDestinoId) =>
     ipcRenderer.invoke(CANALES.temaMover, asignaturaId, temaId, unidadDestinoId),
   moverNota: (origenId, notaId, destinoId) =>

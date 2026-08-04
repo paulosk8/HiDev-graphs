@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs'
 
 import { CANALES } from '../../shared/canales'
 import type {
+  LienzoDTO,
   CalidadRepaso,
   ClienteMcpId,
   CombinarTareasDTO,
@@ -25,6 +26,13 @@ import { ErrorDeDominio } from '../domain/errores'
 import { crearConcepto } from '../application/CrearConcepto'
 import { editarConcepto } from '../application/EditarConcepto'
 import { obtenerMenciones } from '../application/ObtenerMenciones'
+import {
+  crearLienzoNuevo,
+  eliminarLienzo,
+  guardarLienzo,
+  listarLienzos,
+  obtenerLienzo
+} from '../application/Lienzos'
 import { moverNota, moverTema } from '../application/MoverElementos'
 import {
   crearCarpeta,
@@ -148,6 +156,20 @@ export function registrarHandlersIpc(servicios: Servicios): void {
     CANALES.notaMover,
     (_evento, origenId: string, notaId: string, destinoId: string) =>
       envolver(() => moverNota(servicios, origenId, notaId, destinoId))
+  )
+
+  ipcMain.handle(CANALES.lienzosListar, () => envolver(() => listarLienzos(servicios)))
+  ipcMain.handle(CANALES.lienzoObtener, (_e, id: string) =>
+    envolver(() => obtenerLienzo(servicios, id))
+  )
+  ipcMain.handle(CANALES.lienzoCrear, (_e, nombre: string) =>
+    envolver(() => crearLienzoNuevo(servicios, nombre))
+  )
+  ipcMain.handle(CANALES.lienzoGuardar, (_e, dto: LienzoDTO) =>
+    envolver(() => guardarLienzo(servicios, dto))
+  )
+  ipcMain.handle(CANALES.lienzoEliminar, (_e, id: string) =>
+    envolver(() => eliminarLienzo(servicios, id))
   )
 
   ipcMain.handle(CANALES.conceptoMenciones, (_evento, conceptoId: string) =>

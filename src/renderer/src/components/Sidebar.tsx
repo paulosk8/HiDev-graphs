@@ -183,6 +183,10 @@ export function Sidebar(): JSX.Element {
       </nav>
 
       <div className="mt-auto w-full space-y-2 border-t border-slate-100 pt-3">
+        {/* Los lienzos también son transversales: uno puede mezclar conceptos de
+            docencia y de aprendizaje, y la lista es la misma en ambos casos. Si
+            viviera dentro de un grupo desaparecería al desactivar esa capa. */}
+        <Item seccion="lienzos" etiqueta="Lienzos" icono="🗺️" colapsada={colapsada} />
         {/* El asistente es transversal a las dos capas: vive fuera de los grupos. */}
         <Item seccion="asistente" etiqueta="Asistente IA" icono="🤖" colapsada={colapsada} />
         {/* Configuración: agrupa Apariencia (modo oscuro), Asistente IA, Datos y copias. */}

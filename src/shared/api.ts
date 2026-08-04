@@ -4,6 +4,8 @@ import type {
   AlmacenamientoDTO,
   CarpetaNubeDTO,
   EtiquetaDTO,
+  LienzoDTO,
+  ResumenLienzoDTO,
   ResumenMencionDTO,
   ResultadoAlmacenamientoDTO,
   EliminacionDTO,
@@ -63,6 +65,14 @@ export interface PedagoGraphApi {
     notaId: string,
     conceptoDestinoId: string
   ): Promise<Resultado<ConceptoDTO>>
+  // --- Lienzos ---
+  listarLienzos(): Promise<Resultado<ResumenLienzoDTO[]>>
+  obtenerLienzo(id: string): Promise<Resultado<LienzoDTO>>
+  crearLienzo(nombre: string): Promise<Resultado<ResumenLienzoDTO>>
+  /** Guarda el lienzo entero (posiciones y conexiones). */
+  guardarLienzo(lienzo: LienzoDTO): Promise<Resultado<LienzoDTO>>
+  eliminarLienzo(id: string): Promise<Resultado<void>>
+
   /** Otros conceptos que enlazan a este desde sus notas con [[Nombre]]. */
   obtenerMenciones(conceptoId: string): Promise<Resultado<ResumenMencionDTO[]>>
   /** Todas las etiquetas usadas, con cuántos conceptos las llevan. */

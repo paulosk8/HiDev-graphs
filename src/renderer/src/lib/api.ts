@@ -8,6 +8,7 @@ import type {
   DatosConceptoDTO,
   DatosTareaDTO,
   DuplicarTareaDTO,
+  LienzoDTO,
   ModoEliminacion,
   SemanaPlanDTO,
   TipoRelacion
@@ -43,6 +44,11 @@ export const api = {
   buscarConceptos: (texto: string) => desenvolver(window.api.buscarConceptos(texto)),
   listarEtiquetas: () => desenvolver(window.api.listarEtiquetas()),
   obtenerMenciones: (id: string) => desenvolver(window.api.obtenerMenciones(id)),
+  listarLienzos: () => desenvolver(window.api.listarLienzos()),
+  obtenerLienzo: (id: string) => desenvolver(window.api.obtenerLienzo(id)),
+  crearLienzo: (nombre: string) => desenvolver(window.api.crearLienzo(nombre)),
+  guardarLienzo: (lienzo: LienzoDTO) => desenvolver(window.api.guardarLienzo(lienzo)),
+  eliminarLienzo: (id: string) => desenvolver(window.api.eliminarLienzo(id)),
   moverTema: (asignaturaId: string, temaId: string, unidadDestinoId: string) =>
     desenvolver(window.api.moverTema(asignaturaId, temaId, unidadDestinoId)),
   moverNota: (origenId: string, notaId: string, destinoId: string) =>
