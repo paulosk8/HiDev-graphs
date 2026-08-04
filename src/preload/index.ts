@@ -26,8 +26,14 @@ const api: PedagoGraphApi = {
   vincularConceptos: (origenId, destinoId, tipo) =>
     ipcRenderer.invoke(CANALES.conceptoVincular, origenId, destinoId, tipo),
   rutaDeArchivo: (archivo) => webUtils.getPathForFile(archivo),
-  agregarMaterial: (conceptoId, rutas) =>
-    ipcRenderer.invoke(CANALES.materialAgregar, conceptoId, rutas),
+  agregarMaterial: (conceptoId, rutas, carpeta) =>
+    ipcRenderer.invoke(CANALES.materialAgregar, conceptoId, rutas, carpeta),
+  listarCarpetasMaterial: (conceptoId) =>
+    ipcRenderer.invoke(CANALES.materialCarpetasListar, conceptoId),
+  crearCarpetaMaterial: (conceptoId, nombre) =>
+    ipcRenderer.invoke(CANALES.materialCarpetaCrear, conceptoId, nombre),
+  moverMaterialACarpeta: (conceptoId, recursoId, carpeta) =>
+    ipcRenderer.invoke(CANALES.materialMoverACarpeta, conceptoId, recursoId, carpeta),
   eliminarMaterial: (conceptoId, recursoId) =>
     ipcRenderer.invoke(CANALES.materialEliminar, conceptoId, recursoId),
   abrirMaterial: (conceptoId, archivo) => ipcRenderer.invoke(CANALES.materialAbrir, conceptoId, archivo),

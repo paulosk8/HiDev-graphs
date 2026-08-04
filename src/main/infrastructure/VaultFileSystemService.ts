@@ -1,4 +1,13 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, rmSync, copyFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+  copyFileSync
+} from 'node:fs'
 import { basename, extname, join, resolve, sep } from 'node:path'
 import { load as leerYaml, dump as escribirYaml } from 'js-yaml'
 
@@ -17,7 +26,12 @@ import {
   NOMBRE_CARPETA_ELIMINADOS,
   type ModoEliminacion
 } from './Papelera'
-import { crearRecurso } from '../domain/Recurso'
+import {
+  archivoSinCarpeta,
+  carpetaDe,
+  crearRecurso,
+  nombreCarpetaSeguro
+} from '../domain/Recurso'
 import { crearRelacion } from '../domain/Relacion'
 import { crearSubtema } from '../domain/Subtema'
 import { crearTarea, type Tarea } from '../domain/Tarea'
@@ -200,15 +214,71 @@ export class VaultFileSystemService {
    * Copia un archivo de material dentro de la carpeta del concepto y devuelve
    * el nombre de archivo final (resolviendo colisiones) y su formato.
    */
-  copiarRecurso(conceptoId: string, rutaOrigen: string): { archivo: string; formato: FormatoRecurso } {
+  copiarRecurso(
+    conceptoId: string,
+    rutaOrigen: string,
+    carpeta = ''
+  ): { archivo: string; formato: FormatoRecurso } {
     const formato = formatoDesdeNombreArchivo(rutaOrigen)
     if (formato === null) {
       throw new Error(`Formato de material no soportado: ${extname(rutaOrigen) || '(sin extensión)'}`)
     }
-    mkdirSync(this.carpetaConcepto(conceptoId), { recursive: true })
-    const archivo = this.nombreLibreEn(this.carpetaConcepto(conceptoId), basename(rutaOrigen))
-    copyFileSync(rutaOrigen, join(this.carpetaConcepto(conceptoId), archivo))
-    return { archivo, formato }
+    // La carpeta es real en disco: el docente la ve igual desde su nube.
+    const segura = nombreCarpetaSeguro(carpeta)
+    const destino = segura
+      ? join(this.carpetaConcepto(conceptoId), segura)
+      : this.carpetaConcepto(conceptoId)
+    mkdirSync(destino, { recursive: true })
+
+    const nombre = this.nombreLibreEn(destino, basename(rutaOrigen))
+    copyFileSync(rutaOrigen, join(destino, nombre))
+    // La ruta guardada usa siempre '/' para que el vault sea portable entre SO.
+    return { archivo: segura ? `${segura}/${nombre}` : nombre, formato }
+  }
+
+  /**
+   * Mueve un material a otra carpeta del MISMO concepto (o a la raíz, con
+   * `carpetaDestino` vacío). Devuelve la nueva ruta relativa.
+   */
+  moverRecursoDeCarpeta(conceptoId: string, archivo: string, carpetaDestino: string): string {
+    const origen = this.rutaRecurso(conceptoId, archivo)
+    if (origen === null || !existsSync(origen)) {
+      throw new Error(`No se encontró el material: ${archivo}`)
+    }
+    const segura = nombreCarpetaSeguro(carpetaDestino)
+    if (segura === carpetaDe(archivo)) return archivo
+
+    const dirDestino = segura
+      ? join(this.carpetaConcepto(conceptoId), segura)
+      : this.carpetaConcepto(conceptoId)
+    mkdirSync(dirDestino, { recursive: true })
+
+    // Si ya hay uno con ese nombre en el destino, se renombra en vez de pisarlo.
+    const nombre = this.nombreLibreEn(dirDestino, archivoSinCarpeta(archivo))
+    renameSync(origen, join(dirDestino, nombre))
+    return segura ? `${segura}/${nombre}` : nombre
+  }
+
+  /**
+   * Carpetas existentes dentro de un concepto, leídas del disco. Se leen de
+   * ahí y no de los recursos registrados para que también aparezca una carpeta
+   * que el docente haya creado a mano desde su nube.
+   */
+  listarCarpetasConcepto(conceptoId: string): string[] {
+    const base = this.carpetaConcepto(conceptoId)
+    if (!existsSync(base)) return []
+    return readdirSync(base, { withFileTypes: true })
+      .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
+      .map((e) => e.name)
+      .sort((a, b) => a.localeCompare(b, 'es'))
+  }
+
+  /** Crea una carpeta vacía dentro del concepto. Devuelve su nombre ya saneado. */
+  crearCarpetaConcepto(conceptoId: string, nombre: string): string {
+    const segura = nombreCarpetaSeguro(nombre)
+    if (!segura) throw new Error('El nombre de la carpeta no es válido.')
+    mkdirSync(join(this.carpetaConcepto(conceptoId), segura), { recursive: true })
+    return segura
   }
 
   /**
@@ -216,10 +286,15 @@ export class VaultFileSystemService {
    * la carpeta de conceptos (evita salir del vault con "../"). Devuelve null si
    * la ruta escapa del vault.
    */
+  /**
+   * Ruta absoluta de un material, validada. `archivo` puede incluir carpeta
+   * ("Lecturas/paper.pdf"). Se comprueba contra la carpeta DEL CONCEPTO y no
+   * contra la de conceptos: así un "../otro-concepto/x.pdf" tampoco cuela.
+   */
   rutaRecurso(conceptoId: string, archivo: string): string | null {
-    const abs = resolve(this.carpetaConcepto(conceptoId), archivo)
-    const base = resolve(this.dirConceptos)
-    return abs === base || abs.startsWith(base + sep) ? abs : null
+    const base = resolve(this.carpetaConcepto(conceptoId))
+    const abs = resolve(base, archivo)
+    return abs.startsWith(base + sep) ? abs : null
   }
 
   existeRecurso(conceptoId: string, archivo: string): boolean {

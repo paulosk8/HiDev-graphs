@@ -8,6 +8,7 @@ import type {
 } from '../../shared/dtos'
 import type { Asignatura } from '../domain/Asignatura'
 import type { Concepto } from '../domain/Concepto'
+import { carpetaDe } from '../domain/Recurso'
 import type { Tarea } from '../domain/Tarea'
 
 /** Convierte un concepto del dominio en su DTO de detalle para la ficha. */
@@ -20,6 +21,8 @@ export function aConceptoDTO(concepto: Concepto): ConceptoDTO {
       id: r.id,
       nombre: r.nombre,
       archivo: r.archivo,
+      // Se deriva aquí para que el renderer no tenga que parsear rutas.
+      carpeta: carpetaDe(r.archivo),
       formato: r.formato
     })),
     relaciones: concepto.relaciones.map((rel) => ({ destino: rel.destino, tipo: rel.tipo })),
@@ -95,6 +98,7 @@ export function aTareaDTO(tarea: Tarea): TareaDTO {
       id: r.id,
       nombre: r.nombre,
       archivo: r.archivo,
+      carpeta: carpetaDe(r.archivo),
       formato: r.formato
     })),
     enlaces: tarea.enlaces.map((e) => ({ url: e.url, titulo: e.titulo }))

@@ -64,7 +64,10 @@ export type CalidadRepaso = 0 | 1 | 2 | 3 | 4 | 5
 export interface RecursoDTO {
   id: string
   nombre: string
+  /** Ruta relativa dentro del concepto; puede llevar carpeta ("Lecturas/x.pdf"). */
   archivo: string
+  /** Carpeta que lo contiene, o '' si está suelto. Derivada de `archivo`. */
+  carpeta: string
   formato: FormatoRecurso
 }
 

@@ -26,6 +26,11 @@ import { crearConcepto } from '../application/CrearConcepto'
 import { editarConcepto } from '../application/EditarConcepto'
 import { obtenerMenciones } from '../application/ObtenerMenciones'
 import { moverNota, moverTema } from '../application/MoverElementos'
+import {
+  crearCarpeta,
+  listarCarpetas,
+  moverMaterialACarpeta
+} from '../application/CarpetasMaterial'
 import { eliminarConcepto } from '../application/EliminarConcepto'
 import { obtenerFichaConcepto } from '../application/ObtenerFichaConcepto'
 import { agregarMaterial } from '../application/AgregarMaterial'
@@ -185,8 +190,24 @@ export function registrarHandlersIpc(servicios: Servicios): void {
       })
   )
 
-  ipcMain.handle(CANALES.materialAgregar, (_evento, conceptoId: string, rutas: string[]) =>
-    envolver(() => agregarMaterial(servicios, conceptoId, rutas))
+  ipcMain.handle(CANALES.materialCarpetasListar, (_evento, conceptoId: string) =>
+    envolver(() => listarCarpetas(servicios, conceptoId))
+  )
+
+  ipcMain.handle(CANALES.materialCarpetaCrear, (_evento, conceptoId: string, nombre: string) =>
+    envolver(() => crearCarpeta(servicios, conceptoId, nombre))
+  )
+
+  ipcMain.handle(
+    CANALES.materialMoverACarpeta,
+    (_evento, conceptoId: string, recursoId: string, carpeta: string) =>
+      envolver(() => moverMaterialACarpeta(servicios, conceptoId, recursoId, carpeta))
+  )
+
+  ipcMain.handle(
+    CANALES.materialAgregar,
+    (_evento, conceptoId: string, rutas: string[], carpeta?: string) =>
+      envolver(() => agregarMaterial(servicios, conceptoId, rutas, carpeta ?? ''))
   )
 
   ipcMain.handle(CANALES.materialEliminar, (_evento, conceptoId: string, recursoId: string) =>

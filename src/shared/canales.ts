@@ -20,6 +20,9 @@ export const CANALES = {
   // Material
   materialAgregar: 'material:agregar',
   materialEliminar: 'material:eliminar',
+  materialCarpetasListar: 'material:carpetas-listar',
+  materialCarpetaCrear: 'material:carpeta-crear',
+  materialMoverACarpeta: 'material:mover-a-carpeta',
   materialAbrir: 'material:abrir',
   materialLeerTexto: 'material:leer-texto',
 

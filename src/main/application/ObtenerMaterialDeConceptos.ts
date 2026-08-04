@@ -1,5 +1,6 @@
 import type { MaterialConceptoDTO } from '../../shared/dtos'
 import type { Servicios } from '../servicios'
+import { carpetaDe } from '../domain/Recurso'
 
 /**
  * Devuelve el material (recursos) de un conjunto de conceptos, para preparar la
@@ -22,6 +23,7 @@ export function obtenerMaterialDeConceptos(
         id: r.id,
         nombre: r.nombre,
         archivo: r.archivo,
+        carpeta: carpetaDe(r.archivo),
         formato: r.formato
       }))
     })

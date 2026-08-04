@@ -82,7 +82,22 @@ export interface PedagoGraphApi {
    * No es IPC: se resuelve en el preload con webUtils. Síncrono.
    */
   rutaDeArchivo(archivo: File): string
-  agregarMaterial(conceptoId: string, rutas: string[]): Promise<Resultado<ResultadoMaterialDTO>>
+  agregarMaterial(
+    conceptoId: string,
+    rutas: string[],
+    /** Carpeta destino dentro del concepto; vacío o ausente = raíz. */
+    carpeta?: string
+  ): Promise<Resultado<ResultadoMaterialDTO>>
+  /** Carpetas de material existentes en un concepto. */
+  listarCarpetasMaterial(conceptoId: string): Promise<Resultado<string[]>>
+  /** Crea una carpeta vacía; devuelve la lista actualizada. */
+  crearCarpetaMaterial(conceptoId: string, nombre: string): Promise<Resultado<string[]>>
+  /** Mueve un material a otra carpeta del concepto ('' = raíz). */
+  moverMaterialACarpeta(
+    conceptoId: string,
+    recursoId: string,
+    carpeta: string
+  ): Promise<Resultado<ConceptoDTO>>
   eliminarMaterial(conceptoId: string, recursoId: string): Promise<Resultado<ConceptoDTO>>
   /** Abre un material con la aplicación predeterminada del sistema. */
   abrirMaterial(conceptoId: string, archivo: string): Promise<Resultado<void>>

@@ -59,8 +59,14 @@ export const api = {
   vincularConceptos: (origenId: string, destinoId: string, tipo: TipoRelacion) =>
     desenvolver(window.api.vincularConceptos(origenId, destinoId, tipo)),
   rutaDeArchivo: (archivo: File): string => window.api.rutaDeArchivo(archivo),
-  agregarMaterial: (conceptoId: string, rutas: string[]) =>
-    desenvolver(window.api.agregarMaterial(conceptoId, rutas)),
+  agregarMaterial: (conceptoId: string, rutas: string[], carpeta?: string) =>
+    desenvolver(window.api.agregarMaterial(conceptoId, rutas, carpeta)),
+  listarCarpetasMaterial: (conceptoId: string) =>
+    desenvolver(window.api.listarCarpetasMaterial(conceptoId)),
+  crearCarpetaMaterial: (conceptoId: string, nombre: string) =>
+    desenvolver(window.api.crearCarpetaMaterial(conceptoId, nombre)),
+  moverMaterialACarpeta: (conceptoId: string, recursoId: string, carpeta: string) =>
+    desenvolver(window.api.moverMaterialACarpeta(conceptoId, recursoId, carpeta)),
   eliminarMaterial: (conceptoId: string, recursoId: string) =>
     desenvolver(window.api.eliminarMaterial(conceptoId, recursoId)),
   abrirMaterial: (conceptoId: string, archivo: string) =>

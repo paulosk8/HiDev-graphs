@@ -17,7 +17,12 @@ interface ConceptosState {
   crear: (datos: DatosConceptoDTO) => Promise<ResumenConceptoDTO | null>
   editar: (id: string, datos: DatosConceptoDTO) => Promise<ResumenConceptoDTO | null>
   eliminar: (id: string, nombre: string) => Promise<boolean>
-  agregarMaterial: (conceptoId: string, rutas: string[]) => Promise<ConceptoDTO | null>
+  agregarMaterial: (
+    conceptoId: string,
+    rutas: string[],
+    /** Carpeta destino dentro del concepto; vacío = suelto en la raíz. */
+    carpeta?: string
+  ) => Promise<ConceptoDTO | null>
   eliminarMaterial: (conceptoId: string, recursoId: string) => Promise<ConceptoDTO | null>
   /** Registra un repaso y refleja el nuevo dominio/próxima revisión en el listado. */
   repasar: (conceptoId: string, calidad: CalidadRepaso) => Promise<ConceptoDTO | null>
@@ -89,9 +94,9 @@ export const useConceptosStore = create<ConceptosState>((set) => ({
     }
   },
 
-  agregarMaterial: async (conceptoId, rutas) => {
+  agregarMaterial: async (conceptoId, rutas, carpeta) => {
     try {
-      const { concepto, agregados, ignorados } = await api.agregarMaterial(conceptoId, rutas)
+      const { concepto, agregados, ignorados } = await api.agregarMaterial(conceptoId, rutas, carpeta)
       set((estado) => ({
         lista: conConteoActualizado(estado.lista, conceptoId, concepto.recursos.length)
       }))

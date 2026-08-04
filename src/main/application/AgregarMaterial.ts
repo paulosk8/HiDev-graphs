@@ -18,7 +18,9 @@ import { aConceptoDTO } from './mapeadores'
 export function agregarMaterial(
   servicios: Servicios,
   conceptoId: string,
-  rutas: string[]
+  rutas: string[],
+  /** Carpeta destino dentro del concepto; vacío = suelto en la raíz. */
+  carpeta = ''
 ): ResultadoMaterialDTO {
   const { vault, repositorio } = servicios
 
@@ -35,7 +37,7 @@ export function agregarMaterial(
       ignorados.push(basename(ruta))
       continue
     }
-    const { archivo, formato } = vault.copiarRecurso(conceptoId, ruta)
+    const { archivo, formato } = vault.copiarRecurso(conceptoId, ruta, carpeta)
     const nombre = basename(ruta, extname(ruta)) || archivo
     concepto = agregarRecurso(concepto, crearRecurso({ id: randomUUID(), nombre, archivo, formato }))
     agregados += 1
