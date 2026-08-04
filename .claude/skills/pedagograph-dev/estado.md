@@ -83,22 +83,116 @@ Historial de lo construido, con las decisiones no obvias. Complementa `SKILL.md`
 - **Restauración** (`RestaurarVault`, `jszip` vía `await import`): elige el `.zip` → descomprime esas carpetas sobre el vault (**combina**: reemplaza los del mismo nombre, conserva el resto), con guarda anti *zip-slip*, y reindexa. Canal `sistema:restaurar`, `RestauracionDTO`. Botón "Restaurar copia" (♻️) en el Sidebar con confirmación.
 - Portable entre SO (material por nombre relativo). Verificado por smoke de ida y vuelta (respaldar vault A → restaurar en vault B vacío: material byte-idéntico, índice rehecho).
 
-## Autenticación / nube (Fase A — en curso)
+## Almacenamiento del material (modelo Obsidian)
 
-Dirección SaaS aprobada por el usuario: **login con Google OBLIGATORIO** + backend en **Supabase**. Decisión de datos: **solo los archivos (material) son locales; el resto (conceptos, relaciones, asignaturas, temas, tareas) va a Postgres**. Sin Supabase Storage (para no gastar la capa gratuita). Reutilizable para la futura web.
+Cambio de rumbo: **se eliminó el backend propio (Supabase)** —login con Google, sync de
+metadatos y resolución de conflictos— y se adoptó el **modelo Obsidian**: el material vive
+en una carpeta que el cliente de escritorio de **Google Drive / OneDrive** ya sincroniza.
+Razón: así **también se sincronizan los archivos** (con Supabase nunca subían, era la
+limitación conocida), sin login, sin backend y sin coste. Todo lo borrado está en el
+historial de git (rama `feat/almacenamiento-nube`, PR #18) por si hay que recuperarlo.
 
-- **Fase A (hecha)** `feat/auth-login-supabase`: login como compuerta. `SupabaseAuthService` (main, `@supabase/supabase-js`): OAuth de escritorio → abre el navegador del sistema (`shell.openExternal`), captura la redirección en un servidor HTTP efímero en `127.0.0.1` (flujo **PKCE**, `exchangeCodeForSession`); sesión persistida cifrada con `safeStorage` en `userData/sesion.dat`. Config vía `MAIN_VITE_SUPABASE_URL`/`MAIN_VITE_SUPABASE_ANON_KEY` (`.env`, leído en `configSupabase.ts`). Canales `auth:iniciar|cerrar|sesion` (`registrarHandlersAuth`; `envolver` exportado). Renderer: `authStore` + `PantallaLogin` (compuerta en `App`) + chip de usuario con "Salir" en Sidebar. DTOs `SesionDTO`/`UsuarioDTO`. Smoke seam: `PEDAGOGRAPH_AUTH_FAKE=1` hace que `obtenerSesion` devuelva una sesión ficticia (verificado por smoke de render). **Falta probar el OAuth real** tras configurar Supabase+Google (manual, requiere las credenciales del usuario).
-- **Fase B (hecha, falta que el usuario la aplique)** `feat/nube-esquema`: esquema Postgres en `supabase/migrations/0001_esquema_pedagograph.sql` (+ `supabase/README.md`). Decisión de modelado: **una tabla por agregado** (`conceptos`, `asignaturas`, `tareas`) con el documento completo en `datos jsonb` (misma forma que el YAML del vault) → sincronizar = leer/escribir el agregado entero. PK `(user_id, id)` (id = slug de la app; `user_id` default `auth.uid()`). Columnas de búsqueda **generadas** desde el JSON: conceptos/asignaturas `nombre`, asignaturas `tipo`, tareas `titulo`+`asignatura_id` (claves reales del agregado: `nombre`/`titulo`/`asignaturaId`/`tipo`). Trigger `actualizado_en`. **RLS** `auth.uid() = user_id` en las tres + grant a `authenticated`. El usuario lo corre en Supabase SQL Editor. No verificable por smoke local (requiere su DB).
-- **Fase C (hecha)** `feat/nube-datos-acceso` + `feat/nube-plan-sync` + `feat/nube-sync`: **sincronización local-first** (el usuario eligió local-first+sync sobre solo-nube; la futura web sería solo-nube). `SupabaseDataService` (CRUD de agregados `{id,datos}` sobre las 3 tablas con el cliente autenticado; `listar` trae `actualizado_en`). `sincronizacion.ts` = lógica PURA `planificarSincronizacion(locales, remotos)`: solo-local sube, solo-remoto baja, ambos → no-op si contenido idéntico (`canonizar` con claves ordenadas, evita rebotes) o gana el más reciente (mtime vs actualizado_en). Vault: `leerAgregadosLocales`/`escribirAgregadoLocal` tratan el agregado como JSON autocontenido (conceptos/asignaturas = YAML crudo; **tareas pliegan/despliegan las instrucciones** que viven en archivo aparte). `SyncService.sincronizar()` planifica→sube/baja→reindexa si bajó algo. Canal `nube:sincronizar` (+`SincronizacionDTO`). `authStore` sincroniza al iniciar sesión y al arrancar con sesión (no bloquea si falla) + botón "Sincronizar" (☁) en Sidebar. Verificado por 2 smokes (planner; round-trip local A→nube→B con idempotencia). **Mitad de red se prueba en vivo.**
-- **Fase D (efectivamente cubierta por Fase C)**: la primera sincronización tras iniciar sesión sube todos los agregados "solo-local" → migra el vault existente a la cuenta sin paso aparte.
-- **Auto-sync** `feat/nube-autosync`: además del sync al login/arranque/botón, tras cada cambio local se sube automáticamente. Reutiliza el vigilante chokidar (en su callback programa un sync con debounce de 2s, solo si `auth.configurado` + `auth.haySesionGuardada()`). Sin bucles: el planner hace no-op si el contenido ya coincide, así el ciclo bajar→escribir→detectar→sync se corta tras un ciclo. `SyncService` es reentrante (serializa; si llega petición durante un sync, se repite al terminar). Verificado por smoke del SyncService con nube simulada (sube/baja/idempotente/concurrencia).
-- **Sync en vivo confirmado OK** (login + nube + sync + auto-sync, end-to-end con el Supabase real). Gotcha resuelto: `PGRST205 "Could not find the table public.conceptos"` = el esquema (Fase B) no estaba aplicado en el proyecto del `.env`; solución = correr el SQL en ESE proyecto + `notify pgrst, 'reload schema';`. El botón Sincronizar ahora muestra el detalle real de Supabase (`detalle(PostgrestError)`).
-- **Borrados** `feat/nube-borrados`: el borrado local se propaga a la nube (merge de tres vías). `planificarSincronizacion(locales, remotos, base)` usa el "estado base" (de la última sync, en `.index/sync-base.json` via `leer/guardarBaseSync`) para distinguir "nuevo de otro equipo" (bajar) de "borrado aquí" (borrar de la nube → `borrarRemoto`). `IndexSyncService` también vigila `tareas/` (para su auto-sync). Verificado por smoke (planner 3-vías + propagación end-to-end).
-- **Borrado simétrico seguro** `feat/nube-borrado-simetrico`: la sync ahora **también borra en local** un ítem borrado en la nube desde otro equipo (`plan.borrarLocal` → `vault.eliminarAgregadoLocal`, reindexa). Se hizo **seguro** enriqueciendo la base de `string[]` a `{ id, hash }[]` (`BaseItem`; el hash es `canonizar(datos)` de la última sync): así se distingue "sin cambios" de "editado". Reglas: ante **borrado-vs-edición gana la edición** (en cualquier lado → resucita, nunca se pierde una edición); **guardas anti-catástrofe**: si un lado vuelve completamente vacío teniendo base (glitch de red/lectura, cuenta equivocada) NO se propaga el borrado hacia ese lado, se restaura desde el otro. **Compat**: la base antigua (solo ids, hash `''`) preserva el comportamiento previo (propaga borrados locales a la nube, no borra local) hasta que la siguiente sync la reescribe con hashes. `SincronizacionDTO.borradosLocal` nuevo (el resumen del botón lo muestra como "N borrados aquí"; `authStore` recarga vistas también si `borradosLocal > 0`). Verificado por smokes: planificador (24 checks: los 3 caminos, edición-vs-borrado en ambos lados, ambas guardas, compat, conflicto) y end-to-end del `SyncService` con nube en memoria (borra local + idempotente).
-- **Arranque offline + robustez de red** `feat/nube-arranque-offline` + `feat/nube-reconexion-timeouts`: la app **arranca sin internet** con la sesión cacheada. `SupabaseAuthService.obtenerSesion` guarda el perfil (`usuario`) junto a los tokens (`SesionGuardada`; sesiones antiguas se reconstruyen decodificando el JWT), aplica **timeout (8s)** al refresco de `setSession`, y ante fallo de red (excepción/timeout/error transitorio) **conserva** la sesión y la devuelve desde caché; solo borra `sesion.dat` ante un rechazo de auth real (400/401/403/422) — nunca por red (offline-safe). `SupabaseDataService` pone `AbortSignal.timeout(15s)` en cada consulta y mapea aborto/red a error humano (`aErrorRed`) → un sync sin red falla rápido en vez de colgarse. **Sync al reconectar**: `renderer/src/hooks/useConexion.ts` (`useSincronizarAlReconectar` escucha `online` y sincroniza si hay sesión; `useEnLinea` para el aviso "Sin conexión" en el Sidebar, chip ámbar sin IPC). Verificado por smokes (6 escenarios de `obtenerSesion`; 8 de `SupabaseDataService` incl. timeout aborta <1s; lógica de reconexión).
-- **Conflictos de edición: resolución manual** `feat/nube-conflictos`: cuando el MISMO ítem se editó en dos equipos entre syncs. Antes: "última-escritura-gana" por reloj (podía perder una edición, incluso la del lado que NO cambió si el reloj desfasaba). Ahora, con el hash de la base: si **solo un lado cambió**, gana ese lado SIN mirar el reloj (corrección clave); si **cambiaron los dos** es un CONFLICTO REAL → no se aplica nada, se marca (`plan.conflictos`) y se **conserva el hash ancestro** para re-detectarlo en cada sync hasta resolverlo. Los conflictos (con ambas versiones) se guardan en `.index/conflictos.json` (`leer/guardarConflictos`; re-detectables). UI: `ConflictosPanel` en Configuración › Datos (badge con el nº en el ítem del Sidebar) muestra las dos versiones con resumen legible por tipo + fecha; el docente elige. `SyncService.resolverConflicto(tabla,id,'local'|'nube')` sube la versión elegida a la nube (primero; si falla, no toca nada), la escribe en local, fija la base = su hash, quita el conflicto y reindexa. Canales `nube:conflictos-listar|resolver` (+ `ConflictoDTO`/`EleccionConflicto`); `conflictosStore` en el renderer; `SincronizacionDTO.conflictos` avisa tras sincronizar. **Compat**: base antigua sin hash cae a última-escritura-gana (no detecta conflicto) hasta que la base se reescribe. Verificado por smokes: planificador (11: determinista un-lado + conflicto), end-to-end del `SyncService` (12: detecta→persiste→resuelve ambas direcciones→idempotente), store del renderer (4) y render GUI del panel + clic (7).
-- **Limitaciones actuales (conocidas)**: Material (archivos) nunca sube: en otro equipo aparece el metadato pero el archivo falta (decisión: sin Supabase Storage). Salvedad deliberada del borrado simétrico: si un equipo borra TODO, la nube vacía no se propaga (guarda anti-catástrofe). El borrado ya es simétrico/seguro y los conflictos se resuelven a mano (ver arriba).
-- Nota UX: login obligatorio + nube ⇒ la app necesita cuenta para arrancar, pero **ya no exige internet** (arranca offline con sesión cacheada y sincroniza al reconectar). Falta el primer login, que sí necesita red.
+- **Preferencias por-equipo** (`infrastructure/configApp.ts`, `userData/config.json`, fuera
+  del vault a propósito: la ruta del vault no puede vivir dentro del vault): `configurado`,
+  `modoAlmacenamiento: 'local' | 'nube'` y `rutaVaultNube` (ruta absoluta y completa; el
+  docente elige ubicación **y** nombre de carpeta). `rutaContenedorNube` queda como campo
+  heredado, solo se lee para migrar al formato nuevo.
+- **Detección de carpetas de nube** (`infrastructure/DeteccionNube.ts`): sin APIs ni OAuth
+  de los proveedores — solo se **busca con `existsSync`** la carpeta local que el cliente ya
+  mantiene sincronizada, en macOS y Windows. En Google Drive se apunta a `Mi unidad`/`My
+  Drive` (nunca a la raíz de la cuenta, que también trae "Ordenadores" y "Unidades
+  compartidas").
+- **Mover el almacenamiento** (`application/MoverAlmacenamiento.ts`): copia recursiva de
+  `conceptos/`, `asignaturas/` y `tareas/` (nunca `.index/`) **sin sobrescribir** lo que ya
+  exista en el destino y **sin borrar nada** — así se puede *adoptar* una carpeta de nube que
+  ya trae material de otro equipo (`adoptado`), y la carpeta anterior se conserva como
+  respaldo. El cambio es **en caliente**: re-apunta el núcleo y recarga la ventana, sin
+  reiniciar el proceso. Canales en `ipc/registrarHandlersAlmacenamiento.ts`.
+- **El índice SQLite pasó a ser por-equipo** (`userData`), fuera de la carpeta de nube: es
+  derivado y reconstruible, y no debe viajar entre equipos ni provocar conflictos del cliente
+  de nube.
+- **UI**: Configuración → Datos y copias (`AlmacenamientoNube.tsx`) con "este equipo" / "en mi
+  nube", y `DialogoGuardarNube.tsx` (estilo Obsidian: ubicación + nombre de carpeta + vista
+  previa de la ruta + selector nativo para crear carpeta). **Cambiar de carpeta o de nube
+  cuando ya se usa una** (p. ej. Drive → OneDrive): "En mi nube" ofrece "Cambiar…" además de
+  marcarse como actual, el diálogo preselecciona la ubicación de hoy ("Ahora aquí"), precarga
+  el nombre y avisa de que la carpeta anterior se conserva.
+- **Limitación heredada resuelta**: los archivos de material ahora sí llegan a los otros
+  equipos (los sincroniza el cliente de nube, no la app). A cambio, la app **no controla** la
+  resolución de conflictos: la delega en Drive/OneDrive (que renombran el archivo en
+  conflicto). El deshacer propio es el historial de versiones (abajo).
+
+## Bienvenida de primer arranque y capas
+
+- `features/bienvenida/Bienvenida.tsx` — **paso 1**: dónde guardar el material (este equipo o
+  la nube detectada). Solo aparece si `configurado` es falso. Si la elección no recarga la
+  ventana (p. ej. "este equipo", que ya es la carpeta por defecto), entra directo vía `onListo`.
+- `features/bienvenida/SeleccionCapas.tsx` — **paso 2**: qué capas quiere ver (Docencia,
+  Aprendizaje o ambas). Habilita/oculta los grupos del menú lateral (`layoutStore.elegirCapas`)
+  y aterriza en la primera capa habilitada para no mostrar una sección oculta. Editable luego
+  en Configuración → Apariencia.
+
+## Historial de versiones del material
+
+- `infrastructure/HistorialService.ts`: cada vez que un **concepto, asignatura o tarea**
+  cambia se guarda un *snapshot* JSON en `userData` —**por-equipo, fuera del vault**— para no
+  viajar por la nube ni ensuciar la carpeta del docente. Captura **por hash** (solo si el
+  contenido cambió) y conserva **40 versiones máx. por elemento** (poda las antiguas).
+- Versiona solo los agregados, **no** los binarios de material (pdf/pptx): son grandes y no
+  cambian tras subirse.
+- UI "Historial de cambios" (`features/configuracion/HistorialCambios.tsx`, en Configuración →
+  Datos y copias): ver las versiones de un elemento y **restaurar** una anterior (reversible,
+  porque restaurar también queda registrado). Canales en `ipc/registrarHandlersHistorial.ts`.
+
+## Identidad visual y barra de menú
+
+- **Logo**: marca original en SVG (`resources/icon.svg`) — un birrete académico dibujado como
+  un grafo (las esquinas son nodos; los lados, aristas). `npm run iconos`
+  (`scripts/generar-iconos.ts`) lo rasteriza **con el propio Chromium de Electron** (canvas,
+  sin dependencias nuevas) y genera `icon.png` (1024), `icon.icns` (macOS, vía `iconutil`),
+  `icon.ico` (Windows, empaquetado a mano) y `resources/icons/*.png` sueltos. Van en
+  `resources/` y no en `build/` porque esa carpeta sí se versiona. En la app se usa vía
+  `components/Logo.tsx` (inline, hereda color) en la ventana, el dock, el menú lateral y la
+  bienvenida.
+- **Barra de menú propia, en español** (`main/menu.ts`), con lenguaje de docente: Archivo
+  (nuevo concepto ⌘N, nueva asignatura ⇧⌘N, copia de seguridad ⇧⌘S, restaurar), Editar, Ver
+  (Asignaturas/Conceptos/Mapa/Repaso/Asistente ⌘1…⌘5, tamaño del texto, pantalla completa),
+  Herramientas (actualizar mi material ⌘R, abrir la carpeta del material, terminal) y Ayuda.
+  Sustituye a la de Electron (en inglés y con opciones de programador).
+  **Decisión clave**: el menú **no ejecuta lógica de interfaz**; envía la acción al renderer
+  por el canal `menu:accion` (`AccionMenu`) y allí se resuelve con la **misma API que los
+  botones** equivalentes → un solo camino por acción. Lo que sí es del sistema (abrir la
+  carpeta, "Acerca de") se hace en el main. `rutaVault` se pasa como **función** porque la
+  carpeta puede cambiar en caliente.
+- Las acciones de datos (actualizar, respaldar, restaurar) se extrajeron a
+  `features/configuracion/accionesDatos.ts` y las comparten Configuración y el menú.
+- **El nombre "PedagoGraph" en el dock** (`fix/nombre-app`): en macOS el nombre visible NO sale
+  de `app.setName()`, sale del **paquete que ejecuta la app** — en desarrollo, el Electron de
+  `node_modules`, por eso se veía "Electron". `npm run marca-dev` (`scripts/marca-dev.ts`) marca
+  esa copia local (solo `node_modules`, nada del sistema; se rehace en cada instalación, por eso
+  va también en `postinstall`):
+  1. **Renombra el paquete** a `PedagoGraph.app` y reapunta `node_modules/electron/path.txt`
+     (donde el paquete npm guarda la ruta de su ejecutable), así `npm run dev` sigue igual.
+     **Esto es lo que de verdad arregla el tile del Dock**: reescribir el plist NO basta,
+     porque macOS usa también el nombre del propio paquete (se comprobó: con `Electron.app`
+     el Dock seguía diciendo "Electron" pese a tener `CFBundleDisplayName` correcto).
+  2. Reescribe `CFBundleName`/`CFBundleDisplayName`, copia el icono, toca la fecha del paquete
+     (macOS cachea nombre e icono por mtime) y hace `lsregister -f` para que LaunchServices
+     lo relea sin esperar a que caduque su caché.
+  - **Cómo verificarlo sin capturas**: `lsappinfo info -only name <pid>` sobre la app en
+    ejecución devuelve el nombre que pinta el Dock (`LSDisplayName`). Ojo: `mdls` consulta el
+    índice de Spotlight, que va por su cuenta y sigue diciendo "Electron" — no sirve.
+  - Para la app **empaquetada** el arreglo real es `productName: "PedagoGraph"` en
+    `package.json`; en Windows, `app.setAppUserModelId` evita que la barra de tareas agrupe la
+    ventana bajo "Electron". **Hay que reiniciar la app para verlo.**
+
+## Datos de prueba
+
+- `npm run sembrar-demo` (`scripts/sembrar-demo.ts`) — el juego de datos grande de siempre.
+- `scripts/sembrar-prueba.ts` — juego **pequeño**: 5 conceptos conectados por relaciones
+  tipadas + una asignatura, para probar el Mapa, la ficha de concepto y el historial. Apunta al
+  **vault activo** (lee `config.json`: nube o local) y es **aditivo** (solo crea lo que falta).
+  Se ejecuta bundleándolo con esbuild (ver la cabecera del archivo).
 
 ## Decisiones de producto registradas
 
