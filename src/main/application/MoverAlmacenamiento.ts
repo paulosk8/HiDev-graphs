@@ -18,7 +18,7 @@ import {
 } from '../infrastructure/configApp'
 
 /** Carpetas del vault que contienen material y datos del usuario (nunca el índice). */
-const CARPETAS_VAULT = ['conceptos', 'asignaturas', 'tareas'] as const
+const CARPETAS_VAULT = ['conceptos', 'asignaturas', 'tareas', 'lienzos'] as const
 
 export type DestinoAlmacenamiento =
   | { modo: 'local' }

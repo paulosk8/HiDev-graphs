@@ -8,13 +8,23 @@ interface Props {
   excluir: string[]
   onSeleccionar: (conceptoId: string) => void | Promise<void>
   onCerrar: () => void
+  /**
+   * true cuando ya está dentro de un contenedor propio (un modal). Sin esto
+   * pinta su recuadro flotante y se ve una caja dentro de otra, medio fuera.
+   */
+  sinMarco?: boolean
 }
 
 /**
  * Buscador con autocompletado para vincular un concepto a un tema. Si el texto
  * no coincide con ninguno, ofrece crear el concepto nuevo en el momento.
  */
-export function BuscadorConceptos({ excluir, onSeleccionar, onCerrar }: Props): JSX.Element {
+export function BuscadorConceptos({
+  excluir,
+  onSeleccionar,
+  onCerrar,
+  sinMarco = false
+}: Props): JSX.Element {
   const crearConcepto = useConceptosStore((s) => s.crear)
   const [texto, setTexto] = useState('')
   const [resultados, setResultados] = useState<ResumenConceptoDTO[]>([])
@@ -76,7 +86,11 @@ export function BuscadorConceptos({ excluir, onSeleccionar, onCerrar }: Props): 
   return (
     <div
       ref={contenedor}
-      className="absolute z-30 mt-1 w-72 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
+      className={
+        sinMarco
+          ? 'w-full'
+          : 'absolute z-30 mt-1 w-72 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg'
+      }
     >
       <input
         autoFocus
