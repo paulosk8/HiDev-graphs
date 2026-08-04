@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs'
 
 import { CANALES } from '../../shared/canales'
 import type {
+  LienzoDTO,
   CalidadRepaso,
   ClienteMcpId,
   CombinarTareasDTO,
@@ -24,6 +25,20 @@ import type { Resultado } from '../../shared/resultado'
 import { ErrorDeDominio } from '../domain/errores'
 import { crearConcepto } from '../application/CrearConcepto'
 import { editarConcepto } from '../application/EditarConcepto'
+import { obtenerMenciones } from '../application/ObtenerMenciones'
+import {
+  crearLienzoNuevo,
+  eliminarLienzo,
+  guardarLienzo,
+  listarLienzos,
+  obtenerLienzo
+} from '../application/Lienzos'
+import { moverNota, moverTema } from '../application/MoverElementos'
+import {
+  crearCarpeta,
+  listarCarpetas,
+  moverMaterialACarpeta
+} from '../application/CarpetasMaterial'
 import { eliminarConcepto } from '../application/EliminarConcepto'
 import { obtenerFichaConcepto } from '../application/ObtenerFichaConcepto'
 import { agregarMaterial } from '../application/AgregarMaterial'
@@ -127,6 +142,40 @@ export function registrarHandlersIpc(servicios: Servicios): void {
     envolver(() => repositorio.buscarConceptos(texto))
   )
 
+  ipcMain.handle(CANALES.conceptosEtiquetas, () =>
+    envolver(() => repositorio.listarEtiquetas())
+  )
+
+  ipcMain.handle(
+    CANALES.temaMover,
+    (_evento, asignaturaId: string, temaId: string, unidadDestinoId: string) =>
+      envolver(() => moverTema(servicios, asignaturaId, temaId, unidadDestinoId))
+  )
+
+  ipcMain.handle(
+    CANALES.notaMover,
+    (_evento, origenId: string, notaId: string, destinoId: string) =>
+      envolver(() => moverNota(servicios, origenId, notaId, destinoId))
+  )
+
+  ipcMain.handle(CANALES.lienzosListar, () => envolver(() => listarLienzos(servicios)))
+  ipcMain.handle(CANALES.lienzoObtener, (_e, id: string) =>
+    envolver(() => obtenerLienzo(servicios, id))
+  )
+  ipcMain.handle(CANALES.lienzoCrear, (_e, nombre: string) =>
+    envolver(() => crearLienzoNuevo(servicios, nombre))
+  )
+  ipcMain.handle(CANALES.lienzoGuardar, (_e, dto: LienzoDTO) =>
+    envolver(() => guardarLienzo(servicios, dto))
+  )
+  ipcMain.handle(CANALES.lienzoEliminar, (_e, id: string) =>
+    envolver(() => eliminarLienzo(servicios, id))
+  )
+
+  ipcMain.handle(CANALES.conceptoMenciones, (_evento, conceptoId: string) =>
+    envolver(() => obtenerMenciones(servicios, conceptoId))
+  )
+
   ipcMain.handle(CANALES.conceptoUsos, (_evento, conceptoId: string) =>
     envolver(() => repositorio.usosDeConcepto(conceptoId))
   )
@@ -163,8 +212,24 @@ export function registrarHandlersIpc(servicios: Servicios): void {
       })
   )
 
-  ipcMain.handle(CANALES.materialAgregar, (_evento, conceptoId: string, rutas: string[]) =>
-    envolver(() => agregarMaterial(servicios, conceptoId, rutas))
+  ipcMain.handle(CANALES.materialCarpetasListar, (_evento, conceptoId: string) =>
+    envolver(() => listarCarpetas(servicios, conceptoId))
+  )
+
+  ipcMain.handle(CANALES.materialCarpetaCrear, (_evento, conceptoId: string, nombre: string) =>
+    envolver(() => crearCarpeta(servicios, conceptoId, nombre))
+  )
+
+  ipcMain.handle(
+    CANALES.materialMoverACarpeta,
+    (_evento, conceptoId: string, recursoId: string, carpeta: string) =>
+      envolver(() => moverMaterialACarpeta(servicios, conceptoId, recursoId, carpeta))
+  )
+
+  ipcMain.handle(
+    CANALES.materialAgregar,
+    (_evento, conceptoId: string, rutas: string[], carpeta?: string) =>
+      envolver(() => agregarMaterial(servicios, conceptoId, rutas, carpeta ?? ''))
   )
 
   ipcMain.handle(CANALES.materialEliminar, (_evento, conceptoId: string, recursoId: string) =>

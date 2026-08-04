@@ -3,6 +3,10 @@ import type {
   ClienteMcpId,
   AlmacenamientoDTO,
   CarpetaNubeDTO,
+  EtiquetaDTO,
+  LienzoDTO,
+  ResumenLienzoDTO,
+  ResumenMencionDTO,
   ResultadoAlmacenamientoDTO,
   EliminacionDTO,
   ModoEliminacion,
@@ -49,6 +53,30 @@ export interface PedagoGraphApi {
   // --- Conceptos ---
   listarConceptos(): Promise<Resultado<ResumenConceptoDTO[]>>
   buscarConceptos(texto: string): Promise<Resultado<ResumenConceptoDTO[]>>
+  /** Mueve un tema a otra unidad de la MISMA asignatura (conserva su id). */
+  moverTema(
+    asignaturaId: string,
+    temaId: string,
+    unidadDestinoId: string
+  ): Promise<Resultado<AsignaturaDTO>>
+  /** Mueve una nota a otro concepto. Devuelve el concepto de origen ya sin ella. */
+  moverNota(
+    conceptoOrigenId: string,
+    notaId: string,
+    conceptoDestinoId: string
+  ): Promise<Resultado<ConceptoDTO>>
+  // --- Lienzos ---
+  listarLienzos(): Promise<Resultado<ResumenLienzoDTO[]>>
+  obtenerLienzo(id: string): Promise<Resultado<LienzoDTO>>
+  crearLienzo(nombre: string): Promise<Resultado<ResumenLienzoDTO>>
+  /** Guarda el lienzo entero (posiciones y conexiones). */
+  guardarLienzo(lienzo: LienzoDTO): Promise<Resultado<LienzoDTO>>
+  eliminarLienzo(id: string): Promise<Resultado<void>>
+
+  /** Otros conceptos que enlazan a este desde sus notas con [[Nombre]]. */
+  obtenerMenciones(conceptoId: string): Promise<Resultado<ResumenMencionDTO[]>>
+  /** Todas las etiquetas usadas, con cuántos conceptos las llevan. */
+  listarEtiquetas(): Promise<Resultado<EtiquetaDTO[]>>
   usosDeConcepto(conceptoId: string): Promise<Resultado<UsoDeConceptoDTO[]>>
   obtenerFichaConcepto(conceptoId: string): Promise<Resultado<FichaConceptoDTO>>
   crearConcepto(datos: DatosConceptoDTO): Promise<Resultado<ResumenConceptoDTO>>
@@ -64,7 +92,22 @@ export interface PedagoGraphApi {
    * No es IPC: se resuelve en el preload con webUtils. Síncrono.
    */
   rutaDeArchivo(archivo: File): string
-  agregarMaterial(conceptoId: string, rutas: string[]): Promise<Resultado<ResultadoMaterialDTO>>
+  agregarMaterial(
+    conceptoId: string,
+    rutas: string[],
+    /** Carpeta destino dentro del concepto; vacío o ausente = raíz. */
+    carpeta?: string
+  ): Promise<Resultado<ResultadoMaterialDTO>>
+  /** Carpetas de material existentes en un concepto. */
+  listarCarpetasMaterial(conceptoId: string): Promise<Resultado<string[]>>
+  /** Crea una carpeta vacía; devuelve la lista actualizada. */
+  crearCarpetaMaterial(conceptoId: string, nombre: string): Promise<Resultado<string[]>>
+  /** Mueve un material a otra carpeta del concepto ('' = raíz). */
+  moverMaterialACarpeta(
+    conceptoId: string,
+    recursoId: string,
+    carpeta: string
+  ): Promise<Resultado<ConceptoDTO>>
   eliminarMaterial(conceptoId: string, recursoId: string): Promise<Resultado<ConceptoDTO>>
   /** Abre un material con la aplicación predeterminada del sistema. */
   abrirMaterial(conceptoId: string, archivo: string): Promise<Resultado<void>>

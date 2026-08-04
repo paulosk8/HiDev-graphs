@@ -1,4 +1,13 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, rmSync, copyFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+  copyFileSync
+} from 'node:fs'
 import { basename, extname, join, resolve, sep } from 'node:path'
 import { load as leerYaml, dump as escribirYaml } from 'js-yaml'
 
@@ -12,12 +21,18 @@ import {
   type NotaConcepto
 } from '../domain/Concepto'
 import { repasoDesdePlano } from '../domain/Repaso'
+import { lienzoAPlano, lienzoDesdePlano, type Lienzo } from '../domain/Lienzo'
 import {
   eliminarRuta,
   NOMBRE_CARPETA_ELIMINADOS,
   type ModoEliminacion
 } from './Papelera'
-import { crearRecurso } from '../domain/Recurso'
+import {
+  archivoSinCarpeta,
+  carpetaDe,
+  crearRecurso,
+  nombreCarpetaSeguro
+} from '../domain/Recurso'
 import { crearRelacion } from '../domain/Relacion'
 import { crearSubtema } from '../domain/Subtema'
 import { crearTarea, type Tarea } from '../domain/Tarea'
@@ -91,6 +106,9 @@ export class VaultFileSystemService {
   get dirTareas(): string {
     return join(this.rutaVault, 'tareas')
   }
+  get dirLienzos(): string {
+    return join(this.rutaVault, 'lienzos')
+  }
   get dirIndice(): string {
     return this.rutaIndiceForzada ?? join(this.rutaVault, '.index')
   }
@@ -125,6 +143,7 @@ export class VaultFileSystemService {
     mkdirSync(this.dirConceptos, { recursive: true })
     mkdirSync(this.dirAsignaturas, { recursive: true })
     mkdirSync(this.dirTareas, { recursive: true })
+    mkdirSync(this.dirLienzos, { recursive: true })
     mkdirSync(this.dirIndice, { recursive: true })
   }
 
@@ -168,6 +187,9 @@ export class VaultFileSystemService {
             }))
           }
         : {}),
+      // Etiquetas del docente. Solo se escriben si hay alguna, para no meter
+      // una clave vacía en los YAML que ya existían.
+      ...(concepto.etiquetas.length > 0 ? { etiquetas: [...concepto.etiquetas] } : {}),
       // Estado de repaso espaciado (solo si existe); parte del contenido del concepto.
       ...(concepto.repaso ? { repaso: { ...concepto.repaso } } : {})
     }
@@ -197,15 +219,71 @@ export class VaultFileSystemService {
    * Copia un archivo de material dentro de la carpeta del concepto y devuelve
    * el nombre de archivo final (resolviendo colisiones) y su formato.
    */
-  copiarRecurso(conceptoId: string, rutaOrigen: string): { archivo: string; formato: FormatoRecurso } {
+  copiarRecurso(
+    conceptoId: string,
+    rutaOrigen: string,
+    carpeta = ''
+  ): { archivo: string; formato: FormatoRecurso } {
     const formato = formatoDesdeNombreArchivo(rutaOrigen)
     if (formato === null) {
       throw new Error(`Formato de material no soportado: ${extname(rutaOrigen) || '(sin extensión)'}`)
     }
-    mkdirSync(this.carpetaConcepto(conceptoId), { recursive: true })
-    const archivo = this.nombreLibreEn(this.carpetaConcepto(conceptoId), basename(rutaOrigen))
-    copyFileSync(rutaOrigen, join(this.carpetaConcepto(conceptoId), archivo))
-    return { archivo, formato }
+    // La carpeta es real en disco: el docente la ve igual desde su nube.
+    const segura = nombreCarpetaSeguro(carpeta)
+    const destino = segura
+      ? join(this.carpetaConcepto(conceptoId), segura)
+      : this.carpetaConcepto(conceptoId)
+    mkdirSync(destino, { recursive: true })
+
+    const nombre = this.nombreLibreEn(destino, basename(rutaOrigen))
+    copyFileSync(rutaOrigen, join(destino, nombre))
+    // La ruta guardada usa siempre '/' para que el vault sea portable entre SO.
+    return { archivo: segura ? `${segura}/${nombre}` : nombre, formato }
+  }
+
+  /**
+   * Mueve un material a otra carpeta del MISMO concepto (o a la raíz, con
+   * `carpetaDestino` vacío). Devuelve la nueva ruta relativa.
+   */
+  moverRecursoDeCarpeta(conceptoId: string, archivo: string, carpetaDestino: string): string {
+    const origen = this.rutaRecurso(conceptoId, archivo)
+    if (origen === null || !existsSync(origen)) {
+      throw new Error(`No se encontró el material: ${archivo}`)
+    }
+    const segura = nombreCarpetaSeguro(carpetaDestino)
+    if (segura === carpetaDe(archivo)) return archivo
+
+    const dirDestino = segura
+      ? join(this.carpetaConcepto(conceptoId), segura)
+      : this.carpetaConcepto(conceptoId)
+    mkdirSync(dirDestino, { recursive: true })
+
+    // Si ya hay uno con ese nombre en el destino, se renombra en vez de pisarlo.
+    const nombre = this.nombreLibreEn(dirDestino, archivoSinCarpeta(archivo))
+    renameSync(origen, join(dirDestino, nombre))
+    return segura ? `${segura}/${nombre}` : nombre
+  }
+
+  /**
+   * Carpetas existentes dentro de un concepto, leídas del disco. Se leen de
+   * ahí y no de los recursos registrados para que también aparezca una carpeta
+   * que el docente haya creado a mano desde su nube.
+   */
+  listarCarpetasConcepto(conceptoId: string): string[] {
+    const base = this.carpetaConcepto(conceptoId)
+    if (!existsSync(base)) return []
+    return readdirSync(base, { withFileTypes: true })
+      .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
+      .map((e) => e.name)
+      .sort((a, b) => a.localeCompare(b, 'es'))
+  }
+
+  /** Crea una carpeta vacía dentro del concepto. Devuelve su nombre ya saneado. */
+  crearCarpetaConcepto(conceptoId: string, nombre: string): string {
+    const segura = nombreCarpetaSeguro(nombre)
+    if (!segura) throw new Error('El nombre de la carpeta no es válido.')
+    mkdirSync(join(this.carpetaConcepto(conceptoId), segura), { recursive: true })
+    return segura
   }
 
   /**
@@ -213,10 +291,15 @@ export class VaultFileSystemService {
    * la carpeta de conceptos (evita salir del vault con "../"). Devuelve null si
    * la ruta escapa del vault.
    */
+  /**
+   * Ruta absoluta de un material, validada. `archivo` puede incluir carpeta
+   * ("Lecturas/paper.pdf"). Se comprueba contra la carpeta DEL CONCEPTO y no
+   * contra la de conceptos: así un "../otro-concepto/x.pdf" tampoco cuela.
+   */
   rutaRecurso(conceptoId: string, archivo: string): string | null {
-    const abs = resolve(this.carpetaConcepto(conceptoId), archivo)
-    const base = resolve(this.dirConceptos)
-    return abs === base || abs.startsWith(base + sep) ? abs : null
+    const base = resolve(this.carpetaConcepto(conceptoId))
+    const abs = resolve(base, archivo)
+    return abs.startsWith(base + sep) ? abs : null
   }
 
   existeRecurso(conceptoId: string, archivo: string): boolean {
@@ -238,6 +321,64 @@ export class VaultFileSystemService {
     // Se agrupa por concepto para no mezclar archivos del mismo nombre venidos
     // de conceptos distintos (y para saber de dónde salió cada uno).
     this.borrar(join(this.carpetaConcepto(conceptoId), archivo), join('material', conceptoId))
+  }
+
+  // ---------------------------------------------------------------------------
+  // Lienzos (.canvas, formato de Obsidian)
+  // ---------------------------------------------------------------------------
+
+  private rutaLienzo(id: string): string {
+    return join(this.dirLienzos, `${id}.canvas`)
+  }
+
+  existeLienzo(id: string): boolean {
+    return existsSync(this.rutaLienzo(id))
+  }
+
+  listarIdsLienzos(): string[] {
+    if (!existsSync(this.dirLienzos)) return []
+    return readdirSync(this.dirLienzos, { withFileTypes: true })
+      .filter((e) => e.isFile() && e.name.endsWith('.canvas'))
+      .map((e) => e.name.slice(0, -'.canvas'.length))
+      .sort((a, b) => a.localeCompare(b, 'es'))
+  }
+
+  leerLienzo(id: string): Lienzo {
+    const crudo = readFileSync(this.rutaLienzo(id), 'utf8')
+    let datos: unknown = {}
+    try {
+      datos = JSON.parse(crudo)
+    } catch {
+      // Un .canvas corrupto o vacío se abre vacío en vez de reventar la app.
+      datos = {}
+    }
+    // El nombre visible es el del archivo: es lo que ve en su nube.
+    return lienzoDesdePlano(id, (datos as { nombre?: string }).nombre ?? id, datos)
+  }
+
+  guardarLienzo(lienzo: Lienzo): void {
+    mkdirSync(this.dirLienzos, { recursive: true })
+    // `nombre` es nuestro; Obsidian ignora lo que no conoce y usa el archivo.
+    const plano = { nombre: lienzo.nombre, ...lienzoAPlano(lienzo) }
+    writeFileSync(this.rutaLienzo(lienzo.id), JSON.stringify(plano, null, 2), 'utf8')
+  }
+
+  eliminarLienzo(id: string): void {
+    const ruta = this.rutaLienzo(id)
+    if (existsSync(ruta)) rmSync(ruta, { force: true })
+  }
+
+  leerTodosLienzos(): Lienzo[] {
+    return this.listarIdsLienzos()
+      .map((id) => {
+        try {
+          return this.leerLienzo(id)
+        } catch (error) {
+          console.warn(`No se pudo leer el lienzo "${id}":`, error)
+          return null
+        }
+      })
+      .filter((l): l is Lienzo => l !== null)
   }
 
   private leerToleranteConcepto(id: string): Concepto | null {
@@ -502,6 +643,8 @@ function conceptoDesdePlano(datos: Record<string, unknown>): Concepto {
     relaciones,
     recursos,
     notas: notasDesdePlano(datos.notas, datos.formatoNotas),
+    // Un concepto anterior a las etiquetas simplemente no trae la clave.
+    etiquetas: lista(datos.etiquetas).map((e) => texto(e)),
     repaso: repasoDesdePlano(datos.repaso)
   })
 }

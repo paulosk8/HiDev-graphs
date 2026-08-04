@@ -8,6 +8,7 @@ import type {
   DatosConceptoDTO,
   DatosTareaDTO,
   DuplicarTareaDTO,
+  LienzoDTO,
   ModoEliminacion,
   SemanaPlanDTO,
   TipoRelacion
@@ -41,6 +42,17 @@ async function desenvolver<T>(promesa: Promise<Resultado<T>>): Promise<T> {
 export const api = {
   listarConceptos: () => desenvolver(window.api.listarConceptos()),
   buscarConceptos: (texto: string) => desenvolver(window.api.buscarConceptos(texto)),
+  listarEtiquetas: () => desenvolver(window.api.listarEtiquetas()),
+  obtenerMenciones: (id: string) => desenvolver(window.api.obtenerMenciones(id)),
+  listarLienzos: () => desenvolver(window.api.listarLienzos()),
+  obtenerLienzo: (id: string) => desenvolver(window.api.obtenerLienzo(id)),
+  crearLienzo: (nombre: string) => desenvolver(window.api.crearLienzo(nombre)),
+  guardarLienzo: (lienzo: LienzoDTO) => desenvolver(window.api.guardarLienzo(lienzo)),
+  eliminarLienzo: (id: string) => desenvolver(window.api.eliminarLienzo(id)),
+  moverTema: (asignaturaId: string, temaId: string, unidadDestinoId: string) =>
+    desenvolver(window.api.moverTema(asignaturaId, temaId, unidadDestinoId)),
+  moverNota: (origenId: string, notaId: string, destinoId: string) =>
+    desenvolver(window.api.moverNota(origenId, notaId, destinoId)),
   usosDeConcepto: (conceptoId: string) => desenvolver(window.api.usosDeConcepto(conceptoId)),
   obtenerFichaConcepto: (conceptoId: string) =>
     desenvolver(window.api.obtenerFichaConcepto(conceptoId)),
@@ -53,8 +65,14 @@ export const api = {
   vincularConceptos: (origenId: string, destinoId: string, tipo: TipoRelacion) =>
     desenvolver(window.api.vincularConceptos(origenId, destinoId, tipo)),
   rutaDeArchivo: (archivo: File): string => window.api.rutaDeArchivo(archivo),
-  agregarMaterial: (conceptoId: string, rutas: string[]) =>
-    desenvolver(window.api.agregarMaterial(conceptoId, rutas)),
+  agregarMaterial: (conceptoId: string, rutas: string[], carpeta?: string) =>
+    desenvolver(window.api.agregarMaterial(conceptoId, rutas, carpeta)),
+  listarCarpetasMaterial: (conceptoId: string) =>
+    desenvolver(window.api.listarCarpetasMaterial(conceptoId)),
+  crearCarpetaMaterial: (conceptoId: string, nombre: string) =>
+    desenvolver(window.api.crearCarpetaMaterial(conceptoId, nombre)),
+  moverMaterialACarpeta: (conceptoId: string, recursoId: string, carpeta: string) =>
+    desenvolver(window.api.moverMaterialACarpeta(conceptoId, recursoId, carpeta)),
   eliminarMaterial: (conceptoId: string, recursoId: string) =>
     desenvolver(window.api.eliminarMaterial(conceptoId, recursoId)),
   abrirMaterial: (conceptoId: string, archivo: string) =>

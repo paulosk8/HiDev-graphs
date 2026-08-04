@@ -31,6 +31,8 @@ export function ListaConceptos({ contexto }: Props): JSX.Element {
   const limpiarIntencion = useUiStore((s) => s.limpiarIntencion)
   const [creando, setCreando] = useState(false)
   const [busqueda, setBusqueda] = useState('')
+  const etiquetaFiltrada = useUiStore((s) => s.etiquetaFiltrada)
+  const filtrarPorEtiqueta = useUiStore((s) => s.filtrarPorEtiqueta)
   // Grupos (asignaturas) desplegados. Vacío = todos colapsados por defecto:
   // así ves una lista breve de grupos y decides cuál abrir.
   const [gruposAbiertos, setGruposAbiertos] = useState<Set<string>>(new Set())
@@ -70,15 +72,38 @@ export function ListaConceptos({ contexto }: Props): JSX.Element {
   )
 
   const filtrada = useMemo(() => {
+    // Primero la etiqueta (un filtro duro: "enséñame solo lo de evaluación") y
+    // luego el texto, que busca DENTRO de lo ya filtrado.
+    const porEtiqueta = etiquetaFiltrada
+      ? delContexto.filter((c) =>
+          c.etiquetas.some((e) => normalizar(e) === normalizar(etiquetaFiltrada))
+        )
+      : delContexto
+
     const q = normalizar(busqueda.trim())
-    if (!q) return delContexto
-    return delContexto.filter((c) => {
+    if (!q) return porEtiqueta
+    return porEtiqueta.filter((c) => {
       const heno = normalizar(
-        [c.nombre, c.descripcion, ...c.temas, ...c.asignaturas].filter(Boolean).join('  ')
+        [c.nombre, c.descripcion, ...c.temas, ...c.asignaturas, ...c.etiquetas].filter(Boolean).join('  ')
       )
       return heno.includes(q)
     })
-  }, [delContexto, busqueda])
+  }, [delContexto, busqueda, etiquetaFiltrada])
+
+  /** Etiquetas presentes en este contexto, de más usada a menos. */
+  const etiquetasDisponibles = useMemo(() => {
+    const cuenta = new Map<string, { etiqueta: string; total: number }>()
+    for (const c of delContexto) {
+      for (const e of c.etiquetas) {
+        const clave = normalizar(e)
+        const previo = cuenta.get(clave)
+        cuenta.set(clave, { etiqueta: previo?.etiqueta ?? e, total: (previo?.total ?? 0) + 1 })
+      }
+    }
+    return [...cuenta.values()].sort(
+      (a, b) => b.total - a.total || a.etiqueta.localeCompare(b.etiqueta, 'es')
+    )
+  }, [delContexto])
 
   // Agrupa los conceptos por asignatura de este contexto; los que no se usan en
   // ninguna van a "Sin asignatura", al final.
@@ -139,9 +164,44 @@ export function ListaConceptos({ contexto }: Props): JSX.Element {
             type="search"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar por nombre, descripción o tema…"
+            placeholder="Buscar por nombre, descripción, tema o etiqueta…"
             className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-marca-400 focus:outline-none focus:ring-2 focus:ring-marca-100"
           />
+          {etiquetasDisponibles.length > 0 && (
+            <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+              {etiquetasDisponibles.map(({ etiqueta, total }) => {
+                const activa =
+                  etiquetaFiltrada !== null &&
+                  normalizar(etiqueta) === normalizar(etiquetaFiltrada)
+                return (
+                  <button
+                    key={etiqueta}
+                    // Volver a pulsar la activa quita el filtro: no hace falta
+                    // buscar una "x" aparte.
+                    onClick={() => filtrarPorEtiqueta(activa ? null : etiqueta)}
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition ${
+                      activa
+                        ? 'bg-marca-600 text-white'
+                        : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:ring-marca-300'
+                    }`}
+                  >
+                    {etiqueta}
+                    <span className={activa ? 'ml-1 text-marca-100' : 'ml-1 text-slate-400'}>
+                      {total}
+                    </span>
+                  </button>
+                )
+              })}
+              {etiquetaFiltrada && (
+                <button
+                  onClick={() => filtrarPorEtiqueta(null)}
+                  className="text-xs text-slate-500 underline-offset-2 hover:underline"
+                >
+                  Quitar filtro
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 

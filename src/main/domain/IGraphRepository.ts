@@ -39,8 +39,11 @@ export interface IGraphRepository {
   /** Todos los conceptos, resumidos, para el listado lateral. */
   listarConceptos(): ResumenConcepto[]
 
-  /** Conceptos cuyo nombre coincide con el texto (autocompletado). */
+  /** Conceptos cuyo nombre, descripción o etiqueta coincide (autocompletado). */
   buscarConceptos(texto: string): ResumenConcepto[]
+
+  /** Todas las etiquetas usadas, con cuántos conceptos las llevan. */
+  listarEtiquetas(): Array<{ etiqueta: string; total: number }>
 
   /** Todas las asignaturas, resumidas, para el listado lateral. */
   listarAsignaturas(): ResumenAsignatura[]

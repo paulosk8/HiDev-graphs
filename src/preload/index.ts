@@ -11,6 +11,17 @@ import type { AccionMenu } from '../shared/dtos'
 const api: PedagoGraphApi = {
   listarConceptos: () => ipcRenderer.invoke(CANALES.conceptosListar),
   buscarConceptos: (texto) => ipcRenderer.invoke(CANALES.conceptosBuscar, texto),
+  listarEtiquetas: () => ipcRenderer.invoke(CANALES.conceptosEtiquetas),
+  obtenerMenciones: (id) => ipcRenderer.invoke(CANALES.conceptoMenciones, id),
+  listarLienzos: () => ipcRenderer.invoke(CANALES.lienzosListar),
+  obtenerLienzo: (id) => ipcRenderer.invoke(CANALES.lienzoObtener, id),
+  crearLienzo: (nombre) => ipcRenderer.invoke(CANALES.lienzoCrear, nombre),
+  guardarLienzo: (lienzo) => ipcRenderer.invoke(CANALES.lienzoGuardar, lienzo),
+  eliminarLienzo: (id) => ipcRenderer.invoke(CANALES.lienzoEliminar, id),
+  moverTema: (asignaturaId, temaId, unidadDestinoId) =>
+    ipcRenderer.invoke(CANALES.temaMover, asignaturaId, temaId, unidadDestinoId),
+  moverNota: (origenId, notaId, destinoId) =>
+    ipcRenderer.invoke(CANALES.notaMover, origenId, notaId, destinoId),
   usosDeConcepto: (conceptoId) => ipcRenderer.invoke(CANALES.conceptoUsos, conceptoId),
   obtenerFichaConcepto: (conceptoId) => ipcRenderer.invoke(CANALES.conceptoObtenerFicha, conceptoId),
   crearConcepto: (datos) => ipcRenderer.invoke(CANALES.conceptoCrear, datos),
@@ -20,8 +31,14 @@ const api: PedagoGraphApi = {
   vincularConceptos: (origenId, destinoId, tipo) =>
     ipcRenderer.invoke(CANALES.conceptoVincular, origenId, destinoId, tipo),
   rutaDeArchivo: (archivo) => webUtils.getPathForFile(archivo),
-  agregarMaterial: (conceptoId, rutas) =>
-    ipcRenderer.invoke(CANALES.materialAgregar, conceptoId, rutas),
+  agregarMaterial: (conceptoId, rutas, carpeta) =>
+    ipcRenderer.invoke(CANALES.materialAgregar, conceptoId, rutas, carpeta),
+  listarCarpetasMaterial: (conceptoId) =>
+    ipcRenderer.invoke(CANALES.materialCarpetasListar, conceptoId),
+  crearCarpetaMaterial: (conceptoId, nombre) =>
+    ipcRenderer.invoke(CANALES.materialCarpetaCrear, conceptoId, nombre),
+  moverMaterialACarpeta: (conceptoId, recursoId, carpeta) =>
+    ipcRenderer.invoke(CANALES.materialMoverACarpeta, conceptoId, recursoId, carpeta),
   eliminarMaterial: (conceptoId, recursoId) =>
     ipcRenderer.invoke(CANALES.materialEliminar, conceptoId, recursoId),
   abrirMaterial: (conceptoId, archivo) => ipcRenderer.invoke(CANALES.materialAbrir, conceptoId, archivo),

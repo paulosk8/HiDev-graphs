@@ -6,6 +6,10 @@ import type {
 } from '@shared/dtos'
 import { BuscadorConceptos } from '../vinculos/BuscadorConceptos'
 import { DialogoConfirmacion } from '../../components/DialogoConfirmacion'
+import { DialogoMover } from '../../components/DialogoMover'
+import { MenuContextual, useMenuContextual } from '../../components/MenuContextual'
+import { api } from '../../lib/api'
+import { useUiStore } from '../../stores/uiStore'
 
 // Árbol editable local (ids reales para lo existente; "tmp-*" para lo nuevo aún sin guardar).
 interface SubN {
@@ -90,6 +94,12 @@ export function EditorContenido({
   onGuardar
 }: Props): JSX.Element {
   const [arbol, setArbol] = useState<UniN[]>(() => desdeAsignatura(asignatura))
+  const { menu, abrir: abrirMenu, cerrar: cerrarMenu } = useMenuContextual<{
+    unidadId: string
+    tema: TemaN
+  }>()
+  const [moviendo, setMoviendo] = useState<{ unidadId: string; tema: TemaN } | null>(null)
+  const notificarError = useUiStore((s) => s.notificarError)
   const [foco, setFoco] = useState<string | null>(null)
   const [temaBuscador, setTemaBuscador] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
@@ -304,7 +314,11 @@ export function EditorContenido({
               const real = temaReal(t.id)
               const tareasTema = tareas.filter((x) => x.temas.includes(t.id))
               return (
-                <li key={t.id} className="border-l-2 border-slate-100 pl-3 text-sm">
+                <li
+                  key={t.id}
+                  onContextMenu={(e) => abrirMenu(e, { unidadId: u.id, tema: t })}
+                  className="border-l-2 border-slate-100 pl-3 text-sm"
+                >
                   <div className="flex items-center gap-1">
                     {inputTitulo(t.titulo, t.id, (v) => setTitulo(2, [u.id, t.id], v), `Título del ${N2}`, 'flex-1 font-medium text-slate-700')}
                     <button
@@ -401,6 +415,57 @@ export function EditorContenido({
       >
         + Agregar {N1}
       </button>
+
+      {menu && (
+        <MenuContextual
+          x={menu.x}
+          y={menu.y}
+          onCerrar={cerrarMenu}
+          opciones={[
+            {
+              etiqueta: `Mover a otra ${N1.toLowerCase()}…`,
+              icono: '→',
+              // Un tema aún sin guardar no tiene id real que mover.
+              deshabilitada: esTmp(menu.dato.tema.id) || arbol.length < 2,
+              motivo: esTmp(menu.dato.tema.id)
+                ? 'Guarda los cambios antes de moverlo.'
+                : `Solo hay una ${N1.toLowerCase()}.`,
+              onElegir: () => setMoviendo(menu.dato)
+            },
+            {
+              etiqueta: 'Eliminar',
+              icono: '✕',
+              destructiva: true,
+              onElegir: () => pedirQuitarTema(menu.dato.unidadId, menu.dato.tema)
+            }
+          ]}
+        />
+      )}
+
+      {moviendo && (
+        <DialogoMover
+          titulo={`Mover ${N2.toLowerCase()} a otra ${N1.toLowerCase()}`}
+          queSeMueve={moviendo.tema.titulo || `este ${N2.toLowerCase()}`}
+          destinos={arbol
+            .filter((u) => !esTmp(u.id))
+            .map((u) => ({
+              id: u.id,
+              titulo: u.titulo || `(${N1.toLowerCase()} sin título)`,
+              detalle: `${u.temas.length} ${u.temas.length === 1 ? N2.toLowerCase() : `${N2.toLowerCase()}s`}`,
+              actual: u.id === moviendo.unidadId
+            }))}
+          textoVacio={`Crea otra ${N1.toLowerCase()} para poder mover aquí.`}
+          onMover={async (destinoId) => {
+            try {
+              const actualizada = await api.moverTema(asignatura.id, moviendo.tema.id, destinoId)
+              setArbol(desdeAsignatura(actualizada))
+            } catch (error) {
+              notificarError(error)
+            }
+          }}
+          onCerrar={() => setMoviendo(null)}
+        />
+      )}
 
       {aEliminar && (
         <DialogoConfirmacion

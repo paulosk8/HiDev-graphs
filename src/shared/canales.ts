@@ -6,6 +6,15 @@ export const CANALES = {
   // Conceptos
   conceptosListar: 'conceptos:listar',
   conceptosBuscar: 'conceptos:buscar',
+  conceptosEtiquetas: 'conceptos:etiquetas',
+  conceptoMenciones: 'concepto:menciones',
+  lienzosListar: 'lienzos:listar',
+  lienzoObtener: 'lienzo:obtener',
+  lienzoCrear: 'lienzo:crear',
+  lienzoGuardar: 'lienzo:guardar',
+  lienzoEliminar: 'lienzo:eliminar',
+  temaMover: 'tema:mover',
+  notaMover: 'nota:mover',
   conceptoUsos: 'concepto:usos',
   conceptoObtenerFicha: 'concepto:ficha',
   conceptoCrear: 'concepto:crear',
@@ -16,6 +25,9 @@ export const CANALES = {
   // Material
   materialAgregar: 'material:agregar',
   materialEliminar: 'material:eliminar',
+  materialCarpetasListar: 'material:carpetas-listar',
+  materialCarpetaCrear: 'material:carpeta-crear',
+  materialMoverACarpeta: 'material:mover-a-carpeta',
   materialAbrir: 'material:abrir',
   materialLeerTexto: 'material:leer-texto',
 

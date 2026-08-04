@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3'
 import type { Asignatura } from '../domain/Asignatura'
-import type { Concepto } from '../domain/Concepto'
+import { claveEtiqueta, type Concepto } from '../domain/Concepto'
 import type { IGraphRepository } from '../domain/IGraphRepository'
 import type {
   ResumenAsignatura,
@@ -88,12 +88,17 @@ export class SqliteGraphRepository implements IGraphRepository {
       `INSERT OR REPLACE INTO edges (origen_tipo, origen_id, destino_tipo, destino_id, tipo_relacion)
        VALUES ('concepto', @origen, 'concepto', @destino, @tipo)`
     )
+    const insertarEtiqueta = this.db.prepare(
+      `INSERT OR REPLACE INTO tags (concepto_id, clave, etiqueta)
+       VALUES (@concepto_id, @clave, @etiqueta)`
+    )
 
     const tx = this.db.transaction((c: Concepto) => {
       // Idempotente: limpia lo que posee el concepto antes de reinsertar. No
       // toca las aristas 'instancia' entrantes (tema -> concepto), que pertenecen
       // a las asignaturas.
       this.db.prepare('DELETE FROM resources WHERE concepto_id = ?').run(c.id)
+      this.db.prepare('DELETE FROM tags WHERE concepto_id = ?').run(c.id)
       this.db
         .prepare("DELETE FROM edges WHERE origen_tipo = 'concepto' AND origen_id = ?")
         .run(c.id)
@@ -116,6 +121,13 @@ export class SqliteGraphRepository implements IGraphRepository {
       }
       for (const rel of c.relaciones) {
         insertarArista.run({ origen: c.id, destino: rel.destino, tipo: rel.tipo })
+      }
+      for (const etiqueta of c.etiquetas) {
+        insertarEtiqueta.run({
+          concepto_id: c.id,
+          clave: claveEtiqueta(etiqueta),
+          etiqueta
+        })
       }
     })
     tx(concepto)
@@ -280,7 +292,9 @@ export class SqliteGraphRepository implements IGraphRepository {
            (SELECT GROUP_CONCAT(t.nombre, char(10))
               FROM edges e JOIN nodes t ON t.tipo = 'tema' AND t.id = e.origen_id
               WHERE e.tipo_relacion = 'instancia'
-                AND e.destino_tipo = 'concepto' AND e.destino_id = n.id) AS temasRaw
+                AND e.destino_tipo = 'concepto' AND e.destino_id = n.id) AS temasRaw,
+           (SELECT GROUP_CONCAT(g.etiqueta, char(10))
+              FROM tags g WHERE g.concepto_id = n.id) AS etiquetasRaw
     FROM nodes n
     LEFT JOIN resources r ON r.concepto_id = n.id
     WHERE n.tipo = 'concepto'`
@@ -293,6 +307,7 @@ export class SqliteGraphRepository implements IGraphRepository {
     proximaRevision: string | null
     totalRecursos: number
     temasRaw: string | null
+    etiquetasRaw: string | null
   }): ResumenConcepto {
     return {
       id: fila.id,
@@ -300,6 +315,7 @@ export class SqliteGraphRepository implements IGraphRepository {
       descripcion: fila.descripcion ?? '',
       totalRecursos: fila.totalRecursos,
       temas: fila.temasRaw ? fila.temasRaw.split('\n') : [],
+      etiquetas: fila.etiquetasRaw ? fila.etiquetasRaw.split('\n') : [],
       // Sin repaso registrado → dominio 0 y próxima revisión null (nunca repasado).
       dominio: fila.dominio ?? 0,
       proximaRevision: fila.proximaRevision ?? null
@@ -320,16 +336,36 @@ export class SqliteGraphRepository implements IGraphRepository {
 
   buscarConceptos(texto: string): ResumenConcepto[] {
     const patron = `%${texto.trim()}%`
+    // Las etiquetas se guardan normalizadas (sin tildes ni mayúsculas), así que
+    // el texto buscado hay que normalizarlo igual para que coincidan.
+    const patronClave = `%${claveEtiqueta(texto)}%`
     return (
       this.db
         .prepare(
           `${this.SELECT_RESUMEN_CONCEPTO}
-             AND n.nombre LIKE @patron COLLATE NOCASE
+             AND (n.nombre LIKE @patron COLLATE NOCASE
+                  OR n.descripcion LIKE @patron COLLATE NOCASE
+                  OR EXISTS (SELECT 1 FROM tags g
+                               WHERE g.concepto_id = n.id
+                                 AND g.clave LIKE @patronClave))
            GROUP BY n.id, n.nombre, n.descripcion
            ORDER BY n.nombre COLLATE NOCASE`
         )
-        .all({ patron }) as Parameters<SqliteGraphRepository['filaAResumenConcepto']>[0][]
+        .all({ patron, patronClave }) as Parameters<
+          SqliteGraphRepository['filaAResumenConcepto']
+        >[0][]
     ).map((f) => this.filaAResumenConcepto(f))
+  }
+
+  listarEtiquetas(): Array<{ etiqueta: string; total: number }> {
+    return this.db
+      .prepare(
+        `SELECT MIN(etiqueta) AS etiqueta, COUNT(*) AS total
+           FROM tags
+          GROUP BY clave
+          ORDER BY total DESC, etiqueta COLLATE NOCASE`
+      )
+      .all() as Array<{ etiqueta: string; total: number }>
   }
 
   listarAsignaturas(): ResumenAsignatura[] {

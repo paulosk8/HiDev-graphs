@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Boton } from '../../components/Boton'
 import { CampoArea, CampoTexto } from '../../components/Campos'
+import { CampoEtiquetas } from '../../components/CampoEtiquetas'
 import { Modal } from '../../components/Modal'
 import { useConceptosStore } from '../../stores/conceptosStore'
 
@@ -8,6 +9,7 @@ interface ConceptoInicial {
   id: string
   nombre: string
   descripcion: string
+  etiquetas?: string[]
 }
 
 interface Props {
@@ -24,6 +26,7 @@ export function FormularioConcepto({ conceptoInicial, onCerrar, onGuardado }: Pr
   const editando = conceptoInicial !== undefined
   const [nombre, setNombre] = useState(conceptoInicial?.nombre ?? '')
   const [descripcion, setDescripcion] = useState(conceptoInicial?.descripcion ?? '')
+  const [etiquetas, setEtiquetas] = useState<string[]>(conceptoInicial?.etiquetas ?? [])
   const [ocupado, setOcupado] = useState(false)
 
   const crear = useConceptosStore((s) => s.crear)
@@ -33,7 +36,7 @@ export function FormularioConcepto({ conceptoInicial, onCerrar, onGuardado }: Pr
     e.preventDefault()
     if (nombre.trim().length === 0) return
     setOcupado(true)
-    const datos = { nombre: nombre.trim(), descripcion: descripcion.trim() }
+    const datos = { nombre: nombre.trim(), descripcion: descripcion.trim(), etiquetas }
     const resultado = editando
       ? await editar(conceptoInicial.id, datos)
       : await crear(datos)
@@ -69,6 +72,7 @@ export function FormularioConcepto({ conceptoInicial, onCerrar, onGuardado }: Pr
           rows={3}
           maxLength={500}
         />
+        <CampoEtiquetas etiquetas={etiquetas} onCambiar={setEtiquetas} />
         <div className="flex justify-end gap-2 pt-1">
           <Boton variante="secundario" onClick={onCerrar} disabled={ocupado}>
             Cancelar

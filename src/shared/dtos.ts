@@ -36,6 +36,8 @@ export interface ResumenConceptoDTO {
   totalRecursos: number
   /** Títulos de los temas que usan el concepto (para búsqueda). */
   temas: string[]
+  /** Etiquetas del docente, tal como las escribió. */
+  etiquetas: string[]
   /** Nombres de las asignaturas donde se usa (para agrupar/filtrar). */
   asignaturas: string[]
   /** Dominio percibido 0..5 (0 si nunca se repasó). Colorea el mapa. */
@@ -44,13 +46,72 @@ export interface ResumenConceptoDTO {
   proximaRevision: string | null
 }
 
+// --- Lienzos (mapas conceptuales libres, formato .canvas de Obsidian) ---
+
+export type LadoNodoDTO = 'top' | 'right' | 'bottom' | 'left'
+
+export interface NodoLienzoDTO {
+  id: string
+  type: 'file' | 'text' | 'group'
+  x: number
+  y: number
+  width: number
+  height: number
+  /** Ruta relativa al vault; en las tarjetas de concepto/nota. */
+  file?: string
+  /** Nota concreta dentro del concepto, si la tarjeta es de una nota. */
+  notaId?: string
+  text?: string
+  label?: string
+  color?: string
+}
+
+export interface AristaLienzoDTO {
+  id: string
+  fromNode: string
+  fromSide: LadoNodoDTO
+  toNode: string
+  toSide: LadoNodoDTO
+  label?: string
+  color?: string
+}
+
+export interface LienzoDTO {
+  id: string
+  nombre: string
+  nodes: NodoLienzoDTO[]
+  edges: AristaLienzoDTO[]
+}
+
+export interface ResumenLienzoDTO {
+  id: string
+  nombre: string
+  totalTarjetas: number
+  totalConexiones: number
+}
+
+/** Un concepto que menciona a otro con [[enlaces]] desde sus notas. */
+export interface ResumenMencionDTO {
+  id: string
+  nombre: string
+}
+
+/** Una etiqueta con cuántos conceptos la llevan (para el filtro del listado). */
+export interface EtiquetaDTO {
+  etiqueta: string
+  total: number
+}
+
 /** Calidad del recuerdo al repasar: 0 = no me acuerdo, 3 = con esfuerzo, 4 = bien, 5 = fácil. */
 export type CalidadRepaso = 0 | 1 | 2 | 3 | 4 | 5
 
 export interface RecursoDTO {
   id: string
   nombre: string
+  /** Ruta relativa dentro del concepto; puede llevar carpeta ("Lecturas/x.pdf"). */
   archivo: string
+  /** Carpeta que lo contiene, o '' si está suelto. Derivada de `archivo`. */
+  carpeta: string
   formato: FormatoRecurso
 }
 
@@ -83,6 +144,8 @@ export interface ConceptoDTO {
   relaciones: RelacionDTO[]
   /** Notas u observaciones propias sobre el concepto (varias). */
   notas: NotaDTO[]
+  /** Etiquetas del docente, tal como las escribió. */
+  etiquetas: string[]
   /** Dominio percibido 0..5 (0 si nunca se repasó). */
   dominio: number
   /** Fecha ISO del próximo repaso, o null si nunca se repasó. */
@@ -101,6 +164,8 @@ export interface DatosConceptoDTO {
   descripcion?: string
   /** Notas propias (varias). Si se omite al editar, se conservan las actuales. */
   notas?: NotaDTO[]
+  /** Etiquetas. Si se omite al editar, se conservan las actuales. */
+  etiquetas?: string[]
 }
 
 /** Resultado de agregar material: concepto actualizado + qué se ignoró. */

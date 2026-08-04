@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from './lib/api'
 import { Avisos } from './components/Avisos'
 import { Sidebar } from './components/Sidebar'
+import { PanelVistazo } from './components/PanelVistazo'
 import { Bienvenida } from './features/bienvenida/Bienvenida'
 import { SeleccionCapas } from './features/bienvenida/SeleccionCapas'
 import { FichaConcepto } from './features/conceptos/FichaConcepto'
@@ -9,6 +10,7 @@ import { ListaConceptos } from './features/conceptos/ListaConceptos'
 import { FichaAsignatura } from './features/asignaturas/FichaAsignatura'
 import { ListaAsignaturas } from './features/asignaturas/ListaAsignaturas'
 import { GrafoPage } from './features/grafo/GrafoPage'
+import { LienzoPage } from './features/lienzo/LienzoPage'
 import { AsistentePage } from './features/asistente/AsistentePage'
 import {
   actualizarMaterial,
@@ -21,7 +23,7 @@ import { TerminalPage } from './features/terminal/TerminalPage'
 import { useAsignaturasStore } from './stores/asignaturasStore'
 import { useConceptosStore } from './stores/conceptosStore'
 import { useEliminacionStore } from './stores/eliminacionStore'
-import { useLayoutStore } from './stores/layoutStore'
+import { TEMAS_OSCUROS, useLayoutStore } from './stores/layoutStore'
 import { useUiStore } from './stores/uiStore'
 
 function Contenido(): JSX.Element {
@@ -36,6 +38,10 @@ function Contenido(): JSX.Element {
 
   if (seccion === 'estudio') {
     return <ModoEstudioPage />
+  }
+
+  if (seccion === 'lienzos') {
+    return <LienzoPage />
   }
 
   if (seccion === 'configuracion') {
@@ -151,7 +157,12 @@ function App(): JSX.Element {
 
   // Aplica el tema (claro/oscuro) a la raíz del documento.
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', tema === 'oscuro')
+    const raiz = document.documentElement
+    // `dark` la comparten los dos temas oscuros; `contraste` y `calido` se
+    // superponen encima, así no hay que duplicar las reglas de cada uno.
+    raiz.classList.toggle('dark', TEMAS_OSCUROS.includes(tema))
+    raiz.classList.toggle('contraste', tema === 'contraste' || tema === 'contraste-oscuro')
+    raiz.classList.toggle('calido', tema === 'calido')
   }, [tema])
 
   // Tamaño de la interfaz. Se aplica con `zoom` en la raíz (no con el zoom de
@@ -219,6 +230,7 @@ function App(): JSX.Element {
       <main className="flex-1 overflow-auto">
         <Contenido />
       </main>
+      <PanelVistazo />
       <Avisos />
     </div>
   )

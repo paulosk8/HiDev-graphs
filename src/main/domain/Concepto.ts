@@ -6,6 +6,40 @@ import type { RepasoConcepto } from './Repaso'
 /** Formato del contenido de las notas: Markdown, HTML o código (vista editor). */
 export type FormatoNota = 'markdown' | 'html' | 'codigo'
 
+/**
+ * Normaliza una etiqueta para que "Evaluación", "evaluacion" y " EVALUACIÓN "
+ * sean la MISMA etiqueta. Se conserva el texto tal cual lo escribe el docente
+ * (con tildes y mayúsculas) y solo se recorta: quien busca no debería tener que
+ * acordarse de cómo la escribió la primera vez.
+ *
+ * Se quitan los `#` iniciales porque el docente puede teclearla con almohadilla
+ * (`#parcial1`), como en cualquier red social o en Obsidian.
+ */
+export function normalizarEtiqueta(texto: string): string {
+  // Se recorta ANTES de quitar la almohadilla: " #parcial" también la lleva.
+  return texto.trim().replace(/^#+/, '').trim().replace(/\s+/g, ' ')
+}
+
+/** Clave de comparación de etiquetas: sin mayúsculas ni tildes. */
+export function claveEtiqueta(texto: string): string {
+  return normalizarEtiqueta(texto)
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+}
+
+/** Limpia una lista de etiquetas: normaliza, quita vacías y duplicados. */
+export function sanearEtiquetas(etiquetas: readonly string[] | undefined): string[] {
+  const porClave = new Map<string, string>()
+  for (const bruta of etiquetas ?? []) {
+    const etiqueta = normalizarEtiqueta(bruta)
+    if (!etiqueta) continue
+    // Se queda la primera grafía escrita; las repetidas no crean duplicados.
+    if (!porClave.has(claveEtiqueta(etiqueta))) porClave.set(claveEtiqueta(etiqueta), etiqueta)
+  }
+  return [...porClave.values()]
+}
+
 /** Una nota u observación sobre un concepto (varias por concepto). */
 export interface NotaConcepto {
   readonly id: string
@@ -31,6 +65,11 @@ export interface Concepto {
   readonly recursos: readonly Recurso[]
   /** Notas u observaciones propias sobre el concepto (varias). */
   readonly notas: readonly NotaConcepto[]
+  /**
+   * Etiquetas libres del docente ("evaluación", "primer parcial"). Sirven para
+   * encontrar material por criterios propios, transversales a las asignaturas.
+   */
+  readonly etiquetas: readonly string[]
   /** Estado de repaso espaciado (opcional; ausente si nunca se ha repasado). */
   readonly repaso?: RepasoConcepto
 }
@@ -42,6 +81,7 @@ export interface DatosConcepto {
   relaciones?: readonly Relacion[]
   recursos?: readonly Recurso[]
   notas?: readonly NotaConcepto[]
+  etiquetas?: readonly string[]
   repaso?: RepasoConcepto
 }
 
@@ -62,6 +102,7 @@ export function crearConcepto(datos: DatosConcepto): Concepto {
     relaciones: datos.relaciones ?? [],
     recursos: datos.recursos ?? [],
     notas: datos.notas ?? [],
+    etiquetas: sanearEtiquetas(datos.etiquetas),
     ...(datos.repaso ? { repaso: datos.repaso } : {})
   }
 }

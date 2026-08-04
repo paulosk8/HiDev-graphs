@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { Boton } from '../../components/Boton'
 import { DialogoConfirmacion } from '../../components/DialogoConfirmacion'
-import { useLayoutStore, ZOOM_MAX, ZOOM_MIN } from '../../stores/layoutStore'
+import { TEMAS, useLayoutStore, ZOOM_MAX, ZOOM_MIN, type Tema } from '../../stores/layoutStore'
 import { AsistentePage } from '../asistente/AsistentePage'
 import { actualizarMaterial, respaldarMaterial, restaurarMaterial } from './accionesDatos'
 import { AlmacenamientoNube } from './AlmacenamientoNube'
@@ -80,7 +80,7 @@ function Seccion({
 
 function Apariencia(): JSX.Element {
   const tema = useLayoutStore((s) => s.tema)
-  const alternarTema = useLayoutStore((s) => s.alternarTema)
+  const setTema = useLayoutStore((s) => s.setTema)
   const capaDocencia = useLayoutStore((s) => s.capaDocencia)
   const capaAprendizaje = useLayoutStore((s) => s.capaAprendizaje)
   const elegirCapas = useLayoutStore((s) => s.elegirCapas)
@@ -97,11 +97,34 @@ function Apariencia(): JSX.Element {
         <div className="rounded-xl border border-slate-200 bg-white p-4">
           <p className="text-sm font-medium text-slate-800">Tema</p>
           <p className="mt-0.5 text-xs text-slate-500">
-            Elige entre el modo claro y el oscuro para trabajar cómodo.
+            Si te cuesta leer la letra gris o el fondo blanco te deslumbra, prueba
+            «Alto contraste» o «Cálido».
           </p>
-          <div className="mt-3 inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
-            <OpcionTema activo={tema === 'claro'} onClick={() => tema !== 'claro' && alternarTema()} icono="☀️" etiqueta="Claro" />
-            <OpcionTema activo={tema === 'oscuro'} onClick={() => tema !== 'oscuro' && alternarTema()} icono="🌙" etiqueta="Oscuro" />
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {TEMAS.map((o) => (
+              <button
+                key={o.clave}
+                type="button"
+                onClick={() => setTema(o.clave)}
+                aria-pressed={tema === o.clave}
+                className={`flex items-start gap-3 rounded-xl border p-3 text-left transition ${
+                  tema === o.clave
+                    ? 'border-marca-500 bg-marca-50'
+                    : 'border-slate-200 bg-white hover:border-slate-300'
+                }`}
+              >
+                <MuestraTema clave={o.clave} />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium text-slate-800">{o.nombre}</span>
+                  <span className="mt-0.5 block text-xs text-slate-500">{o.descripcion}</span>
+                </span>
+                {tema === o.clave && (
+                  <span className="shrink-0 text-sm text-marca-700" aria-hidden>
+                    ✓
+                  </span>
+                )}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -211,27 +234,29 @@ function ToggleCapa({
   )
 }
 
-function OpcionTema({
-  activo,
-  onClick,
-  icono,
-  etiqueta
-}: {
-  activo: boolean
-  onClick: () => void
-  icono: string
-  etiqueta: string
-}): JSX.Element {
+/**
+ * Miniatura del tema. Los colores van literales y no con clases de Tailwind
+ * porque debe mostrar el tema que REPRESENTA, no el que está aplicado ahora.
+ */
+function MuestraTema({ clave }: { clave: Tema }): JSX.Element {
+  const paletas: Record<Tema, { fondo: string; texto: string; borde: string }> = {
+    claro: { fondo: '#ffffff', texto: '#334155', borde: '#e2e8f0' },
+    calido: { fondo: '#fbf7ef', texto: '#3d372e', borde: '#d4cab6' },
+    contraste: { fondo: '#ffffff', texto: '#000000', borde: '#3d3d3d' },
+    oscuro: { fondo: '#1e293b', texto: '#cbd5e1', borde: '#334155' },
+    'contraste-oscuro': { fondo: '#000000', texto: '#ffffff', borde: '#b0b0b0' }
+  }
+  const p = paletas[clave]
   return (
-    <button
-      onClick={onClick}
-      className={`flex items-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium transition ${
-        activo ? 'bg-white text-marca-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-      }`}
+    <span
+      aria-hidden
+      className="flex h-10 w-10 shrink-0 flex-col justify-center gap-1 rounded-lg border px-1.5"
+      style={{ background: p.fondo, borderColor: p.borde }}
     >
-      <span aria-hidden>{icono}</span>
-      {etiqueta}
-    </button>
+      <span className="block h-1 w-full rounded-full" style={{ background: p.texto }} />
+      <span className="block h-1 w-3/4 rounded-full" style={{ background: p.texto, opacity: 0.6 }} />
+      <span className="block h-1 w-1/2 rounded-full" style={{ background: p.texto, opacity: 0.35 }} />
+    </span>
   )
 }
 
@@ -393,4 +418,3 @@ function Fila({
     </div>
   )
 }
-
