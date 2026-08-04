@@ -8,6 +8,7 @@ import type {
   DatosConceptoDTO,
   DatosTareaDTO,
   DuplicarTareaDTO,
+  ModoEliminacion,
   SemanaPlanDTO,
   TipoRelacion
 } from '@shared/dtos'
@@ -108,6 +109,12 @@ export const api = {
   usarAlmacenamientoNube: (rutaContenedor: string, nombreCarpeta: string) =>
     desenvolver(window.api.usarAlmacenamientoNube(rutaContenedor, nombreCarpeta)),
   usarAlmacenamientoLocal: () => desenvolver(window.api.usarAlmacenamientoLocal()),
+
+  estadoEliminacion: () => desenvolver(window.api.estadoEliminacion()),
+  fijarModoEliminacion: (modo: ModoEliminacion) =>
+    desenvolver(window.api.fijarModoEliminacion(modo)),
+  abrirCarpetaEliminados: () => desenvolver(window.api.abrirCarpetaEliminados()),
+  vaciarEliminados: () => desenvolver(window.api.vaciarEliminados()),
   listarHistorial: () => desenvolver(window.api.listarHistorial()),
   versionesHistorial: (tabla: import('@shared/dtos').TablaHistorial, id: string) =>
     desenvolver(window.api.versionesHistorial(tabla, id)),

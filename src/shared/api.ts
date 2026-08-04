@@ -4,6 +4,8 @@ import type {
   AlmacenamientoDTO,
   CarpetaNubeDTO,
   ResultadoAlmacenamientoDTO,
+  EliminacionDTO,
+  ModoEliminacion,
   AsignaturaDTO,
   MaterialConceptoDTO,
   SemanaPlanDTO,
@@ -141,6 +143,16 @@ export interface PedagoGraphApi {
   ): Promise<Resultado<ResultadoAlmacenamientoDTO>>
   /** Vuelve a guardar el material en este equipo (carpeta Documentos). */
   usarAlmacenamientoLocal(): Promise<Resultado<ResultadoAlmacenamientoDTO>>
+
+  // --- Qué pasa al eliminar ---
+  /** Preferencia actual + dónde está la carpeta de eliminados y si tiene algo. */
+  estadoEliminacion(): Promise<Resultado<EliminacionDTO>>
+  /** Cambia la preferencia; surte efecto en el siguiente borrado, sin reiniciar. */
+  fijarModoEliminacion(modo: ModoEliminacion): Promise<Resultado<EliminacionDTO>>
+  /** Abre la carpeta de eliminados en el explorador del sistema. */
+  abrirCarpetaEliminados(): Promise<Resultado<void>>
+  /** Vacía la carpeta de eliminados (definitivo). Devuelve el estado ya vacío. */
+  vaciarEliminados(): Promise<Resultado<EliminacionDTO>>
 
   // --- Historial de versiones ---
   /** Elementos que tienen historial (han cambiado al menos una vez). */

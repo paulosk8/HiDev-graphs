@@ -1,5 +1,5 @@
 import { reindexarVault } from './application/ReindexarVault'
-import { resolverRutaVault, rutaIndicePorEquipo } from './infrastructure/configApp'
+import { leerConfigApp, resolverRutaVault, rutaIndicePorEquipo } from './infrastructure/configApp'
 import { SqliteGraphRepository } from './infrastructure/SqliteGraphRepository'
 import { VaultFileSystemService } from './infrastructure/VaultFileSystemService'
 
@@ -26,7 +26,13 @@ export function inicializarServicios(rutaVaultForzada?: string): Servicios {
   const rutaVault = rutaVaultForzada ?? resolverRutaVault()
   const rutaIndice = rutaVaultForzada ? undefined : rutaIndicePorEquipo()
 
-  const vault = new VaultFileSystemService(rutaVault, rutaIndice)
+  // La preferencia se lee en cada borrado (no se captura ahora) para que
+  // cambiarla surta efecto sin reiniciar la app.
+  const vault = new VaultFileSystemService(
+    rutaVault,
+    rutaIndice,
+    () => leerConfigApp().modoEliminacion
+  )
   vault.asegurarVault()
 
   const repositorio = new SqliteGraphRepository(vault.rutaBaseDatos)

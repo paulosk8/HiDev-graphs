@@ -69,6 +69,11 @@ const api: PedagoGraphApi = {
   usarAlmacenamientoNube: (rutaContenedor, nombreCarpeta) =>
     ipcRenderer.invoke(CANALES.almacenamientoUsarNube, rutaContenedor, nombreCarpeta),
   usarAlmacenamientoLocal: () => ipcRenderer.invoke(CANALES.almacenamientoUsarLocal),
+
+  estadoEliminacion: () => ipcRenderer.invoke(CANALES.eliminacionEstado),
+  fijarModoEliminacion: (modo) => ipcRenderer.invoke(CANALES.eliminacionFijarModo, modo),
+  abrirCarpetaEliminados: () => ipcRenderer.invoke(CANALES.eliminacionAbrirCarpeta),
+  vaciarEliminados: () => ipcRenderer.invoke(CANALES.eliminacionVaciar),
   listarHistorial: () => ipcRenderer.invoke(CANALES.historialListar),
   versionesHistorial: (tabla, id) => ipcRenderer.invoke(CANALES.historialVersiones, tabla, id),
   restaurarVersion: (tabla, id, versionId) =>

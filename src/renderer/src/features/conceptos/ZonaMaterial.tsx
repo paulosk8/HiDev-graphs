@@ -5,6 +5,10 @@ import { DialogoConfirmacion } from '../../components/DialogoConfirmacion'
 import { api } from '../../lib/api'
 import { useConceptosStore } from '../../stores/conceptosStore'
 import { useUiStore } from '../../stores/uiStore'
+import {
+  avisoDeEliminacion,
+  useEliminacionStore
+} from '../../stores/eliminacionStore'
 import { PREVISUALIZABLES, VistaPreviaMaterial } from './VistaPreviaMaterial'
 
 const FORMATOS_ACEPTADOS = '.pdf,.pptx,.docx,.md,.html,.xml'
@@ -16,6 +20,7 @@ interface Props {
 }
 
 export function ZonaMaterial({ conceptoId, recursos, onActualizado }: Props): JSX.Element {
+  const modoEliminacion = useEliminacionStore((s) => s.modo)
   const [arrastrando, setArrastrando] = useState(false)
   const [ocupado, setOcupado] = useState(false)
   const [aEliminar, setAEliminar] = useState<RecursoDTO | null>(null)
@@ -136,7 +141,7 @@ export function ZonaMaterial({ conceptoId, recursos, onActualizado }: Props): JS
       {aEliminar && (
         <DialogoConfirmacion
           titulo={`¿Quitar «${aEliminar.nombre}»?`}
-          mensaje="Se eliminará este material del concepto. Esta acción no se puede deshacer."
+          mensaje={`Se eliminará este material del concepto. ${avisoDeEliminacion(modoEliminacion)}`}
           textoConfirmar="Quitar"
           onConfirmar={confirmarEliminar}
           onCancelar={() => setAEliminar(null)}

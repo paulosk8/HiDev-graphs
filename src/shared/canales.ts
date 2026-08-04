@@ -69,6 +69,12 @@ export const CANALES = {
   almacenamientoUsarNube: 'almacenamiento:usar-nube',
   almacenamientoUsarLocal: 'almacenamiento:usar-local',
 
+  // Qué pasa al eliminar (mover a "Eliminados" o borrar definitivamente).
+  eliminacionEstado: 'eliminacion:estado',
+  eliminacionFijarModo: 'eliminacion:fijar-modo',
+  eliminacionAbrirCarpeta: 'eliminacion:abrir-carpeta',
+  eliminacionVaciar: 'eliminacion:vaciar',
+
   // Historial de versiones del material
   historialListar: 'historial:listar',
   historialVersiones: 'historial:versiones',

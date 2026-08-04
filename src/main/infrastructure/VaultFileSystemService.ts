@@ -12,6 +12,11 @@ import {
   type NotaConcepto
 } from '../domain/Concepto'
 import { repasoDesdePlano } from '../domain/Repaso'
+import {
+  eliminarRuta,
+  NOMBRE_CARPETA_ELIMINADOS,
+  type ModoEliminacion
+} from './Papelera'
 import { crearRecurso } from '../domain/Recurso'
 import { crearRelacion } from '../domain/Relacion'
 import { crearSubtema } from '../domain/Subtema'
@@ -52,10 +57,15 @@ export class VaultFileSystemService {
    *   `<vault>/.index`. Se separa (a userData) cuando el vault vive en una
    *   carpeta de nube, para que el índice NO viaje por Drive/OneDrive: es
    *   por-equipo, binario y reconstruible.
+   * @param modoEliminacion Qué hacer al eliminar: mover a la carpeta
+   *   "Eliminados" del vault (por defecto) o borrar definitivamente. Es una
+   *   función, no un valor, porque el docente puede cambiar la preferencia sin
+   *   reiniciar y esta instancia se conserva viva.
    */
   constructor(
     private rutaVault: string,
-    private rutaIndiceForzada?: string
+    private rutaIndiceForzada?: string,
+    private modoEliminacion: () => ModoEliminacion = () => 'papelera'
   ) {}
 
   /**
@@ -84,8 +94,30 @@ export class VaultFileSystemService {
   get dirIndice(): string {
     return this.rutaIndiceForzada ?? join(this.rutaVault, '.index')
   }
+  /**
+   * Carpeta de eliminados, dentro del vault (a diferencia del índice, SÍ debe
+   * viajar por la nube: así se recupera lo borrado desde cualquier equipo).
+   * No se crea al arrancar; solo la primera vez que se elimina algo.
+   */
+  get dirEliminados(): string {
+    return join(this.rutaVault, NOMBRE_CARPETA_ELIMINADOS)
+  }
   get rutaBaseDatos(): string {
     return join(this.dirIndice, 'index.db')
+  }
+
+  /**
+   * Única puerta de salida de datos del vault: TODO borrado de material pasa por
+   * aquí, así la preferencia del docente (papelera o definitivo) se aplica en un
+   * solo sitio. `subcarpeta` reproduce la estructura del vault dentro de
+   * "Eliminados" para que se reconozca qué era cada cosa.
+   */
+  private borrar(ruta: string, subcarpeta: string): void {
+    eliminarRuta(ruta, {
+      modo: this.modoEliminacion(),
+      dirEliminados: this.dirEliminados,
+      subcarpeta
+    })
   }
 
   /** Crea la estructura de carpetas del vault si aún no existe (cero configuración). */
@@ -158,7 +190,7 @@ export class VaultFileSystemService {
   }
 
   eliminarConcepto(id: string): void {
-    rmSync(this.carpetaConcepto(id), { recursive: true, force: true })
+    this.borrar(this.carpetaConcepto(id), 'conceptos')
   }
 
   /**
@@ -203,8 +235,9 @@ export class VaultFileSystemService {
 
   /** Borra el archivo físico de un material dentro de la carpeta del concepto. */
   eliminarArchivoRecurso(conceptoId: string, archivo: string): void {
-    const ruta = join(this.carpetaConcepto(conceptoId), archivo)
-    if (existsSync(ruta)) rmSync(ruta, { force: true })
+    // Se agrupa por concepto para no mezclar archivos del mismo nombre venidos
+    // de conceptos distintos (y para saber de dónde salió cada uno).
+    this.borrar(join(this.carpetaConcepto(conceptoId), archivo), join('material', conceptoId))
   }
 
   private leerToleranteConcepto(id: string): Concepto | null {
@@ -288,7 +321,7 @@ export class VaultFileSystemService {
   }
 
   eliminarAsignatura(id: string): void {
-    rmSync(this.carpetaAsignatura(id), { recursive: true, force: true })
+    this.borrar(this.carpetaAsignatura(id), 'asignaturas')
   }
 
   private leerToleranteAsignatura(id: string): Asignatura | null {
@@ -390,7 +423,7 @@ export class VaultFileSystemService {
   }
 
   eliminarTarea(id: string): void {
-    rmSync(this.carpetaTarea(id), { recursive: true, force: true })
+    this.borrar(this.carpetaTarea(id), 'tareas')
   }
 
   /** Copia un adjunto dentro de la carpeta de la tarea. */
@@ -406,8 +439,7 @@ export class VaultFileSystemService {
   }
 
   eliminarArchivoAdjuntoTarea(tareaId: string, archivo: string): void {
-    const ruta = join(this.carpetaTarea(tareaId), archivo)
-    if (existsSync(ruta)) rmSync(ruta, { force: true })
+    this.borrar(join(this.carpetaTarea(tareaId), archivo), join('adjuntos', tareaId))
   }
 
   /** Ruta absoluta validada de un adjunto de tarea (dentro del vault). */
