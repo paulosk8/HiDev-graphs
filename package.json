@@ -1,5 +1,6 @@
 {
   "name": "pedagograph",
+  "productName": "PedagoGraph",
   "version": "0.1.0",
   "description": "Organiza tu material pedagógico por conceptos reutilizables y visualiza sus relaciones.",
   "author": "Paulo Galarza",
@@ -11,7 +12,8 @@
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "rebuild": "electron-rebuild -f -w better-sqlite3 -w node-pty",
-    "postinstall": "electron-rebuild -f -w better-sqlite3 -w node-pty",
+    "postinstall": "electron-rebuild -f -w better-sqlite3 -w node-pty && npm run marca-dev",
+    "marca-dev": "esbuild scripts/marca-dev.ts --bundle --platform=node --format=cjs --outfile=node_modules/.cache/marca-dev.cjs && node node_modules/.cache/marca-dev.cjs",
     "iconos": "esbuild scripts/generar-iconos.ts --bundle --platform=node --format=cjs --external:electron --outfile=node_modules/.cache/iconos.cjs && electron node_modules/.cache/iconos.cjs",
     "sembrar-demo": "esbuild scripts/sembrar-demo.ts --bundle --platform=node --format=cjs --external:js-yaml --outfile=node_modules/.cache/seed.cjs && node node_modules/.cache/seed.cjs",
     "build:mcp": "esbuild src/mcp/servidor.ts --bundle --platform=node --format=esm --outfile=out/mcp/pedagograph-mcp.mjs --banner:js=\"import{createRequire}from'node:module';const require=createRequire(import.meta.url);\"",
