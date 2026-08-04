@@ -7,6 +7,7 @@ export const CANALES = {
   conceptosListar: 'conceptos:listar',
   conceptosBuscar: 'conceptos:buscar',
   conceptosEtiquetas: 'conceptos:etiquetas',
+  conceptoMenciones: 'concepto:menciones',
   conceptoUsos: 'concepto:usos',
   conceptoObtenerFicha: 'concepto:ficha',
   conceptoCrear: 'concepto:crear',

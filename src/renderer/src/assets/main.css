@@ -180,3 +180,28 @@ body,
 .dark .markdown-preview blockquote { color: #94a3b8; border-color: #475569; }
 .dark .markdown-preview th,
 .dark .markdown-preview td { border-color: #334155; }
+
+/* Enlaces [[Concepto]] dentro de las notas: se leen como parte del texto pero
+   se ven pulsables. Un enlace roto (sin concepto detrás) se marca en ámbar y
+   punteado en vez de desaparecer: si no, el docente no se entera del error. */
+.enlace-concepto {
+  color: theme('colors.marca.700');
+  background: theme('colors.marca.50');
+  border-radius: 4px;
+  padding: 0 0.25em;
+  cursor: pointer;
+  text-decoration: none;
+}
+.enlace-concepto:hover {
+  background: theme('colors.marca.100');
+}
+.enlace-concepto.enlace-roto {
+  color: theme('colors.amber.700');
+  background: theme('colors.amber.50');
+  border-bottom: 1px dotted theme('colors.amber.500');
+  cursor: help;
+}
+.dark .enlace-concepto {
+  color: theme('colors.marca.100');
+  background: rgb(255 255 255 / 0.08);
+}

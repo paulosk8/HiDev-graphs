@@ -4,6 +4,7 @@ import type {
   AlmacenamientoDTO,
   CarpetaNubeDTO,
   EtiquetaDTO,
+  ResumenMencionDTO,
   ResultadoAlmacenamientoDTO,
   EliminacionDTO,
   ModoEliminacion,
@@ -50,6 +51,8 @@ export interface PedagoGraphApi {
   // --- Conceptos ---
   listarConceptos(): Promise<Resultado<ResumenConceptoDTO[]>>
   buscarConceptos(texto: string): Promise<Resultado<ResumenConceptoDTO[]>>
+  /** Otros conceptos que enlazan a este desde sus notas con [[Nombre]]. */
+  obtenerMenciones(conceptoId: string): Promise<Resultado<ResumenMencionDTO[]>>
   /** Todas las etiquetas usadas, con cuántos conceptos las llevan. */
   listarEtiquetas(): Promise<Resultado<EtiquetaDTO[]>>
   usosDeConcepto(conceptoId: string): Promise<Resultado<UsoDeConceptoDTO[]>>

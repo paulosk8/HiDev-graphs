@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import type { ConceptoDTO, FormatoInstrucciones, NotaDTO } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
 import { ContenidoFormateado } from '../../components/ContenidoFormateado'
+import { SugerenciasEnlace } from '../../components/SugerenciasEnlace'
 import { VistaCodigo } from '../../components/VistaCodigo'
 import { useConceptosStore } from '../../stores/conceptosStore'
 import { manejarPegadoRico } from '../../lib/pegadoRico'
@@ -143,6 +144,7 @@ export function NotasConcepto({
               className="min-h-[8rem] rounded-lg border border-slate-200 bg-slate-50 p-3"
             />
           ) : (
+            <div className="relative">
             <textarea
               ref={areaRef}
               value={contenido}
@@ -158,10 +160,14 @@ export function NotasConcepto({
               }
               className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm outline-none focus:border-marca-500 focus:ring-2 focus:ring-marca-100"
             />
+            {/* Teclear `[[` ofrece los conceptos existentes (o crear uno). */}
+            <SugerenciasEnlace areaRef={areaRef} texto={contenido} onCambiar={setContenido} />
+            </div>
           )}
           {formato !== 'codigo' && (
             <p className="text-[11px] text-slate-400">
               Puedes pegar contenido con formato desde Word o la web (tablas e imágenes).
+              Escribe <code>[[</code> para enlazar otro concepto.
             </p>
           )}
 

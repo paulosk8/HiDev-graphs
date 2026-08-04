@@ -24,6 +24,7 @@ import type { Resultado } from '../../shared/resultado'
 import { ErrorDeDominio } from '../domain/errores'
 import { crearConcepto } from '../application/CrearConcepto'
 import { editarConcepto } from '../application/EditarConcepto'
+import { obtenerMenciones } from '../application/ObtenerMenciones'
 import { eliminarConcepto } from '../application/EliminarConcepto'
 import { obtenerFichaConcepto } from '../application/ObtenerFichaConcepto'
 import { agregarMaterial } from '../application/AgregarMaterial'
@@ -129,6 +130,10 @@ export function registrarHandlersIpc(servicios: Servicios): void {
 
   ipcMain.handle(CANALES.conceptosEtiquetas, () =>
     envolver(() => repositorio.listarEtiquetas())
+  )
+
+  ipcMain.handle(CANALES.conceptoMenciones, (_evento, conceptoId: string) =>
+    envolver(() => obtenerMenciones(servicios, conceptoId))
   )
 
   ipcMain.handle(CANALES.conceptoUsos, (_evento, conceptoId: string) =>

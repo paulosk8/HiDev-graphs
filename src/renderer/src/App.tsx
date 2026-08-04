@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from './lib/api'
 import { Avisos } from './components/Avisos'
 import { Sidebar } from './components/Sidebar'
+import { PanelVistazo } from './components/PanelVistazo'
 import { Bienvenida } from './features/bienvenida/Bienvenida'
 import { SeleccionCapas } from './features/bienvenida/SeleccionCapas'
 import { FichaConcepto } from './features/conceptos/FichaConcepto'
@@ -219,6 +220,7 @@ function App(): JSX.Element {
       <main className="flex-1 overflow-auto">
         <Contenido />
       </main>
+      <PanelVistazo />
       <Avisos />
     </div>
   )

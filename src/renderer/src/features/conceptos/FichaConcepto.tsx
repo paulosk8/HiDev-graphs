@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { FichaConceptoDTO, ResumenTareaDTO } from '@shared/dtos'
+import type { FichaConceptoDTO, ResumenMencionDTO, ResumenTareaDTO } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
 import { DialogoConfirmacion } from '../../components/DialogoConfirmacion'
 import { api } from '../../lib/api'
 import { useAsignaturasStore } from '../../stores/asignaturasStore'
 import { useConceptosStore } from '../../stores/conceptosStore'
+import { useVistazoStore } from '../../stores/vistazoStore'
 import { useUiStore } from '../../stores/uiStore'
 import {
   avisoDeEliminacion,
@@ -27,6 +28,9 @@ export function FichaConcepto({ conceptoId }: Props): JSX.Element {
   const [confirmando, setConfirmando] = useState(false)
   const [tareas, setTareas] = useState<ResumenTareaDTO[]>([])
   const [tareaAbierta, setTareaAbierta] = useState<string | null>(null)
+  // "Se menciona en": lo resuelve el proceso principal escaneando las notas del
+  // vault (el enlace vive dentro del texto, no en el índice).
+  const [menciones, setMenciones] = useState<ResumenMencionDTO[]>([])
 
   const volver = useUiStore((s) => s.seleccionarConcepto)
   const fijarEtiqueta = useUiStore((s) => s.filtrarPorEtiqueta)
@@ -39,6 +43,7 @@ export function FichaConcepto({ conceptoId }: Props): JSX.Element {
   const notificarError = useUiStore((s) => s.notificarError)
   const eliminar = useConceptosStore((s) => s.eliminar)
   const asignaturas = useAsignaturasStore((s) => s.lista)
+  const abrirVistazo = useVistazoStore((s) => s.abrir)
 
   const cargarTareas = useCallback(async () => {
     try {
@@ -51,6 +56,17 @@ export function FichaConcepto({ conceptoId }: Props): JSX.Element {
   useEffect(() => {
     void cargarTareas()
   }, [cargarTareas])
+
+  useEffect(() => {
+    let vivo = true
+    void api
+      .obtenerMenciones(conceptoId)
+      .then((m) => vivo && setMenciones(m))
+      .catch(() => vivo && setMenciones([]))
+    return () => {
+      vivo = false
+    }
+  }, [conceptoId])
 
   const cargar = useCallback(async () => {
     setCargando(true)
@@ -163,6 +179,28 @@ export function FichaConcepto({ conceptoId }: Props): JSX.Element {
           </ul>
         )}
       </section>
+
+      {/* Se menciona en (retroenlaces desde las notas de otros conceptos) */}
+      {menciones.length > 0 && (
+        <section className="mt-8">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">
+            Se menciona en
+          </h2>
+          <ul className="space-y-2">
+            {menciones.map((c) => (
+              <li key={c.id}>
+                <button
+                  onClick={() => abrirVistazo(c.id)}
+                  className="flex w-full items-center gap-2 rounded-lg border border-slate-200 px-4 py-2.5 text-left text-sm transition hover:border-marca-300 hover:shadow-sm"
+                >
+                  <span className="flex-1 truncate font-medium text-slate-700">{c.nombre}</span>
+                  <span className="text-xs text-slate-400">Ver</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* Tareas basadas en este concepto */}
       {tareas.length > 0 && (

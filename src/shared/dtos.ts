@@ -46,6 +46,12 @@ export interface ResumenConceptoDTO {
   proximaRevision: string | null
 }
 
+/** Un concepto que menciona a otro con [[enlaces]] desde sus notas. */
+export interface ResumenMencionDTO {
+  id: string
+  nombre: string
+}
+
 /** Una etiqueta con cuántos conceptos la llevan (para el filtro del listado). */
 export interface EtiquetaDTO {
   etiqueta: string

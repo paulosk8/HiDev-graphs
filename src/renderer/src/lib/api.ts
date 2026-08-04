@@ -42,6 +42,7 @@ export const api = {
   listarConceptos: () => desenvolver(window.api.listarConceptos()),
   buscarConceptos: (texto: string) => desenvolver(window.api.buscarConceptos(texto)),
   listarEtiquetas: () => desenvolver(window.api.listarEtiquetas()),
+  obtenerMenciones: (id: string) => desenvolver(window.api.obtenerMenciones(id)),
   usosDeConcepto: (conceptoId: string) => desenvolver(window.api.usosDeConcepto(conceptoId)),
   obtenerFichaConcepto: (conceptoId: string) =>
     desenvolver(window.api.obtenerFichaConcepto(conceptoId)),
