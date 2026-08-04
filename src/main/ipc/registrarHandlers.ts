@@ -162,8 +162,8 @@ export function registrarHandlersIpc(servicios: Servicios): void {
   ipcMain.handle(CANALES.lienzoObtener, (_e, id: string) =>
     envolver(() => obtenerLienzo(servicios, id))
   )
-  ipcMain.handle(CANALES.lienzoCrear, (_e, nombre: string) =>
-    envolver(() => crearLienzoNuevo(servicios, nombre))
+  ipcMain.handle(CANALES.lienzoCrear, (_e, nombre: string, contexto?: 'docencia' | 'aprendizaje') =>
+    envolver(() => crearLienzoNuevo(servicios, nombre, contexto))
   )
   ipcMain.handle(CANALES.lienzoGuardar, (_e, dto: LienzoDTO) =>
     envolver(() => guardarLienzo(servicios, dto))

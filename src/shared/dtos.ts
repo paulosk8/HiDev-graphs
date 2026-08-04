@@ -79,6 +79,8 @@ export interface AristaLienzoDTO {
 export interface LienzoDTO {
   id: string
   nombre: string
+  /** Capa a la que pertenece; ausente = transversal (visible en ambas). */
+  contexto?: 'docencia' | 'aprendizaje'
   nodes: NodoLienzoDTO[]
   edges: AristaLienzoDTO[]
 }
@@ -86,6 +88,8 @@ export interface LienzoDTO {
 export interface ResumenLienzoDTO {
   id: string
   nombre: string
+  /** Capa a la que pertenece; ausente = transversal (visible en ambas). */
+  contexto?: 'docencia' | 'aprendizaje'
   totalTarjetas: number
   totalConexiones: number
 }

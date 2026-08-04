@@ -46,7 +46,8 @@ export const api = {
   obtenerMenciones: (id: string) => desenvolver(window.api.obtenerMenciones(id)),
   listarLienzos: () => desenvolver(window.api.listarLienzos()),
   obtenerLienzo: (id: string) => desenvolver(window.api.obtenerLienzo(id)),
-  crearLienzo: (nombre: string) => desenvolver(window.api.crearLienzo(nombre)),
+  crearLienzo: (nombre: string, contexto?: 'docencia' | 'aprendizaje') =>
+    desenvolver(window.api.crearLienzo(nombre, contexto)),
   guardarLienzo: (lienzo: LienzoDTO) => desenvolver(window.api.guardarLienzo(lienzo)),
   eliminarLienzo: (id: string) => desenvolver(window.api.eliminarLienzo(id)),
   moverTema: (asignaturaId: string, temaId: string, unidadDestinoId: string) =>
