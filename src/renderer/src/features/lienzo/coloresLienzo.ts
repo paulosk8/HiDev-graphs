@@ -43,3 +43,18 @@ export const COLOR_GRUPO_NEUTRO: ColorGrupo = {
 export function colorDeGrupo(clave: string | undefined): ColorGrupo {
   return COLORES_GRUPO.find((c) => c.clave === clave) ?? COLOR_GRUPO_NEUTRO
 }
+
+/**
+ * Colores de las conexiones. Se guardan con las mismas claves "1".."6" que los
+ * grupos (es lo que hace Obsidian), pero aquí el tono tiene que verse como
+ * LÍNEA fina sobre el fondo del lienzo, no como relleno: se usan los tonos de
+ * borde, que ya miden por encima de 3:1 contra ese fondo.
+ */
+export const COLORES_ARISTA: readonly { clave: string; nombre: string; valor: string }[] = [
+  { clave: '', nombre: 'Gris', valor: '#64748b' },
+  ...COLORES_GRUPO.map((c) => ({ clave: c.clave, nombre: c.nombre, valor: c.borde }))
+]
+
+export function colorDeArista(clave: string | undefined): string {
+  return COLORES_ARISTA.find((c) => c.clave === (clave ?? ''))?.valor ?? '#64748b'
+}

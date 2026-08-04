@@ -184,3 +184,21 @@ export function conceptoDeRuta(file: string | undefined): string | null {
   const m = /^conceptos\/([^/]+)\/concepto\.yaml$/.exec(file)
   return m ? m[1] : null
 }
+
+/** Ruta que guarda una tarjeta de material (un archivo del concepto). */
+export function rutaDeMaterial(conceptoId: string, archivo: string): string {
+  return `conceptos/${conceptoId}/${archivo}`
+}
+
+/**
+ * Concepto y archivo a los que apunta una tarjeta de material, o null.
+ * Se distingue del concepto porque la ruta NO termina en `concepto.yaml`.
+ */
+export function materialDeRuta(
+  file: string | undefined
+): { conceptoId: string; archivo: string } | null {
+  if (!file) return null
+  const m = /^conceptos\/([^/]+)\/(.+)$/.exec(file)
+  if (!m || m[2] === 'concepto.yaml') return null
+  return { conceptoId: m[1], archivo: m[2] }
+}

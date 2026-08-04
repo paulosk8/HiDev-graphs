@@ -6,7 +6,7 @@ import { useConceptosStore } from '../../stores/conceptosStore'
 import { useUiStore } from '../../stores/uiStore'
 import { useVistazoStore } from '../../stores/vistazoStore'
 import { BuscadorConceptos } from '../vinculos/BuscadorConceptos'
-import { COLORES_GRUPO, colorDeGrupo } from './coloresLienzo'
+import { colorDeArista, COLORES_ARISTA, COLORES_GRUPO, colorDeGrupo } from './coloresLienzo'
 
 /**
  * Lienzo: mapa conceptual libre. El docente coloca tarjetas donde quiere y las
@@ -85,6 +85,10 @@ export function LienzoEditor({
   const [guardando, setGuardando] = useState(false)
   const [sinGuardar, setSinGuardar] = useState(false)
   const [agregando, setAgregando] = useState(false)
+  /** Arista cuyo estilo se está editando (etiqueta y color). */
+  const [aristaEditando, setAristaEditando] = useState<string | null>(null)
+  /** Tarjeta de texto que se está escribiendo. */
+  const [textoEditando, setTextoEditando] = useState<string | null>(null)
   /** Selección múltiple: agrupar exige poder elegir varias tarjetas. */
   const [seleccion, setSeleccion] = useState<Set<string>>(new Set())
   /** Recuadro de selección en curso (arrastrando sobre el fondo). */
@@ -278,6 +282,36 @@ export function LienzoEditor({
     setAgregando(false)
   }
 
+  /** Tarjeta de texto libre: para lo que no es un concepto (una idea, un aviso). */
+  const agregarTexto = (): void => {
+    const id = nuevoId('n')
+    cambiar((l) => ({
+      ...l,
+      nodes: [
+        ...l.nodes,
+        { id, type: 'text' as const, x: 80, y: 80 + l.nodes.length * 24, width: 240, height: 120, text: '' }
+      ]
+    }))
+    setTextoEditando(id)
+  }
+
+  const cambiarTexto = (id: string, texto: string): void =>
+    cambiar((l) => ({ ...l, nodes: l.nodes.map((n) => (n.id === id ? { ...n, text: texto } : n)) }))
+
+  const cambiarArista = (id: string, campos: { label?: string; color?: string }): void =>
+    cambiar((l) => ({
+      ...l,
+      edges: l.edges.map((e) =>
+        e.id === id
+          ? {
+              ...e,
+              ...(campos.label !== undefined ? { label: campos.label || undefined } : {}),
+              ...(campos.color !== undefined ? { color: campos.color || undefined } : {})
+            }
+          : e
+      )
+    }))
+
   const conectar = (nodoDestino: string, ladoDestino: LadoNodoDTO): void => {
     if (!conectando || conectando.nodo === nodoDestino) {
       setConectando(null)
@@ -351,6 +385,9 @@ export function LienzoEditor({
             Agrupar ({seleccion.size})
           </Boton>
         )}
+        <Boton variante="secundario" onClick={agregarTexto}>
+          + Nota suelta
+        </Boton>
         <Boton variante="secundario" onClick={() => setAgregando(true)}>
           + Añadir concepto
         </Boton>
@@ -420,10 +457,23 @@ export function LienzoEditor({
                 <path
                   d={curva(a, e.fromSide, b, e.toSide)}
                   fill="none"
-                  stroke="#94a3b8"
-                  strokeWidth={2}
+                  stroke={colorDeArista(e.color)}
+                  strokeWidth={aristaEditando === e.id ? 3 : 2}
                   markerEnd="url(#punta)"
                 />
+                {e.label && (
+                  <text
+                    x={(a.x + b.x) / 2}
+                    y={(a.y + b.y) / 2 - 6}
+                    textAnchor="middle"
+                    className="pointer-events-none"
+                    style={{ fontSize: 11, fill: colorDeArista(e.color), paintOrder: 'stroke' }}
+                    stroke="#f8fafc"
+                    strokeWidth={4}
+                  >
+                    {e.label}
+                  </text>
+                )}
                 {/* Trazo ancho e invisible: da una zona de clic cómoda. */}
                 <path
                   d={curva(a, e.fromSide, b, e.toSide)}
@@ -431,9 +481,10 @@ export function LienzoEditor({
                   stroke="transparent"
                   strokeWidth={14}
                   className="pointer-events-auto cursor-pointer"
+                  onClick={() => setAristaEditando(aristaEditando === e.id ? null : e.id)}
                   onDoubleClick={() => eliminarArista(e.id)}
                 >
-                  <title>Doble clic para quitar la conexión</title>
+                  <title>Clic para poner nombre o color · doble clic para quitarla</title>
                 </path>
               </g>
             )
@@ -478,7 +529,26 @@ export function LienzoEditor({
         )}
 
         {lienzo.nodes
-          .filter((n) => n.type !== 'group')
+          .filter((n) => n.type === 'text')
+          .map((n) => (
+            <TarjetaTexto
+              key={n.id}
+              nodo={n}
+              seleccionada={seleccion.has(n.id)}
+              editando={textoEditando === n.id}
+              onArrastrar={(e) => empezarArrastre(e, n)}
+              onEditar={() => setTextoEditando(n.id)}
+              onCambiar={(v) => cambiarTexto(n.id, v)}
+              onTerminar={() => setTextoEditando(null)}
+              onAncla={(lado) =>
+                conectando ? conectar(n.id, lado) : setConectando({ nodo: n.id, lado })
+              }
+              onEliminar={() => eliminarNodo(n.id)}
+            />
+          ))}
+
+        {lienzo.nodes
+          .filter((n) => n.type === 'file')
           .map((n) => (
           <TarjetaLienzo
             key={n.id}
@@ -511,6 +581,50 @@ export function LienzoEditor({
           </div>
         )}
       </div>
+
+      {aristaEditando && (
+        <div className="absolute bottom-6 left-1/2 z-30 -translate-x-1/2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-lg">
+          <div className="flex items-center gap-2">
+            <input
+              autoFocus
+              defaultValue={lienzo.edges.find((e) => e.id === aristaEditando)?.label ?? ''}
+              onChange={(e) => cambiarArista(aristaEditando, { label: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === 'Escape') setAristaEditando(null)
+              }}
+              placeholder="Nombre de la conexión (ej. hace falta para)"
+              maxLength={40}
+              className="w-64 rounded-lg border border-slate-300 px-2.5 py-1 text-sm outline-none focus:border-marca-500"
+            />
+            {COLORES_ARISTA.map((c) => (
+              <button
+                key={c.clave || 'gris'}
+                onClick={() => cambiarArista(aristaEditando, { color: c.clave })}
+                title={c.nombre}
+                aria-label={`Color ${c.nombre}`}
+                style={{ background: c.valor }}
+                className="h-4 w-4 rounded-full border border-white ring-1 ring-slate-300"
+              />
+            ))}
+            <button
+              onClick={() => {
+                eliminarArista(aristaEditando)
+                setAristaEditando(null)
+              }}
+              className="ml-1 text-xs text-red-600 hover:underline"
+            >
+              Quitar
+            </button>
+            <button
+              onClick={() => setAristaEditando(null)}
+              className="text-slate-400 hover:text-slate-700"
+              aria-label="Cerrar"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       {agregando && (
         <div className="absolute right-6 top-20 z-30">
@@ -716,6 +830,94 @@ function GrupoLienzo({
           </button>
         </span>
       </div>
+    </div>
+  )
+}
+
+/**
+ * Tarjeta de texto libre: una nota adhesiva del lienzo. No pertenece a ningún
+ * concepto —vive en el .canvas— y sirve para lo que no es material: un título
+ * de sección, un recordatorio, una pregunta para clase.
+ *
+ * Se edita con doble clic, en el sitio. Abrir un formulario para dos frases
+ * rompería el ritmo de estar montando un mapa.
+ */
+function TarjetaTexto({
+  nodo,
+  seleccionada,
+  editando,
+  onArrastrar,
+  onEditar,
+  onCambiar,
+  onTerminar,
+  onAncla,
+  onEliminar
+}: {
+  nodo: NodoLienzoDTO
+  seleccionada: boolean
+  editando: boolean
+  onArrastrar: (e: React.MouseEvent) => void
+  onEditar: () => void
+  onCambiar: (v: string) => void
+  onTerminar: () => void
+  onAncla: (lado: LadoNodoDTO) => void
+  onEliminar: () => void
+}): JSX.Element {
+  const lados: LadoNodoDTO[] = ['top', 'right', 'bottom', 'left']
+  const posicionAncla: Record<LadoNodoDTO, string> = {
+    top: 'left-1/2 top-0 -translate-x-1/2 -translate-y-1/2',
+    right: 'right-0 top-1/2 translate-x-1/2 -translate-y-1/2',
+    bottom: 'bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2',
+    left: 'left-0 top-1/2 -translate-x-1/2 -translate-y-1/2'
+  }
+
+  return (
+    <div
+      onMouseDown={editando ? undefined : onArrastrar}
+      onDoubleClick={onEditar}
+      style={{ left: nodo.x, top: nodo.y, width: nodo.width, height: nodo.height }}
+      className={`group absolute rounded-xl border bg-amber-50 p-3 shadow-sm ${
+        editando ? 'cursor-text border-marca-500' : 'cursor-move'
+      } ${seleccionada ? 'border-marca-500 shadow-md' : 'border-amber-200'}`}
+    >
+      {editando ? (
+        <textarea
+          autoFocus
+          value={nodo.text ?? ''}
+          onChange={(e) => onCambiar(e.target.value)}
+          onBlur={onTerminar}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') onTerminar()
+          }}
+          placeholder="Escribe aquí…"
+          className="h-full w-full resize-none border-0 bg-transparent text-sm text-slate-800 outline-none"
+        />
+      ) : (
+        <p className="h-full overflow-hidden whitespace-pre-wrap text-sm text-slate-800">
+          {nodo.text || <span className="text-slate-400">Doble clic para escribir</span>}
+        </p>
+      )}
+
+      <button
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={onEliminar}
+        className="absolute right-2 top-2 text-slate-300 opacity-0 transition group-hover:opacity-100 hover:text-red-600"
+        aria-label="Quitar del lienzo"
+      >
+        ✕
+      </button>
+
+      {lados.map((lado) => (
+        <button
+          key={lado}
+          onMouseDown={(e) => {
+            e.stopPropagation()
+            onAncla(lado)
+          }}
+          title="Arrastra hasta otra tarjeta para conectarlas"
+          className={`absolute h-3 w-3 rounded-full border-2 border-white bg-marca-500 opacity-0 transition group-hover:opacity-100 ${posicionAncla[lado]}`}
+        />
+      ))}
     </div>
   )
 }
