@@ -4,15 +4,31 @@
     Icono de aplicación: la marca (birrete de nodos) en blanco sobre un
     cuadrado redondeado índigo. Fuente de los .icns/.ico/.png que genera
     `npm run iconos`; edita este archivo y vuelve a ejecutarlo.
+
+    PROPORCIONES DE macOS (Big Sur en adelante). El lienzo mide 1024 px, pero
+    el cuadrado NO lo ocupa entero: mide 824 px y va centrado, dejando 100 px
+    de margen por lado. Ese hueco es lo que hace que el icono encaje con sus
+    vecinos del Dock; a sangre se ve más grande que todos y desentona. El radio
+    de esquina (185,4) es el de la retícula de Apple para ese tamaño.
+
+    El símbolo ocupa algo menos del 60 % del cuadrado: los iconos del sistema
+    dejan aire alrededor del motivo, y así sigue leyéndose a 16 px.
   -->
   <defs>
     <linearGradient id="fondo" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#6366f1" />
       <stop offset="1" stop-color="#4338ca" />
     </linearGradient>
+    <!-- Sombra suave bajo el cuadrado, como la que llevan los del sistema. -->
+    <filter id="sombra" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#1e1b4b" flood-opacity="0.28" />
+    </filter>
   </defs>
-  <rect width="1024" height="1024" rx="229" ry="229" fill="url(#fondo)" />
-  <g transform="translate(194.5 194.5) scale(9.92)">
+
+  <rect x="100" y="100" width="824" height="824" rx="185.4" ry="185.4"
+        fill="url(#fondo)" filter="url(#sombra)" />
+
+  <g transform="translate(269 271) scale(7.6)">
     <g fill="none" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
       <path d="M57 25 V46" stroke-width="3.5" />
       <path d="M32 14 L57 25 L32 36 L7 25 Z" fill="#ffffff" fill-opacity=".18" />
