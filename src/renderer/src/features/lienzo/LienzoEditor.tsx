@@ -723,8 +723,10 @@ export function LienzoEditor({
       )}
 
 
+      {/* Anclado al área del lienzo, no a la ventana: con el panel lateral
+          abierto, el borde derecho de la ventana caía fuera de la vista. */}
       {agregando && (
-        <div className="absolute right-6 top-20 z-30">
+        <div className="absolute right-6 top-4 z-30">
           <BuscadorConceptos
             excluir={lienzo.nodes.map((n) => conceptoDeArchivo(n.file) ?? '').filter(Boolean)}
             onSeleccionar={agregarConcepto}

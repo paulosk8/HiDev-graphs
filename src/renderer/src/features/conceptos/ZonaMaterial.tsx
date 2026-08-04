@@ -5,6 +5,7 @@ import { DialogoConfirmacion } from '../../components/DialogoConfirmacion'
 import { DialogoMover } from '../../components/DialogoMover'
 import { MenuContextual, useMenuContextual } from '../../components/MenuContextual'
 import { api } from '../../lib/api'
+import { empezarArrastreDe } from '../lienzo/arrastreAlLienzo'
 import { useConceptosStore } from '../../stores/conceptosStore'
 import { useUiStore } from '../../stores/uiStore'
 import {
@@ -215,8 +216,18 @@ export function ZonaMaterial({ conceptoId, recursos, onActualizado }: Props): JS
                   {items.map((recurso) => (
                     <li
                       key={recurso.id}
+                      // Arrastrable: si hay un lienzo abierto, soltarlo allí
+                      // crea su tarjeta. Fuera del lienzo no molesta.
+                      draggable
+                      onDragStart={(e) =>
+                        empezarArrastreDe(e, {
+                          tipo: 'material',
+                          conceptoId,
+                          archivo: recurso.archivo
+                        })
+                      }
                       onContextMenu={(e) => abrirMenu(e, recurso)}
-                      className="group flex items-center gap-3 px-3 py-2.5"
+                      className="group flex cursor-grab items-center gap-3 px-3 py-2.5 active:cursor-grabbing"
                     >
                       <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold uppercase text-slate-500">
                         {recurso.formato}

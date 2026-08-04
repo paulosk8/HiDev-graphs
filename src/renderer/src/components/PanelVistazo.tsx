@@ -148,35 +148,6 @@ export function PanelVistazo(): JSX.Element | null {
                 recursos={concepto.recursos}
                 onActualizado={(c) => setConcepto(c)}
               />
-              {llevarAlLienzo && concepto.recursos.length > 0 && (
-                <ul className="mt-2 space-y-1">
-                  {concepto.recursos.map((r) => (
-                    <li key={r.id}>
-                      <button
-                        draggable
-                        onDragStart={(e) =>
-                          empezarArrastreDe(e, {
-                            tipo: 'material',
-                            conceptoId: concepto.id,
-                            archivo: r.archivo
-                          })
-                        }
-                        onClick={() =>
-                          llevarAlLienzo({
-                            tipo: 'material',
-                            conceptoId: concepto.id,
-                            archivo: r.archivo
-                          })
-                        }
-                        title="Arrástralo al lienzo, o pulsa para añadirlo"
-                        className="w-full cursor-grab truncate rounded px-2 py-1 text-left text-xs text-marca-700 hover:bg-marca-50 active:cursor-grabbing"
-                      >
-                        ⠿ {r.nombre}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
 
               {/* Las notas también se arrastran, cada una por separado. */}
               {llevarAlLienzo && concepto.notas.length > 0 && (
