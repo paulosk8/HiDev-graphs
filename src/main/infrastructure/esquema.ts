@@ -50,4 +50,17 @@ CREATE TABLE IF NOT EXISTS resources (
 );
 
 CREATE INDEX IF NOT EXISTS idx_resources_concepto ON resources (concepto_id);
+
+-- Etiquetas libres del docente sobre un concepto ("evaluación", "primer parcial").
+-- La columna "clave" es la forma comparable (sin mayúsculas ni tildes) y
+-- "etiqueta" la que se muestra, tal como la escribió el docente: se busca por
+-- la primera y se pinta la segunda.
+CREATE TABLE IF NOT EXISTS tags (
+  concepto_id TEXT NOT NULL,
+  clave       TEXT NOT NULL,
+  etiqueta    TEXT NOT NULL,
+  PRIMARY KEY (concepto_id, clave)
+);
+
+CREATE INDEX IF NOT EXISTS idx_tags_clave ON tags (clave);
 `

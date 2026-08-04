@@ -11,6 +11,7 @@ import type { AccionMenu } from '../shared/dtos'
 const api: PedagoGraphApi = {
   listarConceptos: () => ipcRenderer.invoke(CANALES.conceptosListar),
   buscarConceptos: (texto) => ipcRenderer.invoke(CANALES.conceptosBuscar, texto),
+  listarEtiquetas: () => ipcRenderer.invoke(CANALES.conceptosEtiquetas),
   usosDeConcepto: (conceptoId) => ipcRenderer.invoke(CANALES.conceptoUsos, conceptoId),
   obtenerFichaConcepto: (conceptoId) => ipcRenderer.invoke(CANALES.conceptoObtenerFicha, conceptoId),
   crearConcepto: (datos) => ipcRenderer.invoke(CANALES.conceptoCrear, datos),

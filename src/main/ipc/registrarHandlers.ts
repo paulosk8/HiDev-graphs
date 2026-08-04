@@ -127,6 +127,10 @@ export function registrarHandlersIpc(servicios: Servicios): void {
     envolver(() => repositorio.buscarConceptos(texto))
   )
 
+  ipcMain.handle(CANALES.conceptosEtiquetas, () =>
+    envolver(() => repositorio.listarEtiquetas())
+  )
+
   ipcMain.handle(CANALES.conceptoUsos, (_evento, conceptoId: string) =>
     envolver(() => repositorio.usosDeConcepto(conceptoId))
   )

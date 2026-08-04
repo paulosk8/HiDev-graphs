@@ -29,6 +29,7 @@ export function aConceptoDTO(concepto: Concepto): ConceptoDTO {
       contenido: n.contenido,
       formato: n.formato
     })),
+    etiquetas: [...concepto.etiquetas],
     dominio: concepto.repaso?.dominio ?? 0,
     proximaRevision: concepto.repaso?.proximaRevision ?? null
   }
@@ -45,6 +46,7 @@ export function aResumenConceptoDTO(concepto: Concepto): ResumenConceptoDTO {
     // listado los rellena al recargar. El store conserva los previos al editar.
     temas: [],
     asignaturas: [],
+    etiquetas: [...concepto.etiquetas],
     dominio: concepto.repaso?.dominio ?? 0,
     proximaRevision: concepto.repaso?.proximaRevision ?? null
   }

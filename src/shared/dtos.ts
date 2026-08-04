@@ -36,12 +36,20 @@ export interface ResumenConceptoDTO {
   totalRecursos: number
   /** Títulos de los temas que usan el concepto (para búsqueda). */
   temas: string[]
+  /** Etiquetas del docente, tal como las escribió. */
+  etiquetas: string[]
   /** Nombres de las asignaturas donde se usa (para agrupar/filtrar). */
   asignaturas: string[]
   /** Dominio percibido 0..5 (0 si nunca se repasó). Colorea el mapa. */
   dominio: number
   /** Fecha ISO (YYYY-MM-DD) del próximo repaso, o null si nunca se repasó. */
   proximaRevision: string | null
+}
+
+/** Una etiqueta con cuántos conceptos la llevan (para el filtro del listado). */
+export interface EtiquetaDTO {
+  etiqueta: string
+  total: number
 }
 
 /** Calidad del recuerdo al repasar: 0 = no me acuerdo, 3 = con esfuerzo, 4 = bien, 5 = fácil. */
@@ -83,6 +91,8 @@ export interface ConceptoDTO {
   relaciones: RelacionDTO[]
   /** Notas u observaciones propias sobre el concepto (varias). */
   notas: NotaDTO[]
+  /** Etiquetas del docente, tal como las escribió. */
+  etiquetas: string[]
   /** Dominio percibido 0..5 (0 si nunca se repasó). */
   dominio: number
   /** Fecha ISO del próximo repaso, o null si nunca se repasó. */
@@ -101,6 +111,8 @@ export interface DatosConceptoDTO {
   descripcion?: string
   /** Notas propias (varias). Si se omite al editar, se conservan las actuales. */
   notas?: NotaDTO[]
+  /** Etiquetas. Si se omite al editar, se conservan las actuales. */
+  etiquetas?: string[]
 }
 
 /** Resultado de agregar material: concepto actualizado + qué se ignoró. */

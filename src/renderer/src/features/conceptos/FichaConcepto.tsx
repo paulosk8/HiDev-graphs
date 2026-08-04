@@ -29,6 +29,13 @@ export function FichaConcepto({ conceptoId }: Props): JSX.Element {
   const [tareaAbierta, setTareaAbierta] = useState<string | null>(null)
 
   const volver = useUiStore((s) => s.seleccionarConcepto)
+  const fijarEtiqueta = useUiStore((s) => s.filtrarPorEtiqueta)
+
+  /** Pulsar una etiqueta sale de la ficha y deja el listado ya filtrado por ella. */
+  const filtrarPorEtiqueta = (etiqueta: string): void => {
+    fijarEtiqueta(etiqueta)
+    volver(null)
+  }
   const notificarError = useUiStore((s) => s.notificarError)
   const eliminar = useConceptosStore((s) => s.eliminar)
   const asignaturas = useAsignaturasStore((s) => s.lista)
@@ -87,6 +94,20 @@ export function FichaConcepto({ conceptoId }: Props): JSX.Element {
           <h1 className="text-2xl font-semibold text-slate-900">{concepto.nombre}</h1>
           {concepto.descripcion && (
             <p className="mt-2 max-w-prose text-sm text-slate-600">{concepto.descripcion}</p>
+          )}
+          {concepto.etiquetas.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {concepto.etiquetas.map((e) => (
+                <button
+                  key={e}
+                  onClick={() => filtrarPorEtiqueta(e)}
+                  title={`Ver todo lo etiquetado como «${e}»`}
+                  className="rounded-full bg-marca-50 px-2.5 py-0.5 text-xs font-medium text-marca-700 transition hover:bg-marca-100"
+                >
+                  {e}
+                </button>
+              ))}
+            </div>
           )}
         </div>
         <div className="flex shrink-0 gap-2">
@@ -185,7 +206,8 @@ export function FichaConcepto({ conceptoId }: Props): JSX.Element {
           conceptoInicial={{
             id: concepto.id,
             nombre: concepto.nombre,
-            descripcion: concepto.descripcion
+            descripcion: concepto.descripcion,
+            etiquetas: concepto.etiquetas
           }}
           onCerrar={() => setEditando(false)}
           onGuardado={() => void cargar()}

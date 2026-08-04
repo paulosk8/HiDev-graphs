@@ -48,6 +48,13 @@ interface UiState {
   /** Abre Configuración; si ya está abierta, vuelve a la vista anterior (toggle). */
   alternarConfiguracion: () => void
   seleccionarConcepto: (id: string | null) => void
+  /**
+   * Etiqueta por la que está filtrado el listado de conceptos, o null.
+   * Vive aquí y no en el listado porque se fija desde OTRA pantalla (al pulsar
+   * un chip en la ficha de un concepto), y el listado la recoge al montarse.
+   */
+  etiquetaFiltrada: string | null
+  filtrarPorEtiqueta: (etiqueta: string | null) => void
   seleccionarAsignatura: (id: string | null) => void
   /** Pide abrir un formulario (lo atiende la pantalla correspondiente). */
   pedirIntencion: (intencion: Intencion) => void
@@ -105,6 +112,8 @@ export const useUiStore = create<UiState>((set) => ({
       }
     }),
   seleccionarConcepto: (id) => set({ conceptoSeleccionadoId: id }),
+  etiquetaFiltrada: null,
+  filtrarPorEtiqueta: (etiqueta) => set({ etiquetaFiltrada: etiqueta }),
   seleccionarAsignatura: (id) => set({ asignaturaSeleccionadaId: id }),
 
   pedirIntencion: (intencion) => set({ intencion }),

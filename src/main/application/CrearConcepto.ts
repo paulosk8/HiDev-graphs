@@ -18,7 +18,8 @@ export function crearConcepto(servicios: Servicios, datos: DatosConceptoDTO): Re
     id,
     nombre: datos.nombre,
     descripcion: datos.descripcion,
-    notas: datos.notas
+    notas: datos.notas,
+    etiquetas: datos.etiquetas
   })
   vault.guardarConcepto(concepto)
   repositorio.indexarConcepto(concepto)

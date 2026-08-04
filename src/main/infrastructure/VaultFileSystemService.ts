@@ -168,6 +168,9 @@ export class VaultFileSystemService {
             }))
           }
         : {}),
+      // Etiquetas del docente. Solo se escriben si hay alguna, para no meter
+      // una clave vacía en los YAML que ya existían.
+      ...(concepto.etiquetas.length > 0 ? { etiquetas: [...concepto.etiquetas] } : {}),
       // Estado de repaso espaciado (solo si existe); parte del contenido del concepto.
       ...(concepto.repaso ? { repaso: { ...concepto.repaso } } : {})
     }
@@ -502,6 +505,8 @@ function conceptoDesdePlano(datos: Record<string, unknown>): Concepto {
     relaciones,
     recursos,
     notas: notasDesdePlano(datos.notas, datos.formatoNotas),
+    // Un concepto anterior a las etiquetas simplemente no trae la clave.
+    etiquetas: lista(datos.etiquetas).map((e) => texto(e)),
     repaso: repasoDesdePlano(datos.repaso)
   })
 }
