@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ResumenConceptoDTO } from '@shared/dtos'
+import { FormularioConcepto } from '../conceptos/FormularioConcepto'
 import { api } from '../../lib/api'
 import { useConceptosStore } from '../../stores/conceptosStore'
 
@@ -29,6 +30,8 @@ export function BuscadorConceptos({
   const [texto, setTexto] = useState('')
   const [resultados, setResultados] = useState<ResumenConceptoDTO[]>([])
   const [ocupado, setOcupado] = useState(false)
+  /** Formulario completo abierto (registrar el concepto sin ir a «Conceptos»). */
+  const [registrando, setRegistrando] = useState(false)
   const contenedor = useRef<HTMLDivElement>(null)
 
   // Búsqueda con pequeño retardo (debounce).
@@ -48,8 +51,10 @@ export function BuscadorConceptos({
     }
   }, [texto, excluir])
 
-  // Cerrar al hacer clic fuera o con Escape.
+  // Cerrar al hacer clic fuera o con Escape. Mientras el formulario está abierto
+  // no aplica: vive en un portal (fuera de este recuadro) y cerraría ambos.
   useEffect(() => {
+    if (registrando) return
     const fuera = (e: MouseEvent): void => {
       if (contenedor.current && !contenedor.current.contains(e.target as Node)) onCerrar()
     }
@@ -62,7 +67,7 @@ export function BuscadorConceptos({
       document.removeEventListener('mousedown', fuera)
       document.removeEventListener('keydown', escape)
     }
-  }, [onCerrar])
+  }, [onCerrar, registrando])
 
   const nombreLimpio = texto.trim()
   const hayCoincidenciaExacta = resultados.some(
@@ -135,6 +140,24 @@ export function BuscadorConceptos({
           <li className="px-3 py-2 text-xs text-slate-400">Escribe para buscar un concepto…</li>
         )}
       </ul>
+
+      {/* Registrar aquí mismo, con descripción y etiquetas, sin ir a «Conceptos». */}
+      <button
+        onClick={() => setRegistrando(true)}
+        disabled={ocupado}
+        className="flex w-full items-center gap-2 border-t border-slate-100 px-3 py-2 text-left text-xs text-slate-500 hover:bg-slate-50 hover:text-marca-700"
+      >
+        <span className="text-sm leading-none">✎</span>
+        Registrar un concepto nuevo…
+      </button>
+
+      {registrando && (
+        <FormularioConcepto
+          nombreInicial={nombreLimpio}
+          onGuardado={(id) => void onSeleccionar(id)}
+          onCerrar={() => setRegistrando(false)}
+        />
+      )}
     </div>
   )
 }
