@@ -14,6 +14,8 @@ interface ConceptoInicial {
 
 interface Props {
   conceptoInicial?: ConceptoInicial
+  /** Nombre con el que arranca el formulario al crear (lo ya escrito en un buscador). */
+  nombreInicial?: string
   onCerrar: () => void
   onGuardado?: (id: string) => void
 }
@@ -22,9 +24,14 @@ interface Props {
  * Formulario mínimo (2 campos) para crear o editar un concepto. Si recibe
  * `conceptoInicial`, funciona en modo edición.
  */
-export function FormularioConcepto({ conceptoInicial, onCerrar, onGuardado }: Props): JSX.Element {
+export function FormularioConcepto({
+  conceptoInicial,
+  nombreInicial,
+  onCerrar,
+  onGuardado
+}: Props): JSX.Element {
   const editando = conceptoInicial !== undefined
-  const [nombre, setNombre] = useState(conceptoInicial?.nombre ?? '')
+  const [nombre, setNombre] = useState(conceptoInicial?.nombre ?? nombreInicial ?? '')
   const [descripcion, setDescripcion] = useState(conceptoInicial?.descripcion ?? '')
   const [etiquetas, setEtiquetas] = useState<string[]>(conceptoInicial?.etiquetas ?? [])
   const [ocupado, setOcupado] = useState(false)
