@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { ResumenConceptoDTO } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
 import { EstadoVacio } from '../../components/EstadoVacio'
+import { textoMaterial } from '../../lib/material'
 import { useAsignaturasStore } from '../../stores/asignaturasStore'
 import { useConceptosStore } from '../../stores/conceptosStore'
 import { useUiStore, type Contexto } from '../../stores/uiStore'
@@ -260,9 +261,7 @@ export function ListaConceptos({ contexto }: Props): JSX.Element {
                                 ? 'Sin temas'
                                 : `${c.temas.length} ${c.temas.length === 1 ? 'tema' : 'temas'}`}
                               {' · '}
-                              {c.totalRecursos === 0
-                                ? 'sin material'
-                                : `${c.totalRecursos} ${c.totalRecursos === 1 ? 'material' : 'materiales'}`}
+                              {textoMaterial(c).toLowerCase()}
                             </span>
                             {c.temas.length > 0 && (
                               <button

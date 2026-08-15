@@ -24,17 +24,28 @@ interface ConceptosState {
     carpeta?: string
   ) => Promise<ConceptoDTO | null>
   eliminarMaterial: (conceptoId: string, recursoId: string) => Promise<ConceptoDTO | null>
+  /**
+   * Refleja en el listado el material de un concepto recién modificado.
+   *
+   * Los enlaces web se agregan y quitan por `api` desde la zona de material, sin
+   * pasar por este store; sin esto, el contador del listado (y el del chip de la
+   * asignatura) se quedaría con el número anterior hasta recargar.
+   */
+  reflejarMaterial: (concepto: ConceptoDTO) => void
   /** Registra un repaso y refleja el nuevo dominio/próxima revisión en el listado. */
   repasar: (conceptoId: string, calidad: CalidadRepaso) => Promise<ConceptoDTO | null>
 }
 
-/** Actualiza el conteo de material de un concepto en el listado. */
+/** Actualiza el conteo de material (archivos + enlaces) de un concepto. */
 function conConteoActualizado(
   lista: ResumenConceptoDTO[],
-  id: string,
-  total: number
+  concepto: ConceptoDTO
 ): ResumenConceptoDTO[] {
-  return lista.map((c) => (c.id === id ? { ...c, totalRecursos: total } : c))
+  return lista.map((c) =>
+    c.id === concepto.id
+      ? { ...c, totalRecursos: concepto.recursos.length, totalEnlaces: concepto.enlaces.length }
+      : c
+  )
 }
 
 export const useConceptosStore = create<ConceptosState>((set) => ({
@@ -98,7 +109,7 @@ export const useConceptosStore = create<ConceptosState>((set) => ({
     try {
       const { concepto, agregados, ignorados } = await api.agregarMaterial(conceptoId, rutas, carpeta)
       set((estado) => ({
-        lista: conConteoActualizado(estado.lista, conceptoId, concepto.recursos.length)
+        lista: conConteoActualizado(estado.lista, concepto)
       }))
       if (agregados > 0) {
         ui().notificar({
@@ -124,7 +135,7 @@ export const useConceptosStore = create<ConceptosState>((set) => ({
     try {
       const concepto = await api.eliminarMaterial(conceptoId, recursoId)
       set((estado) => ({
-        lista: conConteoActualizado(estado.lista, conceptoId, concepto.recursos.length)
+        lista: conConteoActualizado(estado.lista, concepto)
       }))
       ui().notificar({ tipo: 'exito', mensaje: 'Material eliminado.' })
       return concepto
@@ -133,6 +144,9 @@ export const useConceptosStore = create<ConceptosState>((set) => ({
       return null
     }
   },
+
+  reflejarMaterial: (concepto) =>
+    set((estado) => ({ lista: conConteoActualizado(estado.lista, concepto) })),
 
   repasar: async (conceptoId, calidad) => {
     try {

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { ErrorAmigableError } from '../lib/api'
+import { useVistazoStore } from './vistazoStore'
 
 export type Seccion =
   | 'conceptos'
@@ -76,6 +77,19 @@ let vistaPrevia: { seccion: Seccion; contexto: Contexto } = {
   contexto: 'docencia'
 }
 
+/**
+ * Cierra el panel lateral del concepto al cambiar de sección.
+ *
+ * El panel se monta una sola vez en `App` (es una columna del layout, no parte
+ * de la vista), así que sin esto sobrevivía a la navegación: abrías un concepto
+ * desde un lienzo, ibas al Mapa y el panel seguía ahí, ya fuera de contexto.
+ * Va aquí, junto al reseteo de las selecciones, y no en un efecto de `App`,
+ * para que cambiar de sección signifique siempre lo mismo.
+ */
+function cerrarVistazo(): void {
+  useVistazoStore.getState().cerrar()
+}
+
 export const useUiStore = create<UiState>((set) => ({
   // Al arrancar (tras iniciar sesión) se muestran las asignaturas de docencia.
   seccion: 'asignaturas',
@@ -85,16 +99,19 @@ export const useUiStore = create<UiState>((set) => ({
   avisos: [],
   intencion: null,
 
-  irASeccion: (seccion, contexto) =>
+  irASeccion: (seccion, contexto) => {
+    cerrarVistazo()
     set((estado) => ({
       seccion,
       contexto: contexto ?? estado.contexto,
       conceptoSeleccionadoId: null,
       asignaturaSeleccionadaId: null
-    })),
+    }))
+  },
 
-  alternarConfiguracion: () =>
-    set((estado) => {
+  alternarConfiguracion: () => {
+    cerrarVistazo()
+    return set((estado) => {
       if (estado.seccion === 'configuracion') {
         // Ya está abierta: vuelve a la vista anterior (oculta las opciones).
         return {
@@ -111,7 +128,8 @@ export const useUiStore = create<UiState>((set) => ({
         conceptoSeleccionadoId: null,
         asignaturaSeleccionadaId: null
       }
-    }),
+    })
+  },
   seleccionarConcepto: (id) => set({ conceptoSeleccionadoId: id }),
   etiquetaFiltrada: null,
   filtrarPorEtiqueta: (etiqueta) => set({ etiquetaFiltrada: etiqueta }),

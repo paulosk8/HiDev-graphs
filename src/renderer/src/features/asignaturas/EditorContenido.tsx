@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type {
   AsignaturaDTO,
   DatosUnidadEdicionDTO,
+  ResumenConceptoDTO,
   ResumenTareaDTO
 } from '@shared/dtos'
 import { BuscadorConceptos } from '../vinculos/BuscadorConceptos'
@@ -10,6 +11,7 @@ import { DialogoMover } from '../../components/DialogoMover'
 import { MenuContextual, useMenuContextual } from '../../components/MenuContextual'
 import { api } from '../../lib/api'
 import { useUiStore } from '../../stores/uiStore'
+import { useVistazoStore } from '../../stores/vistazoStore'
 
 // Árbol editable local (ids reales para lo existente; "tmp-*" para lo nuevo aún sin guardar).
 interface SubN {
@@ -75,7 +77,8 @@ function aDTO(arbol: UniN[]): DatosUnidadEdicionDTO[] {
 interface Props {
   asignatura: AsignaturaDTO
   esAprendizaje: boolean
-  nombrePorId: Map<string, string>
+  /** Conceptos del pool, por id: dan nombre y cuánto material tiene cada uno. */
+  conceptoPorId: Map<string, ResumenConceptoDTO>
   tareas: ResumenTareaDTO[]
   onVincular: (temaId: string, conceptoId: string) => void
   onDesvincular: (temaId: string, conceptoId: string) => void
@@ -86,13 +89,18 @@ interface Props {
 export function EditorContenido({
   asignatura,
   esAprendizaje,
-  nombrePorId,
+  conceptoPorId,
   tareas,
   onVincular,
   onDesvincular,
   onAbrirTarea,
   onGuardar
 }: Props): JSX.Element {
+  // El material sigue perteneciendo al concepto (así se reutiliza entre
+  // asignaturas y períodos), pero el docente que prepara la clase lo necesita
+  // aquí: el chip abre el panel lateral del concepto y desde ahí agrega
+  // archivos, enlaces y notas sin salir de la asignatura.
+  const abrirVistazo = useVistazoStore((s) => s.abrir)
   const [arbol, setArbol] = useState<UniN[]>(() => desdeAsignatura(asignatura))
   /**
    * Qué está plegado. Se guarda lo CERRADO y no lo abierto: así una unidad o
@@ -393,12 +401,13 @@ export function EditorContenido({
                   {real && (
                     <div className="mt-1.5 flex flex-wrap items-center gap-1.5 pl-2">
                       {real.conceptos.map((cid) => (
-                        <span key={cid} className="flex items-center gap-1 rounded-full bg-marca-50 py-0.5 pl-2.5 pr-1 text-xs text-marca-700">
-                          {nombrePorId.get(cid) ?? cid}
-                          <button onClick={() => onDesvincular(t.id, cid)} className="text-marca-400 hover:text-red-600" aria-label="Quitar concepto">
-                            ✕
-                          </button>
-                        </span>
+                        <ChipConcepto
+                          key={cid}
+                          concepto={conceptoPorId.get(cid)}
+                          conceptoId={cid}
+                          onAbrir={() => abrirVistazo(cid)}
+                          onQuitar={() => onDesvincular(t.id, cid)}
+                        />
                       ))}
                       <span className="relative">
                         <button
@@ -537,5 +546,59 @@ export function EditorContenido({
         />
       )}
     </div>
+  )
+}
+
+/**
+ * Concepto vinculado a un tema.
+ *
+ * El nombre no es solo una etiqueta: abre el panel lateral del concepto, donde
+ * está su material. Así, preparar un tema —ver qué tengo, arrastrar un PDF,
+ * guardar un enlace— se hace sin abandonar la asignatura, y el material sigue
+ * viviendo en el concepto, que es lo que permite reutilizarlo.
+ *
+ * El contador dice cuánto material tiene (archivos + enlaces). En ámbar cuando
+ * está a cero: es justo el tema al que hay que ponerle algo antes de la clase.
+ */
+function ChipConcepto({
+  concepto,
+  conceptoId,
+  onAbrir,
+  onQuitar
+}: {
+  concepto: ResumenConceptoDTO | undefined
+  conceptoId: string
+  onAbrir: () => void
+  onQuitar: () => void
+}): JSX.Element {
+  const nombre = concepto?.nombre ?? conceptoId
+  const total = concepto ? concepto.totalRecursos + concepto.totalEnlaces : 0
+  return (
+    <span className="flex items-center gap-1 rounded-full bg-marca-50 py-0.5 pl-2.5 pr-1 text-xs text-marca-700">
+      <button
+        onClick={onAbrir}
+        title={`Ver el material de «${nombre}»`}
+        className="flex items-center gap-1.5 rounded-full transition hover:underline"
+      >
+        {nombre}
+        <span
+          aria-label={
+            total === 0 ? 'Sin material todavía' : `${total} materiales`
+          }
+          className={`rounded-full px-1.5 text-[10px] font-semibold ${
+            total === 0 ? 'bg-amber-100 text-amber-800' : 'bg-marca-100 text-marca-700'
+          }`}
+        >
+          📎 {total}
+        </span>
+      </button>
+      <button
+        onClick={onQuitar}
+        className="text-marca-400 hover:text-red-600"
+        aria-label={`Desvincular ${nombre}`}
+      >
+        ✕
+      </button>
+    </span>
   )
 }

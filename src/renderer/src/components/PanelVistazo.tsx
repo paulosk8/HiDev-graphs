@@ -184,6 +184,7 @@ export function PanelVistazo(): JSX.Element | null {
               <ZonaMaterial
                 conceptoId={concepto.id}
                 recursos={concepto.recursos}
+                enlaces={concepto.enlaces}
                 onActualizado={(c) => setConcepto(c)}
               />
 

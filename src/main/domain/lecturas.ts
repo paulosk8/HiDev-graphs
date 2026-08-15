@@ -9,6 +9,8 @@ export interface ResumenConcepto {
   readonly nombre: string
   readonly descripcion: string
   readonly totalRecursos: number
+  /** Enlaces web del concepto (material que no es un archivo). */
+  readonly totalEnlaces: number
   /** Títulos de los temas que usan el concepto (para búsqueda). */
   readonly temas: string[]
   /** Etiquetas del docente, tal como las escribió. */

@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
-import type { ConceptoDTO, RecursoDTO } from '@shared/dtos'
+import type { ConceptoDTO, EnlaceMaterialDTO, RecursoDTO } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
 import { DialogoConfirmacion } from '../../components/DialogoConfirmacion'
 import { DialogoMover } from '../../components/DialogoMover'
-import { MenuContextual, useMenuContextual } from '../../components/MenuContextual'
+import {
+  MenuContextual,
+  useMenuContextual,
+  type OpcionMenu
+} from '../../components/MenuContextual'
 import { api } from '../../lib/api'
 import { empezarArrastreDe, leerArrastre } from '../lienzo/arrastreAlLienzo'
 import { useConceptosStore } from '../../stores/conceptosStore'
@@ -12,6 +16,7 @@ import {
   avisoDeEliminacion,
   useEliminacionStore
 } from '../../stores/eliminacionStore'
+import { DialogoEnlace } from './DialogoEnlace'
 import { PREVISUALIZABLES, VistaPreviaMaterial } from './VistaPreviaMaterial'
 
 const FORMATOS_ACEPTADOS = '.pdf,.pptx,.docx,.md,.html,.xml'
@@ -19,9 +24,26 @@ const FORMATOS_ACEPTADOS = '.pdf,.pptx,.docx,.md,.html,.xml'
 /** Clave de la sección "sin carpeta", que siempre va primero. */
 const RAIZ = ''
 
+/**
+ * Una fila de la lista: un archivo del vault o un enlace web.
+ *
+ * Van juntos a propósito. Para el docente, un vídeo de YouTube es material
+ * igual que un PDF, y separarlos en dos listas le obligaría a buscar en dos
+ * sitios "lo que tengo de este concepto".
+ */
+type ItemMaterial =
+  | { clase: 'archivo'; recurso: RecursoDTO }
+  | { clase: 'enlace'; enlace: EnlaceMaterialDTO }
+
+/** Completa la dirección para el navegador (el docente no teclea el esquema). */
+function direccionCompleta(url: string): string {
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`
+}
+
 interface Props {
   conceptoId: string
   recursos: RecursoDTO[]
+  enlaces: EnlaceMaterialDTO[]
   onActualizado: (concepto: ConceptoDTO) => void
 }
 
@@ -33,17 +55,35 @@ interface Props {
  * decisiones de interfaz: se puede soltar directamente SOBRE una carpeta (el
  * archivo se guarda ahí, no en un montón común), y mover algo de carpeta mueve
  * el archivo de verdad, no solo una etiqueta.
+ *
+ * Los enlaces web se listan aquí mismo y se arrastran igual, aunque por dentro
+ * no son archivos: su "carpeta" es solo una etiqueta en `concepto.yaml`, sin
+ * nada que mover en disco. Esa diferencia no se le enseña al docente — para él
+ * es la misma lista y el mismo gesto.
  */
-export function ZonaMaterial({ conceptoId, recursos, onActualizado }: Props): JSX.Element {
+export function ZonaMaterial({
+  conceptoId,
+  recursos,
+  enlaces,
+  onActualizado
+}: Props): JSX.Element {
   const modoEliminacion = useEliminacionStore((s) => s.modo)
   // Qué carpeta está resaltada al arrastrar (null = ninguna).
   const [arrastrando, setArrastrando] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
   const [aEliminar, setAEliminar] = useState<RecursoDTO | null>(null)
+  const [enlaceAEliminar, setEnlaceAEliminar] = useState<EnlaceMaterialDTO | null>(null)
   const [aVer, setAVer] = useState<RecursoDTO | null>(null)
-  const [aMover, setAMover] = useState<RecursoDTO | null>(null)
+  const [aMover, setAMover] = useState<ItemMaterial | null>(null)
   const [carpetas, setCarpetas] = useState<string[]>([])
   const [creandoCarpeta, setCreandoCarpeta] = useState(false)
+  /** Carpeta que se está renombrando (comparte el campo con "nueva carpeta"). */
+  const [renombrando, setRenombrando] = useState<string | null>(null)
+  const [carpetaAEliminar, setCarpetaAEliminar] = useState<string | null>(null)
+  /** Enlace en edición, o la carpeta destino si se está creando uno nuevo. */
+  const [editandoEnlace, setEditandoEnlace] = useState<
+    { enlace: EnlaceMaterialDTO } | { carpeta: string } | null
+  >(null)
   /** Carpetas desplegadas. Empiezan cerradas: el panel del lienzo es estrecho
    *  y con varias carpetas abiertas no se ve nada de un vistazo. */
   const [abiertas, setAbiertas] = useState<Set<string>>(new Set())
@@ -54,8 +94,21 @@ export function ZonaMaterial({ conceptoId, recursos, onActualizado }: Props): JS
 
   const agregarMaterial = useConceptosStore((s) => s.agregarMaterial)
   const eliminarMaterial = useConceptosStore((s) => s.eliminarMaterial)
+  const reflejarMaterial = useConceptosStore((s) => s.reflejarMaterial)
   const notificarError = useUiStore((s) => s.notificarError)
-  const { menu, abrir: abrirMenu, cerrar: cerrarMenu } = useMenuContextual<RecursoDTO>()
+  const { menu, abrir: abrirMenu, cerrar: cerrarMenu } = useMenuContextual<ItemMaterial>()
+  // Menú de "+ Agregar material": elegir entre un archivo del equipo y un enlace.
+  const {
+    menu: menuAgregar,
+    abrir: abrirMenuAgregar,
+    cerrar: cerrarMenuAgregar
+  } = useMenuContextual<string>()
+  // Menú de una carpeta: cambiar el nombre o quitarla.
+  const {
+    menu: menuCarpeta,
+    abrir: abrirMenuCarpeta,
+    cerrar: cerrarMenuCarpeta
+  } = useMenuContextual<string>()
 
   const cargarCarpetas = useCallback(async () => {
     try {
@@ -75,16 +128,24 @@ export function ZonaMaterial({ conceptoId, recursos, onActualizado }: Props): JS
    * dónde soltar los archivos que van a ella.
    */
   const secciones = useMemo(() => {
-    const porCarpeta = new Map<string, RecursoDTO[]>([[RAIZ, []]])
+    const porCarpeta = new Map<string, ItemMaterial[]>([[RAIZ, []]])
     for (const c of carpetas) porCarpeta.set(c, [])
-    for (const r of recursos) {
-      const clave = r.carpeta || RAIZ
-      porCarpeta.set(clave, [...(porCarpeta.get(clave) ?? []), r])
+    const meter = (clave: string, item: ItemMaterial): void => {
+      porCarpeta.set(clave, [...(porCarpeta.get(clave) ?? []), item])
     }
+    for (const r of recursos) meter(r.carpeta || RAIZ, { clase: 'archivo', recurso: r })
+    // Los enlaces van después de los archivos de su carpeta: el material
+    // descargado es lo que el docente abre más a menudo.
+    for (const e of enlaces) meter(e.carpeta || RAIZ, { clase: 'enlace', enlace: e })
     return [...porCarpeta.keys()]
       .sort((a, b) => (a === RAIZ ? -1 : b === RAIZ ? 1 : a.localeCompare(b, 'es')))
       .map((clave) => ({ carpeta: clave, items: porCarpeta.get(clave) ?? [] }))
-  }, [recursos, carpetas])
+  }, [recursos, enlaces, carpetas])
+
+  /** Cuántas cosas hay en una carpeta (para avisar antes de quitarla). */
+  const contarEn = (carpeta: string): number =>
+    recursos.filter((r) => (r.carpeta || RAIZ) === carpeta).length +
+    enlaces.filter((e) => (e.carpeta || RAIZ) === carpeta).length
 
   const abrir = (recurso: RecursoDTO): void => {
     void api.abrirMaterial(conceptoId, recurso.archivo).catch((e) => notificarError(e))
@@ -113,9 +174,15 @@ export function ZonaMaterial({ conceptoId, recursos, onActualizado }: Props): JS
     // ya está en el concepto (moverlo de carpeta). Se distinguen por el tipo
     // que lleva el arrastre, no por adivinar.
     const interno = leerArrastre(e)
-    if (interno && interno.tipo === 'material' && interno.conceptoId === conceptoId) {
-      void moverACarpeta(interno.archivo, carpeta)
-      return
+    if (interno && interno.conceptoId === conceptoId) {
+      if (interno.tipo === 'material') {
+        void moverACarpeta(interno.archivo, carpeta)
+        return
+      }
+      if (interno.tipo === 'enlace') {
+        void moverEnlaceACarpeta(interno.enlaceId, carpeta)
+        return
+      }
     }
     void procesarArchivos(e.dataTransfer.files, carpeta)
   }
@@ -132,9 +199,81 @@ export function ZonaMaterial({ conceptoId, recursos, onActualizado }: Props): JS
     }
   }
 
+  /** Cambia un enlace de carpeta. Aquí no hay nada que mover en disco: la
+   *  carpeta del enlace es solo una etiqueta en `concepto.yaml`. */
+  const moverEnlaceACarpeta = async (enlaceId: string, carpeta: string): Promise<void> => {
+    const enlace = enlaces.find((e) => e.id === enlaceId)
+    if (!enlace || (enlace.carpeta || '') === carpeta) return
+    try {
+      onActualizado(await api.moverEnlaceACarpeta(conceptoId, enlaceId, carpeta))
+    } catch (error) {
+      notificarError(error)
+    }
+  }
+
   const elegirArchivos = (carpeta: string): void => {
     destinoRef.current = carpeta
     inputRef.current?.click()
+  }
+
+  /** Opciones de "+ Agregar material": del equipo o de la web. */
+  const opcionesAgregar = (carpeta: string): OpcionMenu[] => [
+    {
+      etiqueta: 'Un archivo de mi equipo…',
+      icono: '📄',
+      onElegir: () => elegirArchivos(carpeta)
+    },
+    {
+      etiqueta: 'Un enlace a una página web…',
+      icono: '🔗',
+      onElegir: () => setEditandoEnlace({ carpeta })
+    }
+  ]
+
+  /** Opciones del clic derecho sobre una fila (distintas para archivo y enlace). */
+  const opcionesDeItem = (item: ItemMaterial): OpcionMenu[] =>
+    item.clase === 'archivo'
+      ? [
+          { etiqueta: 'Abrir', icono: '↗', onElegir: () => abrir(item.recurso) },
+          { etiqueta: 'Mover a otra carpeta…', icono: '→', onElegir: () => setAMover(item) },
+          {
+            etiqueta: 'Quitar',
+            icono: '✕',
+            destructiva: true,
+            onElegir: () => setAEliminar(item.recurso)
+          }
+        ]
+      : [
+          {
+            etiqueta: 'Editar el enlace…',
+            icono: '✎',
+            onElegir: () => setEditandoEnlace({ enlace: item.enlace })
+          },
+          { etiqueta: 'Mover a otra carpeta…', icono: '→', onElegir: () => setAMover(item) },
+          {
+            etiqueta: 'Quitar',
+            icono: '✕',
+            destructiva: true,
+            onElegir: () => setEnlaceAEliminar(item.enlace)
+          }
+        ]
+
+  const guardarEnlace = async (datos: { titulo: string; url: string }): Promise<void> => {
+    if (!editandoEnlace) return
+    try {
+      const concepto =
+        'enlace' in editandoEnlace
+          ? await api.editarEnlaceMaterial(conceptoId, editandoEnlace.enlace.id, datos)
+          : await api.agregarEnlaceMaterial(conceptoId, {
+              ...datos,
+              carpeta: editandoEnlace.carpeta
+            })
+      onActualizado(concepto)
+      reflejarMaterial(concepto)
+      setEditandoEnlace(null)
+    } catch (error) {
+      notificarError(error)
+    }
   }
 
   const confirmarEliminar = async (): Promise<void> => {
@@ -142,6 +281,70 @@ export function ZonaMaterial({ conceptoId, recursos, onActualizado }: Props): JS
     const concepto = await eliminarMaterial(conceptoId, aEliminar.id)
     setAEliminar(null)
     if (concepto) onActualizado(concepto)
+  }
+
+  const confirmarEliminarEnlace = async (): Promise<void> => {
+    if (!enlaceAEliminar) return
+    try {
+      const concepto = await api.eliminarEnlaceMaterial(conceptoId, enlaceAEliminar.id)
+      onActualizado(concepto)
+      reflejarMaterial(concepto)
+    } catch (error) {
+      notificarError(error)
+    } finally {
+      setEnlaceAEliminar(null)
+    }
+  }
+
+  /** Cierra el campo del nombre, tanto si era una carpeta nueva como un cambio. */
+  const cancelarNombre = (): void => {
+    setNombreCarpeta('')
+    setCreandoCarpeta(false)
+    setRenombrando(null)
+  }
+
+  const empezarRenombrar = (carpeta: string): void => {
+    setCreandoCarpeta(false)
+    setNombreCarpeta(carpeta)
+    setRenombrando(carpeta)
+  }
+
+  const confirmarRenombrar = async (actual: string): Promise<void> => {
+    const nuevo = nombreCarpeta.trim()
+    if (!nuevo || nuevo === actual) {
+      cancelarNombre()
+      return
+    }
+    try {
+      const concepto = await api.renombrarCarpetaMaterial(conceptoId, actual, nuevo)
+      onActualizado(concepto)
+      // La carpeta abierta se sigue por su nombre: sin esto, renombrarla la
+      // cerraría de golpe y parecería que el material ha desaparecido.
+      setAbiertas((s) => {
+        if (!s.has(actual)) return s
+        const n = new Set(s)
+        n.delete(actual)
+        n.add(nuevo)
+        return n
+      })
+      await cargarCarpetas()
+      cancelarNombre()
+    } catch (error) {
+      notificarError(error)
+    }
+  }
+
+  const confirmarEliminarCarpeta = async (): Promise<void> => {
+    if (!carpetaAEliminar) return
+    try {
+      const concepto = await api.eliminarCarpetaMaterial(conceptoId, carpetaAEliminar)
+      onActualizado(concepto)
+      await cargarCarpetas()
+    } catch (error) {
+      notificarError(error)
+    } finally {
+      setCarpetaAEliminar(null)
+    }
   }
 
   const crearCarpeta = async (): Promise<void> => {
@@ -156,7 +359,7 @@ export function ZonaMaterial({ conceptoId, recursos, onActualizado }: Props): JS
     }
   }
 
-  const sinNada = recursos.length === 0 && carpetas.length === 0
+  const sinNada = recursos.length === 0 && enlaces.length === 0 && carpetas.length === 0
 
   return (
     <div className="rounded-xl border border-slate-200">
@@ -190,10 +393,15 @@ export function ZonaMaterial({ conceptoId, recursos, onActualizado }: Props): JS
           <p className="text-sm font-medium text-slate-700">
             {arrastrando !== null ? 'Suelta para agregar' : 'Arrastra tus archivos aquí'}
           </p>
-          <p className="mt-1 text-xs text-slate-400">PDF, PowerPoint, Word, Markdown, HTML o XML</p>
-          <div className="mt-4 flex gap-2">
+          <p className="mt-1 text-xs text-slate-400">
+            PDF, PowerPoint, Word, Markdown, HTML o XML — o guarda un enlace a una página web
+          </p>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
             <Boton variante="secundario" onClick={() => elegirArchivos(RAIZ)} disabled={ocupado}>
               {ocupado ? 'Agregando…' : 'Agregar material'}
+            </Boton>
+            <Boton variante="secundario" onClick={() => setEditandoEnlace({ carpeta: RAIZ })}>
+              🔗 Agregar un enlace
             </Boton>
             <Boton variante="fantasma" onClick={() => setCreandoCarpeta(true)}>
               + Nueva carpeta
@@ -215,35 +423,59 @@ export function ZonaMaterial({ conceptoId, recursos, onActualizado }: Props): JS
                 arrastrando === carpeta ? 'bg-marca-50 ring-1 ring-marca-300' : ''
               }`}
             >
-              {carpeta !== RAIZ && (
-                <div className="flex items-center gap-2 px-3 pt-2">
-                  <button
-                    onClick={() =>
-                      setAbiertas((s) => {
-                        const n = new Set(s)
-                        n.has(carpeta) ? n.delete(carpeta) : n.add(carpeta)
-                        return n
-                      })
-                    }
-                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
+              {carpeta !== RAIZ &&
+                (renombrando === carpeta ? (
+                  <div className="px-3 pt-2">
+                    <NombreCarpeta
+                      valor={nombreCarpeta}
+                      onCambiar={setNombreCarpeta}
+                      onAceptar={() => void confirmarRenombrar(carpeta)}
+                      onCancelar={cancelarNombre}
+                      textoAceptar="Guardar"
+                    />
+                  </div>
+                ) : (
+                  <div
+                    onContextMenu={(e) => abrirMenuCarpeta(e, carpeta)}
+                    className="flex items-center gap-2 px-3 pt-2"
                   >
-                    <span aria-hidden className="text-slate-400">
-                      {abiertas.has(carpeta) ? '▾' : '▸'}
-                    </span>
-                    <span aria-hidden>📁</span>
-                    <span className="truncate text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      {carpeta}
-                    </span>
-                    <span className="text-xs text-slate-400">{items.length}</span>
-                  </button>
-                  <button
-                    onClick={() => elegirArchivos(carpeta)}
-                    className="text-xs text-slate-400 transition hover:text-marca-700"
-                  >
-                    + Agregar aquí
-                  </button>
-                </div>
-              )}
+                    <button
+                      onClick={() =>
+                        setAbiertas((s) => {
+                          const n = new Set(s)
+                          n.has(carpeta) ? n.delete(carpeta) : n.add(carpeta)
+                          return n
+                        })
+                      }
+                      className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                    >
+                      <span aria-hidden className="text-slate-400">
+                        {abiertas.has(carpeta) ? '▾' : '▸'}
+                      </span>
+                      <span aria-hidden>📁</span>
+                      <span className="truncate text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        {carpeta}
+                      </span>
+                      <span className="text-xs text-slate-400">{items.length}</span>
+                    </button>
+                    <button
+                      onClick={(e) => abrirMenuAgregar(e, carpeta)}
+                      className="text-xs text-slate-400 transition hover:text-marca-700"
+                    >
+                      + Agregar aquí
+                    </button>
+                    {/* Botón visible además del clic derecho: renombrar y quitar
+                        no se encuentran si el único camino es un menú oculto. */}
+                    <button
+                      onClick={(e) => abrirMenuCarpeta(e, carpeta)}
+                      title={`Opciones de la carpeta «${carpeta}»`}
+                      aria-label={`Opciones de la carpeta ${carpeta}`}
+                      className="rounded px-1 text-sm leading-none text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                    >
+                      ⋯
+                    </button>
+                  </div>
+                ))}
 
               {carpeta !== RAIZ && !abiertas.has(carpeta) ? (
                 // Cerrada: sigue siendo zona de destino, para poder soltarle
@@ -255,55 +487,121 @@ export function ZonaMaterial({ conceptoId, recursos, onActualizado }: Props): JS
                 <p className="px-3 py-2 text-xs text-slate-300">
                   {arrastrando === carpeta
                     ? 'Suelta aquí para guardarlo en esta carpeta'
-                    : 'Carpeta vacía · arrastra archivos aquí'}
+                    : // La raíz no es una carpeta: llamarla "carpeta vacía"
+                      // confunde, sobre todo si sí hay carpetas más abajo.
+                      carpeta === RAIZ
+                      ? 'Aquí va lo que no pongas en ninguna carpeta.'
+                      : 'Carpeta vacía · arrastra archivos aquí'}
                 </p>
               ) : (
                 <ul className="divide-y divide-slate-100">
-                  {items.map((recurso) => (
-                    <li
-                      key={recurso.id}
-                      // Arrastrable: si hay un lienzo abierto, soltarlo allí
-                      // crea su tarjeta. Fuera del lienzo no molesta.
-                      draggable
-                      onDragStart={(e) =>
-                        empezarArrastreDe(e, {
-                          tipo: 'material',
-                          conceptoId,
-                          archivo: recurso.archivo
-                        })
-                      }
-                      onContextMenu={(e) => abrirMenu(e, recurso)}
-                      className="group flex cursor-grab items-center gap-3 px-3 py-2.5 active:cursor-grabbing"
-                    >
-                      <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold uppercase text-slate-500">
-                        {recurso.formato}
-                      </span>
-                      <span className="flex-1 truncate text-sm text-slate-700">
-                        {recurso.nombre}
-                      </span>
-                      {PREVISUALIZABLES.includes(recurso.formato) && (
+                  {items.map((item) =>
+                    item.clase === 'archivo' ? (
+                      <li
+                        key={item.recurso.id}
+                        // Arrastrable: si hay un lienzo abierto, soltarlo allí
+                        // crea su tarjeta. Fuera del lienzo no molesta.
+                        draggable
+                        onDragStart={(e) =>
+                          empezarArrastreDe(e, {
+                            tipo: 'material',
+                            conceptoId,
+                            archivo: item.recurso.archivo
+                          })
+                        }
+                        onContextMenu={(e) => abrirMenu(e, item)}
+                        className="group flex cursor-grab items-center gap-3 px-3 py-2.5 active:cursor-grabbing"
+                      >
+                        <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold uppercase text-slate-500">
+                          {item.recurso.formato}
+                        </span>
+                        <span className="flex-1 truncate text-sm text-slate-700">
+                          {item.recurso.nombre}
+                        </span>
+                        {PREVISUALIZABLES.includes(item.recurso.formato) && (
+                          <button
+                            onClick={() => setAVer(item.recurso)}
+                            className="text-xs text-slate-500 transition hover:text-marca-700"
+                          >
+                            Ver
+                          </button>
+                        )}
                         <button
-                          onClick={() => setAVer(recurso)}
+                          onClick={() => abrir(item.recurso)}
                           className="text-xs text-slate-500 transition hover:text-marca-700"
                         >
-                          Ver
+                          Abrir
                         </button>
-                      )}
-                      <button
-                        onClick={() => abrir(recurso)}
-                        className="text-xs text-slate-500 transition hover:text-marca-700"
+                        <BotonOpciones
+                          etiqueta={item.recurso.nombre}
+                          onAbrir={(e) => abrirMenu(e, item)}
+                        />
+                        <button
+                          onClick={() => setAEliminar(item.recurso)}
+                          className="text-slate-400 transition hover:text-red-600"
+                          aria-label={`Quitar ${item.recurso.nombre}`}
+                        >
+                          ✕
+                        </button>
+                      </li>
+                    ) : (
+                      <li
+                        key={item.enlace.id}
+                        // Se arrastra a otra carpeta igual que un archivo. No
+                        // mueve nada en disco (su carpeta es solo una etiqueta),
+                        // pero para el docente son la misma lista y el mismo
+                        // gesto: distinguirlo sería una filtración del modelo.
+                        draggable
+                        onDragStart={(e) =>
+                          empezarArrastreDe(e, {
+                            tipo: 'enlace',
+                            conceptoId,
+                            enlaceId: item.enlace.id
+                          })
+                        }
+                        onContextMenu={(e) => abrirMenu(e, item)}
+                        className="group flex cursor-grab items-center gap-3 px-3 py-2.5 active:cursor-grabbing"
                       >
-                        Abrir
-                      </button>
-                      <button
-                        onClick={() => setAEliminar(recurso)}
-                        className="text-slate-400 transition hover:text-red-600"
-                        aria-label={`Quitar ${recurso.nombre}`}
-                      >
-                        ✕
-                      </button>
-                    </li>
-                  ))}
+                        <span className="rounded bg-sky-100 px-2 py-0.5 text-xs font-semibold uppercase text-sky-800">
+                          web
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm text-slate-700">
+                            {item.enlace.titulo}
+                          </span>
+                          {item.enlace.titulo !== item.enlace.url && (
+                            <span className="block truncate text-xs text-slate-400">
+                              {item.enlace.url.replace(/^https?:\/\//i, '')}
+                            </span>
+                          )}
+                        </span>
+                        {/* Un ancla y no un botón: la ventana ya manda a fuera
+                            todo lo que se abre en pestaña nueva. */}
+                        <a
+                          href={direccionCompleta(item.enlace.url)}
+                          target="_blank"
+                          rel="noreferrer"
+                          /* Un ancla arrastra su URL por defecto y le ganaría al
+                             arrastre de la fila, que es el que mueve de carpeta. */
+                          draggable={false}
+                          className="text-xs text-slate-500 transition hover:text-marca-700"
+                        >
+                          Abrir
+                        </a>
+                        <BotonOpciones
+                          etiqueta={item.enlace.titulo}
+                          onAbrir={(e) => abrirMenu(e, item)}
+                        />
+                        <button
+                          onClick={() => setEnlaceAEliminar(item.enlace)}
+                          className="text-slate-400 transition hover:text-red-600"
+                          aria-label={`Quitar ${item.enlace.titulo}`}
+                        >
+                          ✕
+                        </button>
+                      </li>
+                    )
+                  )}
                 </ul>
               )}
             </section>
@@ -311,19 +609,24 @@ export function ZonaMaterial({ conceptoId, recursos, onActualizado }: Props): JS
 
           <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
             {creandoCarpeta ? (
-              <NuevaCarpeta
+              <NombreCarpeta
                 valor={nombreCarpeta}
                 onCambiar={setNombreCarpeta}
-                onCrear={() => void crearCarpeta()}
-                onCancelar={() => setCreandoCarpeta(false)}
+                onAceptar={() => void crearCarpeta()}
+                onCancelar={cancelarNombre}
+                textoAceptar="Crear"
               />
             ) : (
               <>
                 <Boton variante="fantasma" onClick={() => setCreandoCarpeta(true)}>
                   + Nueva carpeta
                 </Boton>
-                <Boton variante="fantasma" onClick={() => elegirArchivos(RAIZ)} disabled={ocupado}>
-                  {ocupado ? 'Agregando…' : '+ Agregar material'}
+                <Boton
+                  variante="fantasma"
+                  onClick={(e) => abrirMenuAgregar(e, RAIZ)}
+                  disabled={ocupado}
+                >
+                  {ocupado ? 'Agregando…' : '+ Agregar material ▾'}
                 </Boton>
               </>
             )}
@@ -333,13 +636,44 @@ export function ZonaMaterial({ conceptoId, recursos, onActualizado }: Props): JS
 
       {sinNada && creandoCarpeta && (
         <div className="border-t border-slate-100 px-3 py-2">
-          <NuevaCarpeta
+          <NombreCarpeta
             valor={nombreCarpeta}
             onCambiar={setNombreCarpeta}
-            onCrear={() => void crearCarpeta()}
-            onCancelar={() => setCreandoCarpeta(false)}
+            onAceptar={() => void crearCarpeta()}
+            onCancelar={cancelarNombre}
+            textoAceptar="Crear"
           />
         </div>
+      )}
+
+      {menuAgregar && (
+        <MenuContextual
+          x={menuAgregar.x}
+          y={menuAgregar.y}
+          onCerrar={cerrarMenuAgregar}
+          opciones={opcionesAgregar(menuAgregar.dato)}
+        />
+      )}
+
+      {menuCarpeta && (
+        <MenuContextual
+          x={menuCarpeta.x}
+          y={menuCarpeta.y}
+          onCerrar={cerrarMenuCarpeta}
+          opciones={[
+            {
+              etiqueta: 'Cambiar el nombre…',
+              icono: '✎',
+              onElegir: () => empezarRenombrar(menuCarpeta.dato)
+            },
+            {
+              etiqueta: 'Quitar la carpeta',
+              icono: '✕',
+              destructiva: true,
+              onElegir: () => setCarpetaAEliminar(menuCarpeta.dato)
+            }
+          ]}
+        />
       )}
 
       {menu && (
@@ -347,40 +681,43 @@ export function ZonaMaterial({ conceptoId, recursos, onActualizado }: Props): JS
           x={menu.x}
           y={menu.y}
           onCerrar={cerrarMenu}
-          opciones={[
-            { etiqueta: 'Abrir', icono: '↗', onElegir: () => abrir(menu.dato) },
-            {
-              etiqueta: 'Mover a otra carpeta…',
-              icono: '→',
-              onElegir: () => setAMover(menu.dato)
-            },
-            {
-              etiqueta: 'Quitar',
-              icono: '✕',
-              destructiva: true,
-              onElegir: () => setAEliminar(menu.dato)
-            }
-          ]}
+          opciones={opcionesDeItem(menu.dato)}
         />
       )}
 
       {aMover && (
         <DialogoMover
-          titulo="Mover el material a otra carpeta"
-          queSeMueve={aMover.nombre}
+          titulo={
+            aMover.clase === 'archivo'
+              ? 'Mover el material a otra carpeta'
+              : 'Mover el enlace a otra carpeta'
+          }
+          queSeMueve={aMover.clase === 'archivo' ? aMover.recurso.nombre : aMover.enlace.titulo}
           destinos={[
             {
               id: RAIZ,
               titulo: 'Sin carpeta',
               detalle: 'Suelto en el concepto',
-              actual: !aMover.carpeta
+              actual:
+                aMover.clase === 'archivo' ? !aMover.recurso.carpeta : !aMover.enlace.carpeta
             },
-            ...carpetas.map((c) => ({ id: c, titulo: c, actual: aMover.carpeta === c }))
+            ...carpetas.map((c) => ({
+              id: c,
+              titulo: c,
+              actual:
+                aMover.clase === 'archivo'
+                  ? aMover.recurso.carpeta === c
+                  : aMover.enlace.carpeta === c
+            }))
           ]}
           textoVacio="Crea una carpeta para poder mover aquí el material."
           onMover={async (destino) => {
             try {
-              onActualizado(await api.moverMaterialACarpeta(conceptoId, aMover.id, destino))
+              onActualizado(
+                aMover.clase === 'archivo'
+                  ? await api.moverMaterialACarpeta(conceptoId, aMover.recurso.id, destino)
+                  : await api.moverEnlaceACarpeta(conceptoId, aMover.enlace.id, destino)
+              )
               void cargarCarpetas()
             } catch (error) {
               notificarError(error)
@@ -400,6 +737,44 @@ export function ZonaMaterial({ conceptoId, recursos, onActualizado }: Props): JS
         />
       )}
 
+      {enlaceAEliminar && (
+        <DialogoConfirmacion
+          titulo={`¿Quitar «${enlaceAEliminar.titulo}»?`}
+          // Aquí no cabe el aviso de la papelera: no se borra ningún archivo,
+          // solo se olvida la dirección. La página sigue donde estaba.
+          mensaje="Se quitará este enlace del material del concepto. La página web no se toca."
+          textoConfirmar="Quitar"
+          onConfirmar={confirmarEliminarEnlace}
+          onCancelar={() => setEnlaceAEliminar(null)}
+        />
+      )}
+
+      {carpetaAEliminar && (
+        <DialogoConfirmacion
+          titulo={`¿Quitar la carpeta «${carpetaAEliminar}»?`}
+          // Se dice explícitamente que el material se salva: quitar una forma
+          // de ordenar no debería dar miedo, y el docente no tiene por qué
+          // suponer que sus PDF sobreviven.
+          mensaje={
+            contarEn(carpetaAEliminar) === 0
+              ? 'Está vacía, así que no se pierde nada.'
+              : `Su material (${contarEn(carpetaAEliminar)}) NO se elimina: pasa a estar suelto en el concepto.`
+          }
+          textoConfirmar="Quitar la carpeta"
+          onConfirmar={confirmarEliminarCarpeta}
+          onCancelar={() => setCarpetaAEliminar(null)}
+        />
+      )}
+
+      {editandoEnlace && (
+        <DialogoEnlace
+          enlace={'enlace' in editandoEnlace ? editandoEnlace.enlace : null}
+          carpeta={'carpeta' in editandoEnlace ? editandoEnlace.carpeta : undefined}
+          onGuardar={guardarEnlace}
+          onCerrar={() => setEditandoEnlace(null)}
+        />
+      )}
+
       {aVer && (
         <VistaPreviaMaterial conceptoId={conceptoId} recurso={aVer} onCerrar={() => setAVer(null)} />
       )}
@@ -407,16 +782,44 @@ export function ZonaMaterial({ conceptoId, recursos, onActualizado }: Props): JS
   )
 }
 
-function NuevaCarpeta({
+/**
+ * Botón «⋯» de una fila de material. Abre el mismo menú que el clic derecho.
+ *
+ * Existe porque el clic derecho no se descubre: sin esto, "Mover a otra
+ * carpeta…" era invisible para quien no lo probara por su cuenta.
+ */
+function BotonOpciones({
+  etiqueta,
+  onAbrir
+}: {
+  etiqueta: string
+  onAbrir: (evento: React.MouseEvent) => void
+}): JSX.Element {
+  return (
+    <button
+      onClick={onAbrir}
+      title={`Más opciones de «${etiqueta}»`}
+      aria-label={`Más opciones de ${etiqueta}`}
+      className="rounded px-1 text-sm leading-none text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+    >
+      ⋯
+    </button>
+  )
+}
+
+/** Campo del nombre de una carpeta: sirve para crearla y para renombrarla. */
+function NombreCarpeta({
   valor,
   onCambiar,
-  onCrear,
-  onCancelar
+  onAceptar,
+  onCancelar,
+  textoAceptar
 }: {
   valor: string
   onCambiar: (v: string) => void
-  onCrear: () => void
+  onAceptar: () => void
   onCancelar: () => void
+  textoAceptar: string
 }): JSX.Element {
   return (
     <div className="flex flex-1 items-center gap-2">
@@ -425,15 +828,15 @@ function NuevaCarpeta({
         value={valor}
         onChange={(e) => onCambiar(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') onCrear()
+          if (e.key === 'Enter') onAceptar()
           if (e.key === 'Escape') onCancelar()
         }}
         placeholder="Nombre de la carpeta (ej. Lecturas)"
         maxLength={60}
         className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-marca-500"
       />
-      <Boton variante="primario" onClick={onCrear}>
-        Crear
+      <Boton variante="primario" onClick={onAceptar}>
+        {textoAceptar}
       </Boton>
       <Boton variante="secundario" onClick={onCancelar}>
         Cancelar

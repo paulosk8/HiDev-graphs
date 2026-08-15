@@ -11,6 +11,7 @@ import type {
   DatosAsignaturaDTO,
   DatosAsignaturaEdicionDTO,
   DatosConceptoDTO,
+  DatosEnlaceMaterialDTO,
   DatosTareaDTO,
   DuplicarTareaDTO,
   McpInfoDTO,
@@ -37,9 +38,17 @@ import { lienzosDeConcepto } from '../application/LienzosDeConcepto'
 import { moverNota, moverTema } from '../application/MoverElementos'
 import {
   crearCarpeta,
+  eliminarCarpeta,
   listarCarpetas,
-  moverMaterialACarpeta
+  moverMaterialACarpeta,
+  renombrarCarpeta
 } from '../application/CarpetasMaterial'
+import {
+  agregarEnlaceMaterial,
+  editarEnlaceMaterial,
+  eliminarEnlaceMaterial,
+  moverEnlaceACarpeta
+} from '../application/EnlacesMaterial'
 import { eliminarConcepto } from '../application/EliminarConcepto'
 import { obtenerFichaConcepto } from '../application/ObtenerFichaConcepto'
 import { agregarMaterial } from '../application/AgregarMaterial'
@@ -225,6 +234,16 @@ export function registrarHandlersIpc(servicios: Servicios): void {
   )
 
   ipcMain.handle(
+    CANALES.materialCarpetaRenombrar,
+    (_evento, conceptoId: string, actual: string, nuevo: string) =>
+      envolver(() => renombrarCarpeta(servicios, conceptoId, actual, nuevo))
+  )
+
+  ipcMain.handle(CANALES.materialCarpetaEliminar, (_evento, conceptoId: string, nombre: string) =>
+    envolver(() => eliminarCarpeta(servicios, conceptoId, nombre))
+  )
+
+  ipcMain.handle(
     CANALES.materialMoverACarpeta,
     (_evento, conceptoId: string, recursoId: string, carpeta: string) =>
       envolver(() => moverMaterialACarpeta(servicios, conceptoId, recursoId, carpeta))
@@ -253,6 +272,30 @@ export function registrarHandlersIpc(servicios: Servicios): void {
 
   ipcMain.handle(CANALES.materialLeerTexto, (_evento, conceptoId: string, archivo: string) =>
     envolver(() => vault.leerTextoRecurso(conceptoId, archivo))
+  )
+
+  ipcMain.handle(
+    CANALES.materialEnlaceAgregar,
+    (_evento, conceptoId: string, datos: DatosEnlaceMaterialDTO) =>
+      envolver(() => agregarEnlaceMaterial(servicios, conceptoId, datos))
+  )
+
+  ipcMain.handle(
+    CANALES.materialEnlaceEditar,
+    (_evento, conceptoId: string, enlaceId: string, datos: DatosEnlaceMaterialDTO) =>
+      envolver(() => editarEnlaceMaterial(servicios, conceptoId, enlaceId, datos))
+  )
+
+  ipcMain.handle(
+    CANALES.materialEnlaceEliminar,
+    (_evento, conceptoId: string, enlaceId: string) =>
+      envolver(() => eliminarEnlaceMaterial(servicios, conceptoId, enlaceId))
+  )
+
+  ipcMain.handle(
+    CANALES.materialEnlaceMoverACarpeta,
+    (_evento, conceptoId: string, enlaceId: string, carpeta: string) =>
+      envolver(() => moverEnlaceACarpeta(servicios, conceptoId, enlaceId, carpeta))
   )
 
   ipcMain.handle(CANALES.asignaturasListar, () =>

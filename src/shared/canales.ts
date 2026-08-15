@@ -28,9 +28,17 @@ export const CANALES = {
   materialEliminar: 'material:eliminar',
   materialCarpetasListar: 'material:carpetas-listar',
   materialCarpetaCrear: 'material:carpeta-crear',
+  materialCarpetaRenombrar: 'material:carpeta-renombrar',
+  materialCarpetaEliminar: 'material:carpeta-eliminar',
   materialMoverACarpeta: 'material:mover-a-carpeta',
   materialAbrir: 'material:abrir',
   materialLeerTexto: 'material:leer-texto',
+
+  // Enlaces web (material que no es un archivo)
+  materialEnlaceAgregar: 'material:enlace-agregar',
+  materialEnlaceEditar: 'material:enlace-editar',
+  materialEnlaceEliminar: 'material:enlace-eliminar',
+  materialEnlaceMoverACarpeta: 'material:enlace-mover-a-carpeta',
 
   // Asignaturas
   asignaturasListar: 'asignaturas:listar',

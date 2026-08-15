@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ResumenConceptoDTO } from '@shared/dtos'
 import { FormularioConcepto } from '../conceptos/FormularioConcepto'
 import { api } from '../../lib/api'
+import { totalMaterial } from '../../lib/material'
 import { useConceptosStore } from '../../stores/conceptosStore'
 
 interface Props {
@@ -114,9 +115,9 @@ export function BuscadorConceptos({
               className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
             >
               <span className="truncate">{c.nombre}</span>
-              {c.totalRecursos > 0 && (
+              {totalMaterial(c) > 0 && (
                 <span className="ml-2 shrink-0 text-xs text-slate-400">
-                  {c.totalRecursos} mat.
+                  {totalMaterial(c)} mat.
                 </span>
               )}
             </button>

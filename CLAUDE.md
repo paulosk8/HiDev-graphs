@@ -19,8 +19,10 @@ El usuario objetivo **no es técnico**. Nunca ve archivos, YAML, rutas, ni jerga
 ### Capa de conocimiento (transversal, estable)
 - **Concepto**: unidad de conocimiento reutilizable (ej. "Divide y vencerás").
   - Tiene **relaciones tipadas** con otros conceptos: `prerequisito_de`, `relacionado_con`, `profundiza`.
-  - Posee **Recursos** (el material). Los recursos pertenecen **al concepto, jamás a una asignatura**.
+  - Posee **Recursos** y **Enlaces** (el material). El material pertenece **al concepto, jamás a una asignatura**: es lo que permite reutilizarlo entre asignaturas y períodos sin duplicarlo.
 - **Recurso**: archivo de material. Formatos: `pptx, pdf, md, html, docx, xml`. Se clasifica por extensión.
+- **Enlace**: material que vive en la web (una página, un vídeo, un simulador). Para el docente es material igual que un PDF, así que se lista **junto a los recursos** y no en una sección aparte; por dentro es solo una dirección guardada en `concepto.yaml`, sin archivo que copiar.
+- **Carpetas de material**: un solo nivel, **reales en disco** (`conceptos/<slug>/Lecturas/x.pdf`) para que el docente vea la misma organización desde su nube o el Finder. Se pueden renombrar y quitar; quitar una carpeta **nunca borra material** (lo deja suelto en el concepto).
 
 ### Capa curricular
 - **Asignatura** (materia, ej. "Algoritmos") → contiene **Unidades**. Se **oferta en uno o varios períodos** (`periodos`, ej. 2026A, 2026B) como referencia: la MISMA asignatura y su contenido se reutilizan entre períodos **sin duplicarse**. Se muestra como "Algoritmos · 2026A, 2026B".
@@ -138,8 +140,10 @@ src/
 - **Lenguaje pedagógico, nunca técnico**: "Mis asignaturas", "Conceptos", "Material", "Semana".
   Prohibido en la UI: "nodo", "slug", "índice", "YAML", "vault", "repositorio", "base de datos".
 - **Crear cualquier cosa = 2-3 campos + botón guardar.** Lo compuesto (crear asignatura) usa **wizard paso a paso** (unidades → temas → semanas con componentes).
-- **Agregar material = arrastrar archivos** sobre la ficha del concepto (o botón "Agregar material" con selector nativo). La app **copia** el archivo al vault y lo clasifica por extensión.
+- **Agregar material = arrastrar archivos** sobre la ficha del concepto (o "Agregar material", que pregunta si es un archivo del equipo o un enlace web). La app **copia** el archivo al vault y lo clasifica por extensión.
 - **Vincular tema ↔ concepto**: buscador con **autocompletado** y opción **"crear concepto nuevo" inline** si no existe.
+- **El material se prepara sin salir de la asignatura**: el chip del concepto vinculado en Asignaturas › Contenido lleva su contador de material y abre el panel lateral del concepto, donde se agregan archivos, enlaces y notas. El material sigue siendo del concepto; lo que se acerca es el acceso.
+- **Nada de acciones escondidas tras el clic derecho**: lo que se puede hacer con una carpeta o una fila de material tiene además un botón `⋯` visible. El clic derecho es un atajo, nunca el único camino.
 - **Errores en lenguaje humano** con acción sugerida. **Confirmación antes de eliminar.** Nada falla en silencio.
 - **Diseño limpio tipo Notion/Linear**: sidebar izquierda (Asignaturas / Conceptos), área central de contenido, tipografía legible, espaciado generoso.
 

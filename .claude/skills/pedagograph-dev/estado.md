@@ -251,6 +251,58 @@ abiertos, para no deshacer la pila uno a uno.
 - **Carpetas de material**: reales en disco (`conceptos/<slug>/Lecturas/x.pdf`),
   un solo nivel, plegables. Se arrastra un archivo a otra carpeta; el arrastre
   interno se distingue del de archivos del sistema POR EL TIPO, no adivinando.
+- **Renombrar y quitar carpetas** (`renombrarCarpeta`/`eliminarCarpeta`, canales
+  `material:carpeta-renombrar` y `material:carpeta-eliminar`). Un botón **`⋯`
+  visible** en la cabecera de la carpeta, además del clic derecho: si el único
+  camino es un menú oculto, no se encuentra. Dos reglas:
+  - **Renombrar mueve el directorio PRIMERO y luego reescribe el YAML**: el
+    nombre de la carpeta va dentro de `Recurso.archivo` ("Lecturas/x.pdf") y de
+    `EnlaceMaterial.carpeta`, así que si el `rename` falla no queda nada
+    apuntando a una carpeta inexistente. Se rechaza un nombre ya usado
+    comparando **sin mayúsculas** (macOS/Windows no distinguen, y el `rename`
+    pisaría la otra carpeta). Tras un error el campo **se queda abierto** para
+    corregir sin perder lo escrito.
+  - **Quitar una carpeta NUNCA borra material**: saca su contenido a la raíz
+    (con `moverRecursoDeCarpeta`, que ya resuelve choques de nombre) y luego
+    `rmdirSync` —no `rm -r`: si quedara algo dentro preferimos fallar a
+    borrarlo—. Una carpeta es una forma de ordenar, no un contenedor del que
+    dependa el contenido.
+- **Enlaces web como material** (`Concepto.enlaces: EnlaceMaterial[]`,
+  `{id,titulo,url,carpeta}` en `concepto.yaml`): una página, un vídeo o un
+  simulador son material igual que un PDF, así que van en la MISMA lista de
+  `ZonaMaterial` (insignia `WEB` en vez del formato) y no en una sección aparte:
+  el docente no debería buscar en dos sitios "lo que tengo de este concepto".
+  «+ Agregar material» abre un menú (archivo del equipo / enlace web).
+  Diferencia de modelo: la `carpeta` de un `Recurso` se DERIVA de su ruta en
+  disco; la de un enlace es un campo propio, porque no hay archivo que mover.
+  Esa diferencia **no se le enseña al docente**: el enlace se arrastra a una
+  carpeta igual que un archivo (tipo `enlace` en `ContenidoArrastrado`). El
+  editor de lienzo lo **descarta explícitamente** en `soltarContenido` —su
+  cadena de tipos termina en un «si no, un concepto», así que sin ese corte
+  soltar un enlace crearía la tarjeta del concepto entero—. El `.canvas` de
+  Obsidian tiene un tipo `link` propio; el día que se pinte, ese corte es el
+  sitio. La URL se normaliza a `https://` al guardar y se valida que tenga
+  punto. Casos de uso en `application/EnlacesMaterial.ts`; canales
+  `material:enlace-*`.
+- **Cada fila de material lleva un `⋯` visible** (además del clic derecho), por
+  la misma razón que las carpetas: «Mover a otra carpeta…» estaba solo en el
+  menú del clic derecho y era invisible en la práctica. El ancla «Abrir» de un
+  enlace va con `draggable={false}`: un ancla arrastra su URL por defecto y le
+  ganaría al arrastre de la fila.
+- **El material sigue siendo del concepto, nunca del tema** (es lo que permite
+  reutilizarlo entre asignaturas y períodos). Para que el docente no tenga que
+  salir de la asignatura a cargarlo, el **chip del concepto vinculado en
+  Asignatura › Contenido abre el `PanelVistazo`** y lleva un contador
+  `📎 archivos+enlaces` (ámbar cuando está a 0 = tema sin nada que dar).
+- **`totalEnlaces` cuenta como material** en todas partes (listado, buscador,
+  semáforo de Estado, cobertura semanal, repaso) vía `lib/material.ts`
+  (`totalMaterial`/`textoMaterial`). En el índice va en la columna
+  `nodes.total_enlaces` (migración ligera) porque un enlace no es una fila de
+  `resources`; un índice viejo trae NULL hasta el siguiente reindexado.
+- **El `PanelVistazo` se cierra al cambiar de sección** (`uiStore.irASeccion` y
+  `alternarConfiguracion` llaman a `vistazoStore.cerrar()`). Se monta una sola
+  vez en `App` —es una columna del layout, no parte de la vista—, así que sin
+  eso el concepto abierto en un lienzo seguía colgado en el Mapa.
 - **Mover con clic derecho**: menú propio (el nativo no permite buscar el
   destino). Los temas se mueven dentro de su asignatura; cruzar de asignatura
   rompería las tareas y la planificación que los referencian.
@@ -271,4 +323,4 @@ carpeta nueva al vault, actualiza las tres.**
 
 - La IA **no** analiza automáticamente al agregar un concepto (razonamiento on-demand vía CLI/MCP; el dato es local). Al vincular se valida estructuralmente, no semánticamente.
 - Dos tareas se relacionan cuando **comparten conceptos** (pasan por el mismo nodo), no hay "sincronización" aparte.
-- Para material de aprendizaje se reutiliza el modelo de conceptos (no material directo en el tema); se puede reconsiderar si genera fricción.
+- Para material de aprendizaje se reutiliza el modelo de conceptos (no material directo en el tema). **Reconsiderado y confirmado**: la fricción de "no puedo cargar material del tema" se resuelve acercando el material del concepto al tema (el chip abre el panel), no dándole material propio al tema —eso rompería la reutilización entre asignaturas y períodos. Lo que sí es de una clase concreta va como adjunto de una Tarea.

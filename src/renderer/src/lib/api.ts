@@ -6,6 +6,7 @@ import type {
   DatosAsignaturaDTO,
   DatosAsignaturaEdicionDTO,
   DatosConceptoDTO,
+  DatosEnlaceMaterialDTO,
   DatosTareaDTO,
   DuplicarTareaDTO,
   LienzoDTO,
@@ -73,6 +74,10 @@ export const api = {
     desenvolver(window.api.listarCarpetasMaterial(conceptoId)),
   crearCarpetaMaterial: (conceptoId: string, nombre: string) =>
     desenvolver(window.api.crearCarpetaMaterial(conceptoId, nombre)),
+  renombrarCarpetaMaterial: (conceptoId: string, actual: string, nuevo: string) =>
+    desenvolver(window.api.renombrarCarpetaMaterial(conceptoId, actual, nuevo)),
+  eliminarCarpetaMaterial: (conceptoId: string, nombre: string) =>
+    desenvolver(window.api.eliminarCarpetaMaterial(conceptoId, nombre)),
   moverMaterialACarpeta: (conceptoId: string, recursoId: string, carpeta: string) =>
     desenvolver(window.api.moverMaterialACarpeta(conceptoId, recursoId, carpeta)),
   eliminarMaterial: (conceptoId: string, recursoId: string) =>
@@ -81,6 +86,14 @@ export const api = {
     desenvolver(window.api.abrirMaterial(conceptoId, archivo)),
   leerTextoMaterial: (conceptoId: string, archivo: string) =>
     desenvolver(window.api.leerTextoMaterial(conceptoId, archivo)),
+  agregarEnlaceMaterial: (conceptoId: string, datos: DatosEnlaceMaterialDTO) =>
+    desenvolver(window.api.agregarEnlaceMaterial(conceptoId, datos)),
+  editarEnlaceMaterial: (conceptoId: string, enlaceId: string, datos: DatosEnlaceMaterialDTO) =>
+    desenvolver(window.api.editarEnlaceMaterial(conceptoId, enlaceId, datos)),
+  eliminarEnlaceMaterial: (conceptoId: string, enlaceId: string) =>
+    desenvolver(window.api.eliminarEnlaceMaterial(conceptoId, enlaceId)),
+  moverEnlaceACarpeta: (conceptoId: string, enlaceId: string, carpeta: string) =>
+    desenvolver(window.api.moverEnlaceACarpeta(conceptoId, enlaceId, carpeta)),
   /** URL del protocolo local para previsualizar un material (PDF/HTML/imagen). */
   urlRecurso: (conceptoId: string, archivo: string): string =>
     `recurso://c/${encodeURIComponent(conceptoId)}/${encodeURIComponent(archivo)}`,

@@ -68,8 +68,8 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
   }
 
   const conceptos = useConceptosStore((s) => s.lista)
-  const nombrePorId = useMemo(
-    () => new Map(conceptos.map((c) => [c.id, c.nombre])),
+  const conceptoPorId = useMemo(
+    () => new Map(conceptos.map((c) => [c.id, c])),
     [conceptos]
   )
 
@@ -248,7 +248,7 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
           <EditorContenido
             asignatura={asig}
             esAprendizaje={esAprendizaje}
-            nombrePorId={nombrePorId}
+            conceptoPorId={conceptoPorId}
             tareas={tareas}
             onVincular={(temaId, conceptoId) => void vincular(temaId, conceptoId)}
             onDesvincular={(temaId, conceptoId) => void desvincular(temaId, conceptoId)}

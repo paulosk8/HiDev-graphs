@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS nodes (
   padre_id    TEXT,
   orden       INTEGER,                 -- posición dentro del padre (unidad/tema/subtema)
   periodo     TEXT,                    -- solo asignatura
+  total_enlaces INTEGER,               -- solo concepto: material web (no vive en 'resources')
   PRIMARY KEY (tipo, id)
 );
 

@@ -20,6 +20,7 @@ import type {
   DatosAsignaturaDTO,
   DatosAsignaturaEdicionDTO,
   DatosConceptoDTO,
+  DatosEnlaceMaterialDTO,
   DatosTareaDTO,
   CombinarTareasDTO,
   DuplicarTareaDTO,
@@ -107,6 +108,14 @@ export interface PedagoGraphApi {
   listarCarpetasMaterial(conceptoId: string): Promise<Resultado<string[]>>
   /** Crea una carpeta vacía; devuelve la lista actualizada. */
   crearCarpetaMaterial(conceptoId: string, nombre: string): Promise<Resultado<string[]>>
+  /** Cambia el nombre de una carpeta (mueve su material con ella). */
+  renombrarCarpetaMaterial(
+    conceptoId: string,
+    actual: string,
+    nuevo: string
+  ): Promise<Resultado<ConceptoDTO>>
+  /** Quita una carpeta y deja suelto su material (no lo elimina). */
+  eliminarCarpetaMaterial(conceptoId: string, nombre: string): Promise<Resultado<ConceptoDTO>>
   /** Mueve un material a otra carpeta del concepto ('' = raíz). */
   moverMaterialACarpeta(
     conceptoId: string,
@@ -118,6 +127,24 @@ export interface PedagoGraphApi {
   abrirMaterial(conceptoId: string, archivo: string): Promise<Resultado<void>>
   /** Lee el contenido de texto de un material (md/xml/html/txt) para previsualizar. */
   leerTextoMaterial(conceptoId: string, archivo: string): Promise<Resultado<string>>
+
+  // --- Enlaces web (material que no es un archivo) ---
+  agregarEnlaceMaterial(
+    conceptoId: string,
+    datos: DatosEnlaceMaterialDTO
+  ): Promise<Resultado<ConceptoDTO>>
+  editarEnlaceMaterial(
+    conceptoId: string,
+    enlaceId: string,
+    datos: DatosEnlaceMaterialDTO
+  ): Promise<Resultado<ConceptoDTO>>
+  eliminarEnlaceMaterial(conceptoId: string, enlaceId: string): Promise<Resultado<ConceptoDTO>>
+  /** Mueve un enlace a otra carpeta del concepto ('' = suelto). */
+  moverEnlaceACarpeta(
+    conceptoId: string,
+    enlaceId: string,
+    carpeta: string
+  ): Promise<Resultado<ConceptoDTO>>
 
   // --- Asignaturas ---
   listarAsignaturas(): Promise<Resultado<ResumenAsignaturaDTO[]>>

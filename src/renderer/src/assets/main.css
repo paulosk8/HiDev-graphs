@@ -68,6 +68,9 @@ body,
 .dark .bg-emerald-50 { background-color: #022c22; }
 .dark .text-emerald-800 { color: #6ee7b7; }
 .dark .border-emerald-200 { border-color: #065f46; }
+/* Insignia WEB del material que es un enlace (distinta del formato de archivo) */
+.dark .bg-sky-100 { background-color: #0c4a6e; }
+.dark .text-sky-800 { color: #7dd3fc; }
 
 /* Variantes hover/focus/placeholder */
 .dark .hover\:bg-slate-50:hover { background-color: #1e293b; }

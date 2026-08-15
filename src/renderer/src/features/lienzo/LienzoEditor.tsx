@@ -308,6 +308,11 @@ export function LienzoEditor({
    * un concepto ni al revés.
    */
   const soltarContenido = (contenido: ContenidoArrastrado, en: Punto): void => {
+    // Un enlace web todavía no tiene tarjeta propia. Se descarta aquí, y no en
+    // la cadena de abajo, porque esa termina en un "si no, un concepto": sin
+    // este corte, soltar un enlace crearía la tarjeta del concepto entero.
+    if (contenido.tipo === 'enlace') return
+
     const medidas =
       contenido.tipo === 'material'
         ? { width: 260, height: 220 }
