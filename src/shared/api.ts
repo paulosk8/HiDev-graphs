@@ -108,6 +108,14 @@ export interface PedagoGraphApi {
   listarCarpetasMaterial(conceptoId: string): Promise<Resultado<string[]>>
   /** Crea una carpeta vacía; devuelve la lista actualizada. */
   crearCarpetaMaterial(conceptoId: string, nombre: string): Promise<Resultado<string[]>>
+  /** Cambia el nombre de una carpeta (mueve su material con ella). */
+  renombrarCarpetaMaterial(
+    conceptoId: string,
+    actual: string,
+    nuevo: string
+  ): Promise<Resultado<ConceptoDTO>>
+  /** Quita una carpeta y deja suelto su material (no lo elimina). */
+  eliminarCarpetaMaterial(conceptoId: string, nombre: string): Promise<Resultado<ConceptoDTO>>
   /** Mueve un material a otra carpeta del concepto ('' = raíz). */
   moverMaterialACarpeta(
     conceptoId: string,

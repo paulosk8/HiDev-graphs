@@ -76,6 +76,9 @@ export function ZonaMaterial({
   const [aMover, setAMover] = useState<ItemMaterial | null>(null)
   const [carpetas, setCarpetas] = useState<string[]>([])
   const [creandoCarpeta, setCreandoCarpeta] = useState(false)
+  /** Carpeta que se está renombrando (comparte el campo con "nueva carpeta"). */
+  const [renombrando, setRenombrando] = useState<string | null>(null)
+  const [carpetaAEliminar, setCarpetaAEliminar] = useState<string | null>(null)
   /** Enlace en edición, o la carpeta destino si se está creando uno nuevo. */
   const [editandoEnlace, setEditandoEnlace] = useState<
     { enlace: EnlaceMaterialDTO } | { carpeta: string } | null
@@ -98,6 +101,12 @@ export function ZonaMaterial({
     menu: menuAgregar,
     abrir: abrirMenuAgregar,
     cerrar: cerrarMenuAgregar
+  } = useMenuContextual<string>()
+  // Menú de una carpeta: cambiar el nombre o quitarla.
+  const {
+    menu: menuCarpeta,
+    abrir: abrirMenuCarpeta,
+    cerrar: cerrarMenuCarpeta
   } = useMenuContextual<string>()
 
   const cargarCarpetas = useCallback(async () => {
@@ -131,6 +140,11 @@ export function ZonaMaterial({
       .sort((a, b) => (a === RAIZ ? -1 : b === RAIZ ? 1 : a.localeCompare(b, 'es')))
       .map((clave) => ({ carpeta: clave, items: porCarpeta.get(clave) ?? [] }))
   }, [recursos, enlaces, carpetas])
+
+  /** Cuántas cosas hay en una carpeta (para avisar antes de quitarla). */
+  const contarEn = (carpeta: string): number =>
+    recursos.filter((r) => (r.carpeta || RAIZ) === carpeta).length +
+    enlaces.filter((e) => (e.carpeta || RAIZ) === carpeta).length
 
   const abrir = (recurso: RecursoDTO): void => {
     void api.abrirMaterial(conceptoId, recurso.archivo).catch((e) => notificarError(e))
@@ -263,6 +277,57 @@ export function ZonaMaterial({
     }
   }
 
+  /** Cierra el campo del nombre, tanto si era una carpeta nueva como un cambio. */
+  const cancelarNombre = (): void => {
+    setNombreCarpeta('')
+    setCreandoCarpeta(false)
+    setRenombrando(null)
+  }
+
+  const empezarRenombrar = (carpeta: string): void => {
+    setCreandoCarpeta(false)
+    setNombreCarpeta(carpeta)
+    setRenombrando(carpeta)
+  }
+
+  const confirmarRenombrar = async (actual: string): Promise<void> => {
+    const nuevo = nombreCarpeta.trim()
+    if (!nuevo || nuevo === actual) {
+      cancelarNombre()
+      return
+    }
+    try {
+      const concepto = await api.renombrarCarpetaMaterial(conceptoId, actual, nuevo)
+      onActualizado(concepto)
+      // La carpeta abierta se sigue por su nombre: sin esto, renombrarla la
+      // cerraría de golpe y parecería que el material ha desaparecido.
+      setAbiertas((s) => {
+        if (!s.has(actual)) return s
+        const n = new Set(s)
+        n.delete(actual)
+        n.add(nuevo)
+        return n
+      })
+      await cargarCarpetas()
+      cancelarNombre()
+    } catch (error) {
+      notificarError(error)
+    }
+  }
+
+  const confirmarEliminarCarpeta = async (): Promise<void> => {
+    if (!carpetaAEliminar) return
+    try {
+      const concepto = await api.eliminarCarpetaMaterial(conceptoId, carpetaAEliminar)
+      onActualizado(concepto)
+      await cargarCarpetas()
+    } catch (error) {
+      notificarError(error)
+    } finally {
+      setCarpetaAEliminar(null)
+    }
+  }
+
   const crearCarpeta = async (): Promise<void> => {
     const nombre = nombreCarpeta.trim()
     if (!nombre) return
@@ -339,35 +404,59 @@ export function ZonaMaterial({
                 arrastrando === carpeta ? 'bg-marca-50 ring-1 ring-marca-300' : ''
               }`}
             >
-              {carpeta !== RAIZ && (
-                <div className="flex items-center gap-2 px-3 pt-2">
-                  <button
-                    onClick={() =>
-                      setAbiertas((s) => {
-                        const n = new Set(s)
-                        n.has(carpeta) ? n.delete(carpeta) : n.add(carpeta)
-                        return n
-                      })
-                    }
-                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
+              {carpeta !== RAIZ &&
+                (renombrando === carpeta ? (
+                  <div className="px-3 pt-2">
+                    <NombreCarpeta
+                      valor={nombreCarpeta}
+                      onCambiar={setNombreCarpeta}
+                      onAceptar={() => void confirmarRenombrar(carpeta)}
+                      onCancelar={cancelarNombre}
+                      textoAceptar="Guardar"
+                    />
+                  </div>
+                ) : (
+                  <div
+                    onContextMenu={(e) => abrirMenuCarpeta(e, carpeta)}
+                    className="flex items-center gap-2 px-3 pt-2"
                   >
-                    <span aria-hidden className="text-slate-400">
-                      {abiertas.has(carpeta) ? '▾' : '▸'}
-                    </span>
-                    <span aria-hidden>📁</span>
-                    <span className="truncate text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      {carpeta}
-                    </span>
-                    <span className="text-xs text-slate-400">{items.length}</span>
-                  </button>
-                  <button
-                    onClick={(e) => abrirMenuAgregar(e, carpeta)}
-                    className="text-xs text-slate-400 transition hover:text-marca-700"
-                  >
-                    + Agregar aquí
-                  </button>
-                </div>
-              )}
+                    <button
+                      onClick={() =>
+                        setAbiertas((s) => {
+                          const n = new Set(s)
+                          n.has(carpeta) ? n.delete(carpeta) : n.add(carpeta)
+                          return n
+                        })
+                      }
+                      className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                    >
+                      <span aria-hidden className="text-slate-400">
+                        {abiertas.has(carpeta) ? '▾' : '▸'}
+                      </span>
+                      <span aria-hidden>📁</span>
+                      <span className="truncate text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        {carpeta}
+                      </span>
+                      <span className="text-xs text-slate-400">{items.length}</span>
+                    </button>
+                    <button
+                      onClick={(e) => abrirMenuAgregar(e, carpeta)}
+                      className="text-xs text-slate-400 transition hover:text-marca-700"
+                    >
+                      + Agregar aquí
+                    </button>
+                    {/* Botón visible además del clic derecho: renombrar y quitar
+                        no se encuentran si el único camino es un menú oculto. */}
+                    <button
+                      onClick={(e) => abrirMenuCarpeta(e, carpeta)}
+                      title={`Opciones de la carpeta «${carpeta}»`}
+                      aria-label={`Opciones de la carpeta ${carpeta}`}
+                      className="rounded px-1 text-sm leading-none text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                    >
+                      ⋯
+                    </button>
+                  </div>
+                ))}
 
               {carpeta !== RAIZ && !abiertas.has(carpeta) ? (
                 // Cerrada: sigue siendo zona de destino, para poder soltarle
@@ -379,7 +468,11 @@ export function ZonaMaterial({
                 <p className="px-3 py-2 text-xs text-slate-300">
                   {arrastrando === carpeta
                     ? 'Suelta aquí para guardarlo en esta carpeta'
-                    : 'Carpeta vacía · arrastra archivos aquí'}
+                    : // La raíz no es una carpeta: llamarla "carpeta vacía"
+                      // confunde, sobre todo si sí hay carpetas más abajo.
+                      carpeta === RAIZ
+                      ? 'Aquí va lo que no pongas en ninguna carpeta.'
+                      : 'Carpeta vacía · arrastra archivos aquí'}
                 </p>
               ) : (
                 <ul className="divide-y divide-slate-100">
@@ -474,11 +567,12 @@ export function ZonaMaterial({
 
           <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
             {creandoCarpeta ? (
-              <NuevaCarpeta
+              <NombreCarpeta
                 valor={nombreCarpeta}
                 onCambiar={setNombreCarpeta}
-                onCrear={() => void crearCarpeta()}
-                onCancelar={() => setCreandoCarpeta(false)}
+                onAceptar={() => void crearCarpeta()}
+                onCancelar={cancelarNombre}
+                textoAceptar="Crear"
               />
             ) : (
               <>
@@ -500,11 +594,12 @@ export function ZonaMaterial({
 
       {sinNada && creandoCarpeta && (
         <div className="border-t border-slate-100 px-3 py-2">
-          <NuevaCarpeta
+          <NombreCarpeta
             valor={nombreCarpeta}
             onCambiar={setNombreCarpeta}
-            onCrear={() => void crearCarpeta()}
-            onCancelar={() => setCreandoCarpeta(false)}
+            onAceptar={() => void crearCarpeta()}
+            onCancelar={cancelarNombre}
+            textoAceptar="Crear"
           />
         </div>
       )}
@@ -515,6 +610,27 @@ export function ZonaMaterial({
           y={menuAgregar.y}
           onCerrar={cerrarMenuAgregar}
           opciones={opcionesAgregar(menuAgregar.dato)}
+        />
+      )}
+
+      {menuCarpeta && (
+        <MenuContextual
+          x={menuCarpeta.x}
+          y={menuCarpeta.y}
+          onCerrar={cerrarMenuCarpeta}
+          opciones={[
+            {
+              etiqueta: 'Cambiar el nombre…',
+              icono: '✎',
+              onElegir: () => empezarRenombrar(menuCarpeta.dato)
+            },
+            {
+              etiqueta: 'Quitar la carpeta',
+              icono: '✕',
+              destructiva: true,
+              onElegir: () => setCarpetaAEliminar(menuCarpeta.dato)
+            }
+          ]}
         />
       )}
 
@@ -591,6 +707,23 @@ export function ZonaMaterial({
         />
       )}
 
+      {carpetaAEliminar && (
+        <DialogoConfirmacion
+          titulo={`¿Quitar la carpeta «${carpetaAEliminar}»?`}
+          // Se dice explícitamente que el material se salva: quitar una forma
+          // de ordenar no debería dar miedo, y el docente no tiene por qué
+          // suponer que sus PDF sobreviven.
+          mensaje={
+            contarEn(carpetaAEliminar) === 0
+              ? 'Está vacía, así que no se pierde nada.'
+              : `Su material (${contarEn(carpetaAEliminar)}) NO se elimina: pasa a estar suelto en el concepto.`
+          }
+          textoConfirmar="Quitar la carpeta"
+          onConfirmar={confirmarEliminarCarpeta}
+          onCancelar={() => setCarpetaAEliminar(null)}
+        />
+      )}
+
       {editandoEnlace && (
         <DialogoEnlace
           enlace={'enlace' in editandoEnlace ? editandoEnlace.enlace : null}
@@ -607,16 +740,19 @@ export function ZonaMaterial({
   )
 }
 
-function NuevaCarpeta({
+/** Campo del nombre de una carpeta: sirve para crearla y para renombrarla. */
+function NombreCarpeta({
   valor,
   onCambiar,
-  onCrear,
-  onCancelar
+  onAceptar,
+  onCancelar,
+  textoAceptar
 }: {
   valor: string
   onCambiar: (v: string) => void
-  onCrear: () => void
+  onAceptar: () => void
   onCancelar: () => void
+  textoAceptar: string
 }): JSX.Element {
   return (
     <div className="flex flex-1 items-center gap-2">
@@ -625,15 +761,15 @@ function NuevaCarpeta({
         value={valor}
         onChange={(e) => onCambiar(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') onCrear()
+          if (e.key === 'Enter') onAceptar()
           if (e.key === 'Escape') onCancelar()
         }}
         placeholder="Nombre de la carpeta (ej. Lecturas)"
         maxLength={60}
         className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-marca-500"
       />
-      <Boton variante="primario" onClick={onCrear}>
-        Crear
+      <Boton variante="primario" onClick={onAceptar}>
+        {textoAceptar}
       </Boton>
       <Boton variante="secundario" onClick={onCancelar}>
         Cancelar

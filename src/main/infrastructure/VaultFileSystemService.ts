@@ -5,6 +5,7 @@ import {
   writeFileSync,
   readdirSync,
   renameSync,
+  rmdirSync,
   rmSync,
   copyFileSync
 } from 'node:fs'
@@ -297,6 +298,57 @@ export class VaultFileSystemService {
     if (!segura) throw new Error('El nombre de la carpeta no es válido.')
     mkdirSync(join(this.carpetaConcepto(conceptoId), segura), { recursive: true })
     return segura
+  }
+
+  /**
+   * Ruta de una carpeta de material, validada para que quede DENTRO del
+   * concepto. Se usa el nombre TAL CUAL está en disco (puede venir de una
+   * carpeta creada a mano desde OneDrive, con una grafía que `nombreCarpetaSeguro`
+   * cambiaría), pero se comprueba que no escape con "..".
+   */
+  private rutaCarpetaConcepto(conceptoId: string, nombre: string): string | null {
+    const base = resolve(this.carpetaConcepto(conceptoId))
+    const abs = resolve(base, nombre)
+    return abs.startsWith(base + sep) && abs !== base ? abs : null
+  }
+
+  /**
+   * Renombra una carpeta de material. Devuelve el nombre nuevo ya saneado.
+   *
+   * Solo mueve el directorio; quien llama debe reescribir las rutas de los
+   * recursos (`Recurso.archivo` lleva el prefijo de carpeta) para que el YAML
+   * no quede apuntando a la carpeta vieja.
+   */
+  renombrarCarpetaConcepto(conceptoId: string, actual: string, nuevo: string): string {
+    const seguro = nombreCarpetaSeguro(nuevo)
+    if (!seguro) throw new Error('El nombre de la carpeta no es válido.')
+    const origen = this.rutaCarpetaConcepto(conceptoId, actual)
+    if (origen === null || !existsSync(origen)) {
+      throw new Error(`No se encontró la carpeta: ${actual}`)
+    }
+    const destino = join(this.carpetaConcepto(conceptoId), seguro)
+    if (destino === origen) return seguro
+    // En macOS y Windows el sistema de archivos no distingue mayúsculas, así
+    // que "Lecturas" -> "lecturas" pasaría este control aunque exista: se
+    // compara el nombre real leído del disco, no el que se pide.
+    const yaExiste = this.listarCarpetasConcepto(conceptoId).some(
+      (c) => c !== actual && c.toLowerCase() === seguro.toLowerCase()
+    )
+    if (yaExiste) throw new Error(`Ya existe una carpeta llamada «${seguro}».`)
+    renameSync(origen, destino)
+    return seguro
+  }
+
+  /**
+   * Borra el directorio de una carpeta de material. Debe estar VACÍO: sacar de
+   * ella lo que contenga es decisión de la capa de aplicación, no del disco.
+   */
+  eliminarCarpetaConcepto(conceptoId: string, nombre: string): void {
+    const ruta = this.rutaCarpetaConcepto(conceptoId, nombre)
+    if (ruta === null || !existsSync(ruta)) return
+    // `rmdir` y no `rm -r`: si quedara algo dentro preferimos fallar a borrarlo.
+    // Quitar una forma de ordenar no puede llevarse por delante el material.
+    rmdirSync(ruta)
   }
 
   /**

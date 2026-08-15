@@ -74,6 +74,10 @@ export const api = {
     desenvolver(window.api.listarCarpetasMaterial(conceptoId)),
   crearCarpetaMaterial: (conceptoId: string, nombre: string) =>
     desenvolver(window.api.crearCarpetaMaterial(conceptoId, nombre)),
+  renombrarCarpetaMaterial: (conceptoId: string, actual: string, nuevo: string) =>
+    desenvolver(window.api.renombrarCarpetaMaterial(conceptoId, actual, nuevo)),
+  eliminarCarpetaMaterial: (conceptoId: string, nombre: string) =>
+    desenvolver(window.api.eliminarCarpetaMaterial(conceptoId, nombre)),
   moverMaterialACarpeta: (conceptoId: string, recursoId: string, carpeta: string) =>
     desenvolver(window.api.moverMaterialACarpeta(conceptoId, recursoId, carpeta)),
   eliminarMaterial: (conceptoId: string, recursoId: string) =>

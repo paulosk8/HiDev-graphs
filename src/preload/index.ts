@@ -38,6 +38,10 @@ const api: PedagoGraphApi = {
     ipcRenderer.invoke(CANALES.materialCarpetasListar, conceptoId),
   crearCarpetaMaterial: (conceptoId, nombre) =>
     ipcRenderer.invoke(CANALES.materialCarpetaCrear, conceptoId, nombre),
+  renombrarCarpetaMaterial: (conceptoId, actual, nuevo) =>
+    ipcRenderer.invoke(CANALES.materialCarpetaRenombrar, conceptoId, actual, nuevo),
+  eliminarCarpetaMaterial: (conceptoId, nombre) =>
+    ipcRenderer.invoke(CANALES.materialCarpetaEliminar, conceptoId, nombre),
   moverMaterialACarpeta: (conceptoId, recursoId, carpeta) =>
     ipcRenderer.invoke(CANALES.materialMoverACarpeta, conceptoId, recursoId, carpeta),
   eliminarMaterial: (conceptoId, recursoId) =>

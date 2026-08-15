@@ -241,6 +241,22 @@ abiertos, para no deshacer la pila uno a uno.
 - **Carpetas de material**: reales en disco (`conceptos/<slug>/Lecturas/x.pdf`),
   un solo nivel, plegables. Se arrastra un archivo a otra carpeta; el arrastre
   interno se distingue del de archivos del sistema POR EL TIPO, no adivinando.
+- **Renombrar y quitar carpetas** (`renombrarCarpeta`/`eliminarCarpeta`, canales
+  `material:carpeta-renombrar` y `material:carpeta-eliminar`). Un botón **`⋯`
+  visible** en la cabecera de la carpeta, además del clic derecho: si el único
+  camino es un menú oculto, no se encuentra. Dos reglas:
+  - **Renombrar mueve el directorio PRIMERO y luego reescribe el YAML**: el
+    nombre de la carpeta va dentro de `Recurso.archivo` ("Lecturas/x.pdf") y de
+    `EnlaceMaterial.carpeta`, así que si el `rename` falla no queda nada
+    apuntando a una carpeta inexistente. Se rechaza un nombre ya usado
+    comparando **sin mayúsculas** (macOS/Windows no distinguen, y el `rename`
+    pisaría la otra carpeta). Tras un error el campo **se queda abierto** para
+    corregir sin perder lo escrito.
+  - **Quitar una carpeta NUNCA borra material**: saca su contenido a la raíz
+    (con `moverRecursoDeCarpeta`, que ya resuelve choques de nombre) y luego
+    `rmdirSync` —no `rm -r`: si quedara algo dentro preferimos fallar a
+    borrarlo—. Una carpeta es una forma de ordenar, no un contenedor del que
+    dependa el contenido.
 - **Enlaces web como material** (`Concepto.enlaces: EnlaceMaterial[]`,
   `{id,titulo,url,carpeta}` en `concepto.yaml`): una página, un vídeo o un
   simulador son material igual que un PDF, así que van en la MISMA lista de

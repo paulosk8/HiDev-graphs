@@ -38,8 +38,10 @@ import { lienzosDeConcepto } from '../application/LienzosDeConcepto'
 import { moverNota, moverTema } from '../application/MoverElementos'
 import {
   crearCarpeta,
+  eliminarCarpeta,
   listarCarpetas,
-  moverMaterialACarpeta
+  moverMaterialACarpeta,
+  renombrarCarpeta
 } from '../application/CarpetasMaterial'
 import {
   agregarEnlaceMaterial,
@@ -229,6 +231,16 @@ export function registrarHandlersIpc(servicios: Servicios): void {
 
   ipcMain.handle(CANALES.materialCarpetaCrear, (_evento, conceptoId: string, nombre: string) =>
     envolver(() => crearCarpeta(servicios, conceptoId, nombre))
+  )
+
+  ipcMain.handle(
+    CANALES.materialCarpetaRenombrar,
+    (_evento, conceptoId: string, actual: string, nuevo: string) =>
+      envolver(() => renombrarCarpeta(servicios, conceptoId, actual, nuevo))
+  )
+
+  ipcMain.handle(CANALES.materialCarpetaEliminar, (_evento, conceptoId: string, nombre: string) =>
+    envolver(() => eliminarCarpeta(servicios, conceptoId, nombre))
   )
 
   ipcMain.handle(
