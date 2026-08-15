@@ -5,6 +5,7 @@ import { Modal } from '../../components/Modal'
 import { ContenidoFormateado } from '../../components/ContenidoFormateado'
 import { EstadoVacio } from '../../components/EstadoVacio'
 import { api } from '../../lib/api'
+import { textoMaterial, totalMaterial } from '../../lib/material'
 import { useAsignaturasStore } from '../../stores/asignaturasStore'
 import { useConceptosStore } from '../../stores/conceptosStore'
 import { colorDominio, conceptosDeAprendizaje, etiquetaDominio, pendientesHoy } from '../../lib/repaso'
@@ -201,9 +202,9 @@ export function ModoEstudioPage(): JSX.Element {
                 </p>
               )}
               <p className="mt-3 text-xs text-slate-400">
-                {actual.totalRecursos === 0
-                  ? 'Sin material'
-                  : `${actual.totalRecursos} ${actual.totalRecursos === 1 ? 'material' : 'materiales'} disponible${actual.totalRecursos === 1 ? '' : 's'}`}
+                {textoMaterial(actual)}
+                {totalMaterial(actual) > 0 &&
+                  ` disponible${totalMaterial(actual) === 1 ? '' : 's'}`}
               </p>
               {detalle && detalle.notas.length > 0 && (
                 <div className="mt-4 space-y-2">

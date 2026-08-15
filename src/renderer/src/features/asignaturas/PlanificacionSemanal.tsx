@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { AsignaturaDTO, RecursoDTO, ResumenTareaDTO, SemanaPlanDTO } from '@shared/dtos'
 import { api } from '../../lib/api'
+import { totalMaterial } from '../../lib/material'
 import { useConceptosStore } from '../../stores/conceptosStore'
 import { useUiStore } from '../../stores/uiStore'
 import { FormularioTarea } from '../tareas/FormularioTarea'
@@ -18,7 +19,7 @@ interface Props {
  */
 export function PlanificacionSemanal({ asignatura, onAbrirTarea }: Props): JSX.Element {
   const conceptos = useConceptosStore((s) => s.lista)
-  const materialPorId = useMemo(() => new Map(conceptos.map((c) => [c.id, c.totalRecursos])), [conceptos])
+  const materialPorId = useMemo(() => new Map(conceptos.map((c) => [c.id, totalMaterial(c)])), [conceptos])
   const notificarError = useUiStore((s) => s.notificarError)
 
   const [periodo, setPeriodo] = useState(asignatura.periodos[0] ?? '')

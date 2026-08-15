@@ -1,5 +1,7 @@
 import { exigir, ErrorDeDominio } from './errores'
+import type { EnlaceMaterial } from './EnlaceMaterial'
 import type { Recurso } from './Recurso'
+import { nombreCarpetaSeguro } from './Recurso'
 import type { Relacion } from './Relacion'
 import type { RepasoConcepto } from './Repaso'
 
@@ -63,6 +65,8 @@ export interface Concepto {
   readonly descripcion: string
   readonly relaciones: readonly Relacion[]
   readonly recursos: readonly Recurso[]
+  /** Material que vive en la web (páginas, vídeos, simuladores). */
+  readonly enlaces: readonly EnlaceMaterial[]
   /** Notas u observaciones propias sobre el concepto (varias). */
   readonly notas: readonly NotaConcepto[]
   /**
@@ -80,6 +84,7 @@ export interface DatosConcepto {
   descripcion?: string
   relaciones?: readonly Relacion[]
   recursos?: readonly Recurso[]
+  enlaces?: readonly EnlaceMaterial[]
   notas?: readonly NotaConcepto[]
   etiquetas?: readonly string[]
   repaso?: RepasoConcepto
@@ -101,6 +106,7 @@ export function crearConcepto(datos: DatosConcepto): Concepto {
     descripcion: (datos.descripcion ?? '').trim(),
     relaciones: datos.relaciones ?? [],
     recursos: datos.recursos ?? [],
+    enlaces: datos.enlaces ?? [],
     notas: datos.notas ?? [],
     etiquetas: sanearEtiquetas(datos.etiquetas),
     ...(datos.repaso ? { repaso: datos.repaso } : {})
@@ -118,6 +124,48 @@ export function agregarRecurso(concepto: Concepto, recurso: Recurso): Concepto {
 /** Quita material del concepto por su id. */
 export function quitarRecurso(concepto: Concepto, recursoId: string): Concepto {
   return { ...concepto, recursos: concepto.recursos.filter((r) => r.id !== recursoId) }
+}
+
+/** Agrega un enlace web al material del concepto. */
+export function agregarEnlace(concepto: Concepto, enlace: EnlaceMaterial): Concepto {
+  // La misma dirección dos veces es siempre un despiste (doble clic, pegar de
+  // nuevo lo que ya estaba); se avisa en vez de dejar la lista con duplicados.
+  if (concepto.enlaces.some((e) => e.url === enlace.url)) {
+    throw new ErrorDeDominio(
+      'Ese enlace ya está en el material de este concepto.',
+      'Búscalo en la lista de material; si quieres cambiarle el nombre, edítalo.'
+    )
+  }
+  return { ...concepto, enlaces: [...concepto.enlaces, enlace] }
+}
+
+/** Sustituye un enlace por su versión editada (mismo id). */
+export function actualizarEnlace(concepto: Concepto, enlace: EnlaceMaterial): Concepto {
+  if (!concepto.enlaces.some((e) => e.id === enlace.id)) {
+    throw new ErrorDeDominio('Ese enlace ya no está en el concepto.')
+  }
+  return {
+    ...concepto,
+    enlaces: concepto.enlaces.map((e) => (e.id === enlace.id ? enlace : e))
+  }
+}
+
+/** Quita un enlace web del concepto por su id. */
+export function quitarEnlace(concepto: Concepto, enlaceId: string): Concepto {
+  return { ...concepto, enlaces: concepto.enlaces.filter((e) => e.id !== enlaceId) }
+}
+
+/** Cambia un enlace de carpeta (o lo deja suelto si la carpeta es ''). */
+export function moverEnlaceACarpeta(
+  concepto: Concepto,
+  enlaceId: string,
+  carpeta: string
+): Concepto {
+  const destino = nombreCarpetaSeguro(carpeta)
+  return {
+    ...concepto,
+    enlaces: concepto.enlaces.map((e) => (e.id === enlaceId ? { ...e, carpeta: destino } : e))
+  }
 }
 
 /**

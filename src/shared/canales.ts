@@ -32,6 +32,12 @@ export const CANALES = {
   materialAbrir: 'material:abrir',
   materialLeerTexto: 'material:leer-texto',
 
+  // Enlaces web (material que no es un archivo)
+  materialEnlaceAgregar: 'material:enlace-agregar',
+  materialEnlaceEditar: 'material:enlace-editar',
+  materialEnlaceEliminar: 'material:enlace-eliminar',
+  materialEnlaceMoverACarpeta: 'material:enlace-mover-a-carpeta',
+
   // Asignaturas
   asignaturasListar: 'asignaturas:listar',
   asignaturaObtener: 'asignatura:obtener',

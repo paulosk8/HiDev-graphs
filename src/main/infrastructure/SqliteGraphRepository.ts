@@ -62,6 +62,11 @@ export class SqliteGraphRepository implements IGraphRepository {
     if (!columnas.some((c) => c.name === 'proxima_revision')) {
       this.db.exec('ALTER TABLE nodes ADD COLUMN proxima_revision TEXT')
     }
+    // Los enlaces web no son archivos, así que no caben en `resources`: se
+    // cuentan aquí para que el listado sepa que el concepto SÍ tiene material.
+    if (!columnas.some((c) => c.name === 'total_enlaces')) {
+      this.db.exec('ALTER TABLE nodes ADD COLUMN total_enlaces INTEGER')
+    }
   }
 
   /** Cierra la conexión (usar al salir de la app). */
@@ -77,8 +82,8 @@ export class SqliteGraphRepository implements IGraphRepository {
 
   indexarConcepto(concepto: Concepto): void {
     const insertarNodo = this.db.prepare(
-      `INSERT OR REPLACE INTO nodes (tipo, id, nombre, descripcion, dominio, proxima_revision, padre_tipo, padre_id, orden, periodo)
-       VALUES ('concepto', @id, @nombre, @descripcion, @dominio, @proximaRevision, NULL, NULL, NULL, NULL)`
+      `INSERT OR REPLACE INTO nodes (tipo, id, nombre, descripcion, dominio, proxima_revision, total_enlaces, padre_tipo, padre_id, orden, periodo)
+       VALUES ('concepto', @id, @nombre, @descripcion, @dominio, @proximaRevision, @totalEnlaces, NULL, NULL, NULL, NULL)`
     )
     const insertarRecurso = this.db.prepare(
       `INSERT OR REPLACE INTO resources (id, concepto_id, nombre, archivo, formato)
@@ -108,7 +113,8 @@ export class SqliteGraphRepository implements IGraphRepository {
         nombre: c.nombre,
         descripcion: c.descripcion,
         dominio: c.repaso ? c.repaso.dominio : null,
-        proximaRevision: c.repaso ? c.repaso.proximaRevision : null
+        proximaRevision: c.repaso ? c.repaso.proximaRevision : null,
+        totalEnlaces: c.enlaces.length
       })
       for (const r of c.recursos) {
         insertarRecurso.run({
@@ -289,6 +295,7 @@ export class SqliteGraphRepository implements IGraphRepository {
     SELECT n.id AS id, n.nombre AS nombre, n.descripcion AS descripcion,
            n.dominio AS dominio, n.proxima_revision AS proximaRevision,
            COUNT(DISTINCT r.id) AS totalRecursos,
+           n.total_enlaces AS totalEnlaces,
            (SELECT GROUP_CONCAT(t.nombre, char(10))
               FROM edges e JOIN nodes t ON t.tipo = 'tema' AND t.id = e.origen_id
               WHERE e.tipo_relacion = 'instancia'
@@ -306,6 +313,7 @@ export class SqliteGraphRepository implements IGraphRepository {
     dominio: number | null
     proximaRevision: string | null
     totalRecursos: number
+    totalEnlaces: number | null
     temasRaw: string | null
     etiquetasRaw: string | null
   }): ResumenConcepto {
@@ -314,6 +322,8 @@ export class SqliteGraphRepository implements IGraphRepository {
       nombre: fila.nombre,
       descripcion: fila.descripcion ?? '',
       totalRecursos: fila.totalRecursos,
+      // Un índice anterior a los enlaces trae NULL hasta el próximo reindexado.
+      totalEnlaces: fila.totalEnlaces ?? 0,
       temas: fila.temasRaw ? fila.temasRaw.split('\n') : [],
       etiquetas: fila.etiquetasRaw ? fila.etiquetasRaw.split('\n') : [],
       // Sin repaso registrado → dominio 0 y próxima revisión null (nunca repasado).

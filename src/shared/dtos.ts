@@ -34,6 +34,8 @@ export interface ResumenConceptoDTO {
   nombre: string
   descripcion: string
   totalRecursos: number
+  /** Enlaces web del concepto. Cuentan como material igual que los archivos. */
+  totalEnlaces: number
   /** Títulos de los temas que usan el concepto (para búsqueda). */
   temas: string[]
   /** Etiquetas del docente, tal como las escribió. */
@@ -119,6 +121,27 @@ export interface RecursoDTO {
   formato: FormatoRecurso
 }
 
+/**
+ * Enlace web: material del concepto que vive fuera del vault (una página, un
+ * vídeo, un simulador). Se lista junto a los archivos porque para el docente
+ * es material igual que un PDF.
+ */
+export interface EnlaceMaterialDTO {
+  id: string
+  /** Nombre visible; si no se escribió ninguno, es la propia dirección. */
+  titulo: string
+  url: string
+  /** Carpeta que lo agrupa, o '' si está suelto. */
+  carpeta: string
+}
+
+/** Datos para agregar o editar un enlace web. */
+export interface DatosEnlaceMaterialDTO {
+  titulo: string
+  url: string
+  carpeta?: string
+}
+
 /** Material (recursos) de un concepto, para preparar la clase por semana. */
 export interface MaterialConceptoDTO {
   conceptoId: string
@@ -145,6 +168,8 @@ export interface ConceptoDTO {
   nombre: string
   descripcion: string
   recursos: RecursoDTO[]
+  /** Material que vive en la web. Se muestra junto a los recursos. */
+  enlaces: EnlaceMaterialDTO[]
   relaciones: RelacionDTO[]
   /** Notas u observaciones propias sobre el concepto (varias). */
   notas: NotaDTO[]

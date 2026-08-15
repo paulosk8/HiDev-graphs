@@ -9,6 +9,7 @@ export * from './errores'
 export * from './slug'
 
 export * from './Recurso'
+export * from './EnlaceMaterial'
 export * from './Relacion'
 export * from './Concepto'
 

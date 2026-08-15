@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import type { AsignaturaDTO, ResumenTareaDTO } from '@shared/dtos'
+import { totalMaterial } from '../../lib/material'
 import { useConceptosStore } from '../../stores/conceptosStore'
 import { useUiStore } from '../../stores/uiStore'
 
@@ -42,7 +43,7 @@ export function SaludAsignatura({ asignatura, tareas }: Props): JSX.Element {
     const temasSinConcepto = temas.filter((t) => t.conceptos.length === 0)
     const conceptosSinMaterial = conceptoIds
       .map((id) => porId.get(id))
-      .filter((c): c is NonNullable<typeof c> => !!c && c.totalRecursos === 0)
+      .filter((c): c is NonNullable<typeof c> => !!c && totalMaterial(c) === 0)
     const temasSinTarea = temas.filter((t) => !temasConTarea.has(t.id))
     const temasSinPlanificar = temas.filter((t) => !temasPlanificados.has(t.id))
 

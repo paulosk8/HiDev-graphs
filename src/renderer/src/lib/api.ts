@@ -6,6 +6,7 @@ import type {
   DatosAsignaturaDTO,
   DatosAsignaturaEdicionDTO,
   DatosConceptoDTO,
+  DatosEnlaceMaterialDTO,
   DatosTareaDTO,
   DuplicarTareaDTO,
   LienzoDTO,
@@ -81,6 +82,14 @@ export const api = {
     desenvolver(window.api.abrirMaterial(conceptoId, archivo)),
   leerTextoMaterial: (conceptoId: string, archivo: string) =>
     desenvolver(window.api.leerTextoMaterial(conceptoId, archivo)),
+  agregarEnlaceMaterial: (conceptoId: string, datos: DatosEnlaceMaterialDTO) =>
+    desenvolver(window.api.agregarEnlaceMaterial(conceptoId, datos)),
+  editarEnlaceMaterial: (conceptoId: string, enlaceId: string, datos: DatosEnlaceMaterialDTO) =>
+    desenvolver(window.api.editarEnlaceMaterial(conceptoId, enlaceId, datos)),
+  eliminarEnlaceMaterial: (conceptoId: string, enlaceId: string) =>
+    desenvolver(window.api.eliminarEnlaceMaterial(conceptoId, enlaceId)),
+  moverEnlaceACarpeta: (conceptoId: string, enlaceId: string, carpeta: string) =>
+    desenvolver(window.api.moverEnlaceACarpeta(conceptoId, enlaceId, carpeta)),
   /** URL del protocolo local para previsualizar un material (PDF/HTML/imagen). */
   urlRecurso: (conceptoId: string, archivo: string): string =>
     `recurso://c/${encodeURIComponent(conceptoId)}/${encodeURIComponent(archivo)}`,

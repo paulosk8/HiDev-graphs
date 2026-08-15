@@ -163,6 +163,7 @@ export function FichaConcepto({ conceptoId }: Props): JSX.Element {
         <ZonaMaterial
           conceptoId={concepto.id}
           recursos={concepto.recursos}
+          enlaces={concepto.enlaces}
           onActualizado={(actualizado) =>
             setFicha((f) => (f ? { ...f, concepto: actualizado } : f))
           }

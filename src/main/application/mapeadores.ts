@@ -25,6 +25,12 @@ export function aConceptoDTO(concepto: Concepto): ConceptoDTO {
       carpeta: carpetaDe(r.archivo),
       formato: r.formato
     })),
+    enlaces: concepto.enlaces.map((e) => ({
+      id: e.id,
+      titulo: e.titulo,
+      url: e.url,
+      carpeta: e.carpeta
+    })),
     relaciones: concepto.relaciones.map((rel) => ({ destino: rel.destino, tipo: rel.tipo })),
     notas: concepto.notas.map((n) => ({
       id: n.id,
@@ -45,6 +51,7 @@ export function aResumenConceptoDTO(concepto: Concepto): ResumenConceptoDTO {
     nombre: concepto.nombre,
     descripcion: concepto.descripcion,
     totalRecursos: concepto.recursos.length,
+    totalEnlaces: concepto.enlaces.length,
     // Un resumen recién creado/editado no conoce sus temas ni asignaturas; el
     // listado los rellena al recargar. El store conserva los previos al editar.
     temas: [],

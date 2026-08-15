@@ -20,6 +20,7 @@ import {
   type FormatoNota,
   type NotaConcepto
 } from '../domain/Concepto'
+import { crearEnlaceMaterial } from '../domain/EnlaceMaterial'
 import { repasoDesdePlano } from '../domain/Repaso'
 import { lienzoAPlano, lienzoDesdePlano, type Lienzo } from '../domain/Lienzo'
 import {
@@ -176,6 +177,18 @@ export class VaultFileSystemService {
         archivo: r.archivo,
         formato: r.formato
       })),
+      // Enlaces web (material que no es un archivo). Solo si hay alguno, para
+      // no meter una clave vacía en los concepto.yaml que ya existían.
+      ...(concepto.enlaces.length > 0
+        ? {
+            enlaces: concepto.enlaces.map((e) => ({
+              id: e.id,
+              titulo: e.titulo,
+              url: e.url,
+              ...(e.carpeta ? { carpeta: e.carpeta } : {})
+            }))
+          }
+        : {}),
       // Notas propias (varias). Solo se escriben si hay alguna.
       ...(concepto.notas.length > 0
         ? {
@@ -640,12 +653,33 @@ function conceptoDesdePlano(datos: Record<string, unknown>): Concepto {
       })
     )
 
+  // Un concepto anterior a los enlaces no trae la clave. Los que estén mal
+  // escritos (sin dirección) se descartan en silencio: leer el vault nunca
+  // debe fallar por un dato suelto.
+  const enlaces = lista(datos.enlaces)
+    .map((e) => e as Record<string, unknown>)
+    .flatMap((e) => {
+      try {
+        return [
+          crearEnlaceMaterial({
+            id: texto(e.id) || randomUUID(),
+            titulo: texto(e.titulo),
+            url: texto(e.url),
+            carpeta: texto(e.carpeta)
+          })
+        ]
+      } catch {
+        return []
+      }
+    })
+
   return crearConcepto({
     id: texto(datos.id),
     nombre: texto(datos.nombre),
     descripcion: texto(datos.descripcion),
     relaciones,
     recursos,
+    enlaces,
     notas: notasDesdePlano(datos.notas, datos.formatoNotas),
     // Un concepto anterior a las etiquetas simplemente no trae la clave.
     etiquetas: lista(datos.etiquetas).map((e) => texto(e)),

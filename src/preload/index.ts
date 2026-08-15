@@ -45,6 +45,14 @@ const api: PedagoGraphApi = {
   abrirMaterial: (conceptoId, archivo) => ipcRenderer.invoke(CANALES.materialAbrir, conceptoId, archivo),
   leerTextoMaterial: (conceptoId, archivo) =>
     ipcRenderer.invoke(CANALES.materialLeerTexto, conceptoId, archivo),
+  agregarEnlaceMaterial: (conceptoId, datos) =>
+    ipcRenderer.invoke(CANALES.materialEnlaceAgregar, conceptoId, datos),
+  editarEnlaceMaterial: (conceptoId, enlaceId, datos) =>
+    ipcRenderer.invoke(CANALES.materialEnlaceEditar, conceptoId, enlaceId, datos),
+  eliminarEnlaceMaterial: (conceptoId, enlaceId) =>
+    ipcRenderer.invoke(CANALES.materialEnlaceEliminar, conceptoId, enlaceId),
+  moverEnlaceACarpeta: (conceptoId, enlaceId, carpeta) =>
+    ipcRenderer.invoke(CANALES.materialEnlaceMoverACarpeta, conceptoId, enlaceId, carpeta),
   listarAsignaturas: () => ipcRenderer.invoke(CANALES.asignaturasListar),
   obtenerAsignatura: (id) => ipcRenderer.invoke(CANALES.asignaturaObtener, id),
   guardarPlanificacion: (asignaturaId, periodo, semanas) =>

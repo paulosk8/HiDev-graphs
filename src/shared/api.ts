@@ -20,6 +20,7 @@ import type {
   DatosAsignaturaDTO,
   DatosAsignaturaEdicionDTO,
   DatosConceptoDTO,
+  DatosEnlaceMaterialDTO,
   DatosTareaDTO,
   CombinarTareasDTO,
   DuplicarTareaDTO,
@@ -118,6 +119,24 @@ export interface PedagoGraphApi {
   abrirMaterial(conceptoId: string, archivo: string): Promise<Resultado<void>>
   /** Lee el contenido de texto de un material (md/xml/html/txt) para previsualizar. */
   leerTextoMaterial(conceptoId: string, archivo: string): Promise<Resultado<string>>
+
+  // --- Enlaces web (material que no es un archivo) ---
+  agregarEnlaceMaterial(
+    conceptoId: string,
+    datos: DatosEnlaceMaterialDTO
+  ): Promise<Resultado<ConceptoDTO>>
+  editarEnlaceMaterial(
+    conceptoId: string,
+    enlaceId: string,
+    datos: DatosEnlaceMaterialDTO
+  ): Promise<Resultado<ConceptoDTO>>
+  eliminarEnlaceMaterial(conceptoId: string, enlaceId: string): Promise<Resultado<ConceptoDTO>>
+  /** Mueve un enlace a otra carpeta del concepto ('' = suelto). */
+  moverEnlaceACarpeta(
+    conceptoId: string,
+    enlaceId: string,
+    carpeta: string
+  ): Promise<Resultado<ConceptoDTO>>
 
   // --- Asignaturas ---
   listarAsignaturas(): Promise<Resultado<ResumenAsignaturaDTO[]>>
