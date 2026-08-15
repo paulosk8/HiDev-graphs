@@ -56,9 +56,10 @@ interface Props {
  * archivo se guarda ahí, no en un montón común), y mover algo de carpeta mueve
  * el archivo de verdad, no solo una etiqueta.
  *
- * Los enlaces web se listan aquí mismo, pero no son archivos: su "carpeta" es
- * solo una etiqueta guardada en `concepto.yaml`. Por eso se mueven desde el
- * menú del clic derecho y no arrastrándolos: no hay nada que mover en disco.
+ * Los enlaces web se listan aquí mismo y se arrastran igual, aunque por dentro
+ * no son archivos: su "carpeta" es solo una etiqueta en `concepto.yaml`, sin
+ * nada que mover en disco. Esa diferencia no se le enseña al docente — para él
+ * es la misma lista y el mismo gesto.
  */
 export function ZonaMaterial({
   conceptoId,
@@ -173,9 +174,15 @@ export function ZonaMaterial({
     // ya está en el concepto (moverlo de carpeta). Se distinguen por el tipo
     // que lleva el arrastre, no por adivinar.
     const interno = leerArrastre(e)
-    if (interno && interno.tipo === 'material' && interno.conceptoId === conceptoId) {
-      void moverACarpeta(interno.archivo, carpeta)
-      return
+    if (interno && interno.conceptoId === conceptoId) {
+      if (interno.tipo === 'material') {
+        void moverACarpeta(interno.archivo, carpeta)
+        return
+      }
+      if (interno.tipo === 'enlace') {
+        void moverEnlaceACarpeta(interno.enlaceId, carpeta)
+        return
+      }
     }
     void procesarArchivos(e.dataTransfer.files, carpeta)
   }
@@ -187,6 +194,18 @@ export function ZonaMaterial({
     try {
       onActualizado(await api.moverMaterialACarpeta(conceptoId, recurso.id, carpeta))
       void cargarCarpetas()
+    } catch (error) {
+      notificarError(error)
+    }
+  }
+
+  /** Cambia un enlace de carpeta. Aquí no hay nada que mover en disco: la
+   *  carpeta del enlace es solo una etiqueta en `concepto.yaml`. */
+  const moverEnlaceACarpeta = async (enlaceId: string, carpeta: string): Promise<void> => {
+    const enlace = enlaces.find((e) => e.id === enlaceId)
+    if (!enlace || (enlace.carpeta || '') === carpeta) return
+    try {
+      onActualizado(await api.moverEnlaceACarpeta(conceptoId, enlaceId, carpeta))
     } catch (error) {
       notificarError(error)
     }
@@ -513,6 +532,10 @@ export function ZonaMaterial({
                         >
                           Abrir
                         </button>
+                        <BotonOpciones
+                          etiqueta={item.recurso.nombre}
+                          onAbrir={(e) => abrirMenu(e, item)}
+                        />
                         <button
                           onClick={() => setAEliminar(item.recurso)}
                           className="text-slate-400 transition hover:text-red-600"
@@ -524,8 +547,20 @@ export function ZonaMaterial({
                     ) : (
                       <li
                         key={item.enlace.id}
+                        // Se arrastra a otra carpeta igual que un archivo. No
+                        // mueve nada en disco (su carpeta es solo una etiqueta),
+                        // pero para el docente son la misma lista y el mismo
+                        // gesto: distinguirlo sería una filtración del modelo.
+                        draggable
+                        onDragStart={(e) =>
+                          empezarArrastreDe(e, {
+                            tipo: 'enlace',
+                            conceptoId,
+                            enlaceId: item.enlace.id
+                          })
+                        }
                         onContextMenu={(e) => abrirMenu(e, item)}
-                        className="group flex items-center gap-3 px-3 py-2.5"
+                        className="group flex cursor-grab items-center gap-3 px-3 py-2.5 active:cursor-grabbing"
                       >
                         <span className="rounded bg-sky-100 px-2 py-0.5 text-xs font-semibold uppercase text-sky-800">
                           web
@@ -546,10 +581,17 @@ export function ZonaMaterial({
                           href={direccionCompleta(item.enlace.url)}
                           target="_blank"
                           rel="noreferrer"
+                          /* Un ancla arrastra su URL por defecto y le ganaría al
+                             arrastre de la fila, que es el que mueve de carpeta. */
+                          draggable={false}
                           className="text-xs text-slate-500 transition hover:text-marca-700"
                         >
                           Abrir
                         </a>
+                        <BotonOpciones
+                          etiqueta={item.enlace.titulo}
+                          onAbrir={(e) => abrirMenu(e, item)}
+                        />
                         <button
                           onClick={() => setEnlaceAEliminar(item.enlace)}
                           className="text-slate-400 transition hover:text-red-600"
@@ -737,6 +779,31 @@ export function ZonaMaterial({
         <VistaPreviaMaterial conceptoId={conceptoId} recurso={aVer} onCerrar={() => setAVer(null)} />
       )}
     </div>
+  )
+}
+
+/**
+ * Botón «⋯» de una fila de material. Abre el mismo menú que el clic derecho.
+ *
+ * Existe porque el clic derecho no se descubre: sin esto, "Mover a otra
+ * carpeta…" era invisible para quien no lo probara por su cuenta.
+ */
+function BotonOpciones({
+  etiqueta,
+  onAbrir
+}: {
+  etiqueta: string
+  onAbrir: (evento: React.MouseEvent) => void
+}): JSX.Element {
+  return (
+    <button
+      onClick={onAbrir}
+      title={`Más opciones de «${etiqueta}»`}
+      aria-label={`Más opciones de ${etiqueta}`}
+      className="rounded px-1 text-sm leading-none text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+    >
+      ⋯
+    </button>
   )
 }
 

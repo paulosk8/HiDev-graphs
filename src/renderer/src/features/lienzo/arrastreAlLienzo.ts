@@ -13,6 +13,13 @@ export type ContenidoArrastrado =
   | { tipo: 'concepto'; conceptoId: string }
   | { tipo: 'nota'; conceptoId: string; notaId: string }
   | { tipo: 'material'; conceptoId: string; archivo: string }
+  /**
+   * Un enlace web. Viaja por el mismo canal que el resto para poder soltarlo
+   * en una carpeta del material, pero de momento NO es una tarjeta de lienzo:
+   * el `.canvas` de Obsidian tiene un tipo `link` propio que aún no pintamos,
+   * así que el editor lo ignora en vez de crear una tarjeta equivocada.
+   */
+  | { tipo: 'enlace'; conceptoId: string; enlaceId: string }
 
 /** Prepara el dato en el evento de inicio de arrastre. */
 export function empezarArrastreDe(
@@ -34,6 +41,7 @@ export function leerArrastre(evento: React.DragEvent): ContenidoArrastrado | nul
     if (d?.tipo === 'concepto' && d.conceptoId) return d
     if (d?.tipo === 'nota' && d.conceptoId && d.notaId) return d
     if (d?.tipo === 'material' && d.conceptoId && d.archivo) return d
+    if (d?.tipo === 'enlace' && d.conceptoId && d.enlaceId) return d
     return null
   } catch {
     return null

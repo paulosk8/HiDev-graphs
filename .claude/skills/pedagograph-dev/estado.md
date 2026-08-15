@@ -264,10 +264,21 @@ abiertos, para no deshacer la pila uno a uno.
   el docente no debería buscar en dos sitios "lo que tengo de este concepto".
   «+ Agregar material» abre un menú (archivo del equipo / enlace web).
   Diferencia de modelo: la `carpeta` de un `Recurso` se DERIVA de su ruta en
-  disco; la de un enlace es un campo propio (no hay archivo que mover), por eso
-  los enlaces se mueven por el menú del clic derecho y no arrastrando. La URL se
-  normaliza a `https://` al guardar y se valida que tenga punto. Casos de uso en
-  `application/EnlacesMaterial.ts`; canales `material:enlace-*`.
+  disco; la de un enlace es un campo propio, porque no hay archivo que mover.
+  Esa diferencia **no se le enseña al docente**: el enlace se arrastra a una
+  carpeta igual que un archivo (tipo `enlace` en `ContenidoArrastrado`). El
+  editor de lienzo lo **descarta explícitamente** en `soltarContenido` —su
+  cadena de tipos termina en un «si no, un concepto», así que sin ese corte
+  soltar un enlace crearía la tarjeta del concepto entero—. El `.canvas` de
+  Obsidian tiene un tipo `link` propio; el día que se pinte, ese corte es el
+  sitio. La URL se normaliza a `https://` al guardar y se valida que tenga
+  punto. Casos de uso en `application/EnlacesMaterial.ts`; canales
+  `material:enlace-*`.
+- **Cada fila de material lleva un `⋯` visible** (además del clic derecho), por
+  la misma razón que las carpetas: «Mover a otra carpeta…» estaba solo en el
+  menú del clic derecho y era invisible en la práctica. El ancla «Abrir» de un
+  enlace va con `draggable={false}`: un ancla arrastra su URL por defecto y le
+  ganaría al arrastre de la fila.
 - **El material sigue siendo del concepto, nunca del tema** (es lo que permite
   reutilizarlo entre asignaturas y períodos). Para que el docente no tenga que
   salir de la asignatura a cargarlo, el **chip del concepto vinculado en
