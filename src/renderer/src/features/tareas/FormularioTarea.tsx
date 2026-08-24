@@ -21,6 +21,10 @@ interface Props {
   tareaInicial?: TareaDTO
   temaPreseleccionado?: string
   temasPreseleccionados?: string[]
+  /** Conceptos ya vinculados al abrir (crear la práctica DE un concepto). */
+  conceptosPreseleccionados?: string[]
+  /** Título de partida, editable (al crear desde un concepto). */
+  tituloInicial?: string
   onCerrar: () => void
   onGuardada: (tarea: TareaDTO) => void
 }
@@ -30,6 +34,8 @@ export function FormularioTarea({
   tareaInicial,
   temaPreseleccionado,
   temasPreseleccionados,
+  conceptosPreseleccionados,
+  tituloInicial,
   onCerrar,
   onGuardada
 }: Props): JSX.Element {
@@ -40,7 +46,7 @@ export function FormularioTarea({
   const editar = useTareasStore((s) => s.editar)
   const agregarAdjunto = useTareasStore((s) => s.agregarAdjunto)
 
-  const [titulo, setTitulo] = useState(tareaInicial?.titulo ?? '')
+  const [titulo, setTitulo] = useState(tareaInicial?.titulo ?? tituloInicial ?? '')
   const [componente, setComponente] = useState<string>(tareaInicial?.componente ?? '')
   const [temas, setTemas] = useState<Set<string>>(
     () =>
@@ -53,7 +59,7 @@ export function FormularioTarea({
   // Conceptos vinculados a mano. Los que vienen de los temas se muestran aparte
   // y no se tocan: quitarlos aquí sería mentir sobre lo que el tema declara.
   const [conceptosPropios, setConceptosPropios] = useState<string[]>(
-    () => tareaInicial?.conceptosPropios ?? []
+    () => tareaInicial?.conceptosPropios ?? conceptosPreseleccionados ?? []
   )
   const [buscandoConcepto, setBuscandoConcepto] = useState(false)
   const listaConceptos = useConceptosStore((st) => st.lista)

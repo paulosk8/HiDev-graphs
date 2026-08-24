@@ -71,18 +71,22 @@ export function FichaTarea({ tareaId, onCerrar, onCambiada }: Props): JSX.Elemen
     return () => window.removeEventListener('keydown', alPulsar)
   }, [onCerrar, editando])
 
+  // Los hooks van ANTES del return temprano de abajo: si se quedan detrás, la
+  // primera pintada (sin tarea aún) ejecuta menos hooks que la siguiente y React
+  // aborta la aplicación entera (error #310).
+  const listaConceptos = useConceptosStore((st) => st.lista)
+  const abrirVistazo = useVistazoStore((st) => st.abrir)
+  const nombreConcepto = useMemo(
+    () => new Map(listaConceptos.map((c) => [c.id, c.nombre] as const)),
+    [listaConceptos]
+  )
+
   if (!tarea || !asignatura) return <></>
 
   const nombreTema = new Map(
     asignatura.unidades.flatMap((u) => u.temas.map((t) => [t.id, t.titulo] as const))
   )
-  const listaConceptos = useConceptosStore((st) => st.lista)
-  const abrirVistazo = useVistazoStore((st) => st.abrir)
   const nombreComponente = asignatura.componentes.find((c) => c.clave === tarea.componente)?.nombre
-  const nombreConcepto = useMemo(
-    () => new Map(listaConceptos.map((c) => [c.id, c.nombre] as const)),
-    [listaConceptos]
-  )
 
   const crucesPorAsig = new Map<
     string,

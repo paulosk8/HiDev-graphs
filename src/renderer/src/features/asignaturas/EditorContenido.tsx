@@ -91,8 +91,8 @@ interface Props {
   onVincular: (puntoId: string, conceptoId: string) => void
   onDesvincular: (puntoId: string, conceptoId: string) => void
   onAbrirTarea: (id: string) => void
-  /** Crear una tarea/práctica ya asociada a ese tema. */
-  onCrearTarea: (temaId: string) => void
+  /** Crear una tarea/práctica ya asociada a ese tema y, si se indica, a ese concepto. */
+  onCrearTarea: (temaId: string, conceptoId?: string) => void
   onGuardar: (unidades: DatosUnidadEdicionDTO[]) => Promise<void>
 }
 
@@ -403,6 +403,8 @@ export function EditorContenido({
                 conceptoId={cid}
                 onAbrir={() => abrirVistazo(cid)}
                 onQuitar={() => onDesvincular(t.id, cid)}
+                onCrearTarea={() => onCrearTarea(t.id, cid)}
+                etiquetaTarea={esAprendizaje ? 'Nueva práctica' : 'Nueva tarea'}
               />
             ))}
             <span className="relative">
@@ -478,6 +480,8 @@ export function EditorContenido({
                           conceptoId={cid}
                           onAbrir={() => abrirVistazo(cid)}
                           onQuitar={() => onDesvincular(sub.id, cid)}
+                          onCrearTarea={() => onCrearTarea(t.id, cid)}
+                          etiquetaTarea={esAprendizaje ? 'Nueva práctica' : 'Nueva tarea'}
                         />
                       ))}
                       <span className="relative">
@@ -679,12 +683,22 @@ function ChipConcepto({
   concepto,
   conceptoId,
   onAbrir,
-  onQuitar
+  onQuitar,
+  onCrearTarea,
+  etiquetaTarea
 }: {
   concepto: ResumenConceptoDTO | undefined
   conceptoId: string
   onAbrir: () => void
   onQuitar: () => void
+  /**
+   * Crear una tarea/práctica de ESTE concepto. No se crea sola al vincular: un
+   * concepto se vincula para decir «esto se estudia aquí», que no siempre
+   * significa «y quiero ejercicio». Vincular tres dejaría tres prácticas vacías
+   * que hay que borrar. Se ofrece, y se decide.
+   */
+  onCrearTarea?: () => void
+  etiquetaTarea?: string
 }): JSX.Element {
   const nombre = concepto?.nombre ?? conceptoId
   const total = concepto ? concepto.totalRecursos + concepto.totalEnlaces : 0
@@ -707,6 +721,16 @@ function ChipConcepto({
           📎 {total}
         </span>
       </button>
+      {onCrearTarea && (
+        <button
+          onClick={onCrearTarea}
+          title={`${etiquetaTarea} de «${nombre}»`}
+          aria-label={`${etiquetaTarea} de ${nombre}`}
+          className="text-marca-400 transition hover:text-marca-700"
+        >
+          ＋
+        </button>
+      )}
       <button
         onClick={onQuitar}
         className="text-marca-400 hover:text-red-600"

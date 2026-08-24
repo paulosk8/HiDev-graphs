@@ -447,6 +447,18 @@ abiertos, para no deshacer la pila uno a uno.
   quedaba sin ellos—. En el formulario, los del tema se pintan grises y con la
   coletilla «del tema» (no se quitan desde ahí: eso sería mentir sobre lo que el
   tema declara) y los propios llevan su ✕.
+- **Las prácticas/tareas tienen pestaña propia**, con **filtro por tema** (chips
+  con su recuento) junto a «Contenido» y «Estado». En «Contenido» competían con
+  la estructura: con unas pocas ya la echaban fuera de la pantalla. Los chips del
+  tema en el árbol siguen estando —son el acceso contextual—; la pestaña es el
+  inventario, y responde a «¿qué tengo para este tema?».
+- **Crear la práctica al vincular un concepto: se OFRECE, no se hace sola.** Cada
+  concepto vinculado lleva un `＋` que abre el formulario con ese tema, ese
+  concepto ya vinculado y el título prellenado («Práctica: X»). Crearla
+  automáticamente al vincular sería crear registros que nadie pidió: vincular un
+  concepto dice «esto se estudia aquí», no siempre «y quiero ejercicio», y
+  vincular tres dejaría tres prácticas vacías que hay que borrar una a una. Es el
+  espejo de la regla de confirmar antes de eliminar.
 - **La práctica se crea desde la fila de su tema.** Estaba solo el botón del pie
   de la ficha, que obliga a bajar, crear y volver a buscar el tema en una lista
   de casillas. Ahora cada tema lleva su «+ Nueva práctica» (o «+ Nueva tarea») en
@@ -460,6 +472,16 @@ abiertos, para no deshacer la pila uno a uno.
   se encabezaba con un «General» que tampoco informaba. En Docencia con
   componentes definidos sigue igual, con su opción vacía renombrada a «Sin
   clasificar» y una línea que dice para qué sirve.
+- **Trampa: los hooks, SIEMPRE antes del `return` temprano.** `FichaTarea` hace
+  `if (!tarea) return <></>` mientras carga; unos `useConceptosStore`/`useMemo`
+  añadidos debajo se ejecutaban solo en la segunda pintada y React abortaba la
+  aplicación ENTERA (pantalla en blanco, «Minified React error #310»). Lo cazó el
+  smoke porque el `document.body` se quedó sin botones; para verlo hay que
+  escuchar `console-message` del `webContents`.
+- **Trampa del smoke, no del producto:** dentro de la plantilla anidada de
+  `executeJavaScript`, `\s` se resuelve a `s` y un `replace(/\s+/g, ' ')`
+  **borra todas las eses** del texto que compruebas («A ignatura», «Concepto »).
+  Hay que escribir `\\s+` en el fuente.
 - **Trampa: un `<button>` sin `type` dentro de un `<form>` es `type="submit"`.**
   Los botones del `BuscadorConceptos` no lo llevaban; al reutilizarlo dentro del
   formulario de tarea, **elegir un concepto enviaba la tarea a medio rellenar**.
