@@ -5,14 +5,18 @@ import { EstadoVacio } from '../../components/EstadoVacio'
 import { textoMaterial } from '../../lib/material'
 import { useAsignaturasStore } from '../../stores/asignaturasStore'
 import { useConceptosStore } from '../../stores/conceptosStore'
+import { useLayoutStore } from '../../stores/layoutStore'
 import { useUiStore, type Contexto } from '../../stores/uiStore'
 import { FormularioConcepto } from './FormularioConcepto'
 
 /**
  * Clave interna del grupo que reúne los conceptos que todavía no se usan en
- * ninguna asignatura (Docencia) ni espacio (Aprendizaje). Es un centinela, no
- * un texto: el rótulo visible depende del contexto — en Aprendizaje no hay
- * asignaturas, así que nombrarlas ahí confundiría.
+ * ninguna asignatura ni espacio. Es un centinela, no un texto: se muestra como
+ * «Todavía sin usar» —una bandeja de entrada— y no como «Sin asignatura», que
+ * se leía como un error ("debería estar en una y no lo está") y hacía parecer
+ * que la otra capa se colaba. El pool de conceptos es único a propósito: lo que
+ * aprendes hoy es lo que enseñas mañana, y duplicarlo por capa duplicaría su
+ * material, que es justo lo que la app evita.
  */
 const SIN_GRUPO = '\u0000sin-grupo'
 
@@ -47,6 +51,7 @@ export function ListaConceptos({ contexto }: Props): JSX.Element {
   const [temasAbiertos, setTemasAbiertos] = useState<Set<string>>(new Set())
 
   const esAprendizaje = contexto === 'aprendizaje'
+  const dosCapas = useLayoutStore((s) => s.capaDocencia && s.capaAprendizaje)
 
   // "Nuevo concepto" desde la barra de menú: abre aquí el mismo formulario.
   useEffect(() => {
@@ -132,9 +137,18 @@ export function ListaConceptos({ contexto }: Props): JSX.Element {
     })
   }, [filtrada, nombresContexto])
 
-  /** Rótulo visible de un grupo: su nombre real o, para los sueltos, el del contexto. */
+  /** Rótulo visible de un grupo: su nombre real o, para los sueltos, la bandeja. */
   const rotuloGrupo = (clave: string): string =>
-    clave !== SIN_GRUPO ? clave : esAprendizaje ? 'Sin espacio' : 'Sin asignatura'
+    clave === SIN_GRUPO ? 'Todavía sin usar' : clave
+
+  /**
+   * Los conceptos sueltos se ven desde las dos capas (el pool es único). Decirlo
+   * aquí evita que parezca que se han colado los de la otra; sobra si el docente
+   * solo tiene una capa encendida.
+   */
+  const ayudaSueltos = dosCapas
+    ? 'Aún no los has vinculado a ningún tema. Están disponibles en Docencia y en Aprendizaje.'
+    : 'Aún no los has vinculado a ningún tema.'
 
   const alternarGrupo = (nombre: string): void =>
     setGruposAbiertos((prev) => {
@@ -246,9 +260,14 @@ export function ListaConceptos({ contexto }: Props): JSX.Element {
                   onClick={() => alternarGrupo(grupo)}
                   className="flex w-full items-center justify-between px-4 py-3 text-left transition hover:bg-slate-50"
                 >
-                  <span className="font-medium text-slate-800">
+                  <span className="min-w-0 font-medium text-slate-800">
                     {rotuloGrupo(grupo)}{' '}
                     <span className="text-sm font-normal text-slate-400">({conceptos.length})</span>
+                    {grupo === SIN_GRUPO && (
+                      <span className="mt-0.5 block text-xs font-normal text-slate-400">
+                        {ayudaSueltos}
+                      </span>
+                    )}
                   </span>
                   <span className="text-slate-400">{abierto ? '▾' : '▸'}</span>
                 </button>
