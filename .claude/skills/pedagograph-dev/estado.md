@@ -489,6 +489,19 @@ abiertos, para no deshacer la pila uno a uno.
   necesita `type="button"` explícito (el componente `Boton` ya lo pone por
   defecto; los `<button>` a pelo, no).
 
+- **Cada material es una tarjeta, no una fila de texto.** Con un archivo cargado,
+  la zona parecía vacía: la fila no tenía ni fondo ni borde propios —flotaba
+  dentro del recuadro de soltar— y sus acciones («Ver», «Abrir», ⋯, ✕) iban en
+  grises tenues que se leían como deshabilitadas. Ahora cada elemento tiene su
+  tarjeta (`bg-slate-50` + borde, hover a `bg-slate-100`), la insignia del
+  formato sube a `bg-slate-200/text-slate-700` y las acciones son chips con
+  fondo al pasar por encima. **Medido con smoke en los cuatro temas**: antes la
+  insignia daba 4,34:1 en claro (por debajo de AA) y la fila no se distinguía
+  del panel; ahora lo peor está en 4,55:1 y el resto entre 7:1 y 21:1.
+  `bg-slate-200` es nueva en la app, así que hubo que traducirla en los cuatro
+  mapas de tema (`.dark`, `.calido`, `.contraste`, `.dark.contraste`) — **el que
+  se olvide deja el elemento con el color de Tailwind, fuera del tema**.
+
 ## Trampas del vault que ya han mordido
 
 `RespaldarVault`, `RestaurarVault` y `MoverAlmacenamiento` llevan **su lista de
