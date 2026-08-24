@@ -21,6 +21,8 @@ import type {
   DatosAsignaturaEdicionDTO,
   DatosConceptoDTO,
   DatosEnlaceMaterialDTO,
+  DatosTerminoDTO,
+  PromocionTerminoDTO,
   DatosTareaDTO,
   CombinarTareasDTO,
   DuplicarTareaDTO,
@@ -139,6 +141,17 @@ export interface PedagoGraphApi {
     datos: DatosEnlaceMaterialDTO
   ): Promise<Resultado<ConceptoDTO>>
   eliminarEnlaceMaterial(conceptoId: string, enlaceId: string): Promise<Resultado<ConceptoDTO>>
+  agregarTermino(conceptoId: string, datos: DatosTerminoDTO): Promise<Resultado<ConceptoDTO>>
+  editarTermino(
+    conceptoId: string,
+    terminoId: string,
+    datos: DatosTerminoDTO
+  ): Promise<Resultado<ConceptoDTO>>
+  eliminarTermino(conceptoId: string, terminoId: string): Promise<Resultado<ConceptoDTO>>
+  promoverTermino(
+    conceptoId: string,
+    terminoId: string
+  ): Promise<Resultado<PromocionTerminoDTO>>
   /** Mueve un enlace a otra carpeta del concepto ('' = suelto). */
   moverEnlaceACarpeta(
     conceptoId: string,

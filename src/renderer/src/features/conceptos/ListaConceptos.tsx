@@ -96,7 +96,9 @@ export function ListaConceptos({ contexto }: Props): JSX.Element {
     if (!q) return porEtiqueta
     return porEtiqueta.filter((c) => {
       const heno = normalizar(
-        [c.nombre, c.descripcion, ...c.temas, ...c.asignaturas, ...c.etiquetas].filter(Boolean).join('  ')
+        [c.nombre, c.descripcion, ...c.temas, ...c.asignaturas, ...c.etiquetas, ...c.glosario]
+          .filter(Boolean)
+          .join('  ')
       )
       return heno.includes(q)
     })
@@ -189,7 +191,7 @@ export function ListaConceptos({ contexto }: Props): JSX.Element {
             type="search"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar por nombre, descripción, tema o etiqueta…"
+            placeholder="Buscar por nombre, descripción, tema, etiqueta o término…"
             className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-marca-400 focus:outline-none focus:ring-2 focus:ring-marca-100"
           />
           {etiquetasDisponibles.length > 0 && (

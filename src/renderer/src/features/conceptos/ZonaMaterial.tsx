@@ -94,7 +94,7 @@ export function ZonaMaterial({
 
   const agregarMaterial = useConceptosStore((s) => s.agregarMaterial)
   const eliminarMaterial = useConceptosStore((s) => s.eliminarMaterial)
-  const reflejarMaterial = useConceptosStore((s) => s.reflejarMaterial)
+  const reflejarConcepto = useConceptosStore((s) => s.reflejarConcepto)
   const notificarError = useUiStore((s) => s.notificarError)
   const { menu, abrir: abrirMenu, cerrar: cerrarMenu } = useMenuContextual<ItemMaterial>()
   // Menú de "+ Agregar material": elegir entre un archivo del equipo y un enlace.
@@ -269,7 +269,7 @@ export function ZonaMaterial({
               carpeta: editandoEnlace.carpeta
             })
       onActualizado(concepto)
-      reflejarMaterial(concepto)
+      reflejarConcepto(concepto)
       setEditandoEnlace(null)
     } catch (error) {
       notificarError(error)
@@ -288,7 +288,7 @@ export function ZonaMaterial({
     try {
       const concepto = await api.eliminarEnlaceMaterial(conceptoId, enlaceAEliminar.id)
       onActualizado(concepto)
-      reflejarMaterial(concepto)
+      reflejarConcepto(concepto)
     } catch (error) {
       notificarError(error)
     } finally {

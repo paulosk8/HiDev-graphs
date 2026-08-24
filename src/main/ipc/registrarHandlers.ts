@@ -3,6 +3,12 @@ import { join } from 'node:path'
 import { existsSync } from 'node:fs'
 
 import { CANALES } from '../../shared/canales'
+import {
+  agregarTerminoAConcepto,
+  editarTerminoDeConcepto,
+  eliminarTerminoDeConcepto,
+  promoverTerminoAConcepto
+} from '../application/TerminosConcepto'
 import type {
   LienzoDTO,
   CalidadRepaso,
@@ -12,6 +18,7 @@ import type {
   DatosAsignaturaEdicionDTO,
   DatosConceptoDTO,
   DatosEnlaceMaterialDTO,
+  DatosTerminoDTO,
   DatosTareaDTO,
   DuplicarTareaDTO,
   McpInfoDTO,
@@ -290,6 +297,30 @@ export function registrarHandlersIpc(servicios: Servicios): void {
     CANALES.materialEnlaceEliminar,
     (_evento, conceptoId: string, enlaceId: string) =>
       envolver(() => eliminarEnlaceMaterial(servicios, conceptoId, enlaceId))
+  )
+
+  ipcMain.handle(
+    CANALES.conceptoTerminoAgregar,
+    (_evento, conceptoId: string, datos: DatosTerminoDTO) =>
+      envolver(() => agregarTerminoAConcepto(servicios, conceptoId, datos))
+  )
+
+  ipcMain.handle(
+    CANALES.conceptoTerminoEditar,
+    (_evento, conceptoId: string, terminoId: string, datos: DatosTerminoDTO) =>
+      envolver(() => editarTerminoDeConcepto(servicios, conceptoId, terminoId, datos))
+  )
+
+  ipcMain.handle(
+    CANALES.conceptoTerminoEliminar,
+    (_evento, conceptoId: string, terminoId: string) =>
+      envolver(() => eliminarTerminoDeConcepto(servicios, conceptoId, terminoId))
+  )
+
+  ipcMain.handle(
+    CANALES.conceptoTerminoPromover,
+    (_evento, conceptoId: string, terminoId: string) =>
+      envolver(() => promoverTerminoAConcepto(servicios, conceptoId, terminoId))
   )
 
   ipcMain.handle(

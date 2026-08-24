@@ -17,7 +17,9 @@ import {
   useEliminacionStore
 } from '../../stores/eliminacionStore'
 import { FormularioConcepto } from './FormularioConcepto'
+import { EtiquetasConcepto } from './EtiquetasConcepto'
 import { NotasConcepto } from './NotasConcepto'
+import { TerminosConcepto } from './TerminosConcepto'
 import { ZonaMaterial } from './ZonaMaterial'
 import { FichaTarea } from '../tareas/FichaTarea'
 
@@ -133,20 +135,17 @@ export function FichaConcepto({ conceptoId }: Props): JSX.Element {
           {concepto.descripcion && (
             <p className="mt-2 max-w-prose text-sm text-slate-600">{concepto.descripcion}</p>
           )}
-          {concepto.etiquetas.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {concepto.etiquetas.map((e) => (
-                <button
-                  key={e}
-                  onClick={() => filtrarPorEtiqueta(e)}
-                  title={`Ver todo lo etiquetado como «${e}»`}
-                  className="rounded-full bg-marca-50 px-2.5 py-0.5 text-xs font-medium text-marca-700 transition hover:bg-marca-100"
-                >
-                  {e}
-                </button>
-              ))}
-            </div>
-          )}
+          {/* Editables aquí mismo: abrir «Editar» para añadir una palabra era
+              demasiado viaje. Pulsar el texto sigue filtrando el listado. */}
+          <div className="mt-3">
+            <EtiquetasConcepto
+              concepto={concepto}
+              onActualizado={(actualizado) =>
+                setFicha((f) => (f ? { ...f, concepto: actualizado } : f))
+              }
+              alFiltrar={filtrarPorEtiqueta}
+            />
+          </div>
         </div>
         <div className="flex shrink-0 gap-2">
           <Boton variante="secundario" onClick={() => setEditando(true)}>
@@ -157,6 +156,15 @@ export function FichaConcepto({ conceptoId }: Props): JSX.Element {
           </Boton>
         </div>
       </header>
+
+      {/* Términos y definiciones: referencia que se consulta mientras se lee,
+          así que va antes del material y de las notas. */}
+      <TerminosConcepto
+        concepto={concepto}
+        onActualizado={(actualizado) =>
+          setFicha((f) => (f ? { ...f, concepto: actualizado } : f))
+        }
+      />
 
       {/* Material */}
       <section className="mb-8">

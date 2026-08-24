@@ -35,6 +35,10 @@ export const CANALES = {
   materialLeerTexto: 'material:leer-texto',
 
   // Enlaces web (material que no es un archivo)
+  conceptoTerminoAgregar: 'concepto:termino-agregar',
+  conceptoTerminoEditar: 'concepto:termino-editar',
+  conceptoTerminoEliminar: 'concepto:termino-eliminar',
+  conceptoTerminoPromover: 'concepto:termino-promover',
   materialEnlaceAgregar: 'material:enlace-agregar',
   materialEnlaceEditar: 'material:enlace-editar',
   materialEnlaceEliminar: 'material:enlace-eliminar',

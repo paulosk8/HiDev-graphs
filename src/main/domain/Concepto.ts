@@ -4,6 +4,7 @@ import type { Recurso } from './Recurso'
 import { nombreCarpetaSeguro } from './Recurso'
 import type { Relacion } from './Relacion'
 import type { RepasoConcepto } from './Repaso'
+import type { Termino } from './Termino'
 
 /** Formato del contenido de las notas: Markdown, HTML o código (vista editor). */
 export type FormatoNota = 'markdown' | 'html' | 'codigo'
@@ -70,6 +71,12 @@ export interface Concepto {
   /** Notas u observaciones propias sobre el concepto (varias). */
   readonly notas: readonly NotaConcepto[]
   /**
+   * Glosario del concepto: términos con su definición corta. Viaja con el
+   * concepto, así que la misma definición vale en todas las asignaturas donde
+   * se use, igual que su material.
+   */
+  readonly terminos: readonly Termino[]
+  /**
    * Etiquetas libres del docente ("evaluación", "primer parcial"). Sirven para
    * encontrar material por criterios propios, transversales a las asignaturas.
    */
@@ -86,6 +93,7 @@ export interface DatosConcepto {
   recursos?: readonly Recurso[]
   enlaces?: readonly EnlaceMaterial[]
   notas?: readonly NotaConcepto[]
+  terminos?: readonly Termino[]
   etiquetas?: readonly string[]
   repaso?: RepasoConcepto
 }
@@ -108,6 +116,7 @@ export function crearConcepto(datos: DatosConcepto): Concepto {
     recursos: datos.recursos ?? [],
     enlaces: datos.enlaces ?? [],
     notas: datos.notas ?? [],
+    terminos: datos.terminos ?? [],
     etiquetas: sanearEtiquetas(datos.etiquetas),
     ...(datos.repaso ? { repaso: datos.repaso } : {})
   }
@@ -196,4 +205,29 @@ export function quitarRelacion(
       (r) => !(r.destino === destino && r.tipo === tipo)
     )
   }
+}
+
+/**
+ * Agrega un término al glosario. NO rechaza un duplicado a propósito: quien
+ * está volcando términos no debe encontrarse un muro, y la interfaz ya avisa en
+ * ámbar con el que ya existe. Bloquear aquí solo perdería lo escrito.
+ */
+export function agregarTermino(concepto: Concepto, termino: Termino): Concepto {
+  return { ...concepto, terminos: [...concepto.terminos, termino] }
+}
+
+/** Sustituye un término por su versión editada (mismo id). */
+export function actualizarTermino(concepto: Concepto, termino: Termino): Concepto {
+  if (!concepto.terminos.some((t) => t.id === termino.id)) {
+    throw new ErrorDeDominio('Ese término ya no está en el concepto.')
+  }
+  return {
+    ...concepto,
+    terminos: concepto.terminos.map((t) => (t.id === termino.id ? termino : t))
+  }
+}
+
+/** Quita un término del glosario por su id. */
+export function quitarTermino(concepto: Concepto, terminoId: string): Concepto {
+  return { ...concepto, terminos: concepto.terminos.filter((t) => t.id !== terminoId) }
 }

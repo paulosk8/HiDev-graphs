@@ -64,4 +64,19 @@ CREATE TABLE IF NOT EXISTS tags (
 );
 
 CREATE INDEX IF NOT EXISTS idx_tags_clave ON tags (clave);
+
+-- Glosario: términos con su definición, siempre de un concepto. Está en el
+-- índice sólo para que el buscador de conceptos encuentre por término ("prop"
+-- lleva a "Componentes de React"); la verdad sigue en concepto.yaml.
+-- "clave" es la forma comparable (sin mayúsculas ni tildes), como en tags.
+CREATE TABLE IF NOT EXISTS terminos (
+  id          TEXT PRIMARY KEY,
+  concepto_id TEXT NOT NULL,
+  clave       TEXT NOT NULL,
+  termino     TEXT NOT NULL,
+  definicion  TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_terminos_concepto ON terminos (concepto_id);
+CREATE INDEX IF NOT EXISTS idx_terminos_clave    ON terminos (clave);
 `

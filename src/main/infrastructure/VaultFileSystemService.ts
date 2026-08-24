@@ -201,6 +201,16 @@ export class VaultFileSystemService {
             }))
           }
         : {}),
+      // Glosario del concepto. Como el resto, solo si hay algo que escribir.
+      ...(concepto.terminos.length > 0
+        ? {
+            terminos: concepto.terminos.map((t) => ({
+              id: t.id,
+              termino: t.termino,
+              definicion: t.definicion
+            }))
+          }
+        : {}),
       // Etiquetas del docente. Solo se escriben si hay alguna, para no meter
       // una clave vacía en los YAML que ya existían.
       ...(concepto.etiquetas.length > 0 ? { etiquetas: [...concepto.etiquetas] } : {}),
@@ -738,6 +748,15 @@ function conceptoDesdePlano(datos: Record<string, unknown>): Concepto {
     recursos,
     enlaces,
     notas: notasDesdePlano(datos.notas, datos.formatoNotas),
+    // Un concepto anterior al glosario simplemente no trae la clave.
+    terminos: lista(datos.terminos)
+      .map((t) => t as Record<string, unknown>)
+      .map((t) => ({
+        id: texto(t.id) || randomUUID(),
+        termino: texto(t.termino),
+        definicion: texto(t.definicion)
+      }))
+      .filter((t) => t.termino.trim().length > 0 && t.definicion.trim().length > 0),
     // Un concepto anterior a las etiquetas simplemente no trae la clave.
     etiquetas: lista(datos.etiquetas).map((e) => texto(e)),
     repaso: repasoDesdePlano(datos.repaso)

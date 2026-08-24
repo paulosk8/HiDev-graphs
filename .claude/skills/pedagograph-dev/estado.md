@@ -367,6 +367,63 @@ abiertos, para no deshacer la pila uno a uno.
   otra capa en el Mapa, que sea un filtro **apagado por defecto**, nunca la
   mezcla plana.
 
+- **En el Mapa, el concepto se mira en el panel lateral, no en una modal.** La
+  modal centrada tapaba justo el grafo que se está consultando y obligaba a
+  cerrarla para seguir mirando. Ahora el doble clic (en el nodo, en la lista
+  lateral o en un concepto aislado) abre el mismo `PanelVistazo` de los lienzos
+  y los `[[enlaces]]`: es una columna, empuja el mapa en vez de taparlo, apila
+  conceptos si se sigue tirando del hilo, y su material y notas se editan ahí
+  mismo (la modal era de solo lectura). Al panel se le añadió el **«Se usa en»**
+  que sólo tenía la modal —la ficha ya lo traía en la misma respuesta y se
+  estaba descartando—; los «conceptos relacionados» no se pierden porque el
+  propio panel del mapa ya lista los conectados.
+
+- **Glosario del concepto** (`Concepto.terminos: Termino[]`, `{id, termino,
+  definicion}` en `concepto.yaml`): términos con su definición corta. **No son
+  conceptos en miniatura y la diferencia es deliberada**: "prop" o "estado" no
+  quieren material ni salir en el mapa —meterlos como conceptos llenaría el
+  grafo de micro-nodos y ahogaría la pregunta que el mapa responde—. Tampoco son
+  notas: la nota es prosa libre y por eso no se consulta; la forma fija es lo que
+  permite buscarlo, ordenarlo y (Fase 3) exportarlo como glosario para el
+  estudiante. Va **antes del material** en la ficha y en el panel: es referencia
+  que se consulta mientras se lee, no producción.
+  - **Texto plano a propósito.** Si necesita formato o código, eso es una nota.
+  - **Entrada en cadena**: los términos se vuelcan de ocho en ocho. `Enter` en la
+    definición guarda **y deja otra fila lista con el foco**. Sin eso se meten dos
+    y se abandona.
+  - **Duplicado avisado, no bloqueado** (ámbar + "editar el que ya existe"):
+    parar a quien está escribiendo es la peor opción.
+  - En el índice va en su tabla `terminos` (hermana de `tags`) SOLO para que el
+    buscador encuentre por término y por definición. El `ResumenConcepto` lleva
+    `glosario: string[]` **aplanado** («término definición») como heno de
+    búsqueda —igual que `temas`—, y no se pinta en ningún sitio.
+  - `reflejarMaterial` del store pasó a ser **`reflejarConcepto`** y refresca
+    también el glosario: esperar a que el observador del vault refresque el
+    listado para poder buscar lo que acabas de escribir no es respuesta.
+  - **Promover a concepto** (`promoverTerminoAConcepto`) es la salida cuando un
+    término crece y quiere material propio: se lleva su definición como
+    descripción, queda `relacionado_con` el de origen —esa procedencia es
+    información— y sale del glosario para no vivir en dos sitios. **Si ya existe
+    un concepto con ese nombre se usa ese**, comparando sin mayúsculas ni
+    tildes: duplicar conceptos es justo lo que la app evita. Nadie acierta al
+    principio con qué merece ser concepto, así que la decisión no se pide por
+    adelantado, se corrige cuando se nota.
+
+- **Las etiquetas del concepto se editan donde se ven** (`EtiquetasConcepto`, en
+  la ficha y en el `PanelVistazo`). Antes solo se tocaban abriendo «Editar», y
+  ese viaje —modal, cambiar, guardar, volver— es demasiado para añadir una
+  palabra. Se escriben como los términos: Enter guarda y **deja el campo listo
+  para la siguiente**, Backspace con el campo vacío quita la última, Esc cierra.
+  Repetida → aviso ámbar («Ya tiene la etiqueta X»), nunca duplicado silencioso.
+  Sigue **sugiriendo las que ya usas** (misma razón que el campo del formulario:
+  sin sugerencias cada ficha inventa su variante y el filtro deja de servir); las
+  sugerencias se pulsan con `onMouseDown`, porque con `onClick` el blur del campo
+  se adelanta y la lista se cierra antes de recibirlo. En la ficha el texto del
+  chip filtra el listado; en el panel NO, que te sacaría de donde estabas. Se
+  guarda con `editarConcepto` mandando solo nombre/descripción/etiquetas: lo que
+  no viaja (notas, glosario, material) se conserva. Las reglas comunes con
+  `CampoEtiquetas` viven en `lib/etiquetas.ts` para que no se separen.
+
 ## Trampas del vault que ya han mordido
 
 `RespaldarVault`, `RestaurarVault` y `MoverAlmacenamiento` llevan **su lista de
