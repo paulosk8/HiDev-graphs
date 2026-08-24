@@ -38,7 +38,9 @@ export function SaludAsignatura({ asignatura, tareas }: Props): JSX.Element {
       asignatura.planificaciones.flatMap((p) => p.semanas.flatMap((s) => s.temas))
     )
 
-    const nombreTema = (t: { unidad: string; titulo: string }): string => `${t.unidad} › ${t.titulo}`
+    // En Aprendizaje el nivel superior está aplanado: nombrarlo sobraría.
+    const nombreTema = (t: { unidad: string; titulo: string }): string =>
+      esAprendizaje ? t.titulo : `${t.unidad} › ${t.titulo}`
 
     const temasSinConcepto = temas.filter((t) => t.conceptos.length === 0)
     const conceptosSinMaterial = conceptoIds

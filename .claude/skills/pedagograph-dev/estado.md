@@ -317,9 +317,8 @@ abiertos, para no deshacer la pila uno a uno.
   índice, tareas y grafo; separar el modelo sería duplicarlo casi entero), pero
   esa decisión **no puede asomar en la UI**: el docente que estudia no tiene
   asignaturas. Se revisaron y adaptaron por contexto los rótulos que lo
-  delataban: el grupo de conceptos sueltos («Sin espacio» / «Sin asignatura»,
-  con clave interna centinela para no chocar con un espacio que se llamara
-  así), el «Se usa en» vacío de la ficha, el filtro y la leyenda del Mapa
+  delataban: el grupo de conceptos sueltos (ver abajo), el «Se usa en» vacío de
+  la ficha, el filtro y la leyenda del Mapa
   («Espacio:», «Se usa en el espacio») y el formulario de tareas («Nueva
   práctica», «Este espacio no tiene temas todavía»). Regla: cualquier texto
   compartido entre las dos capas se decide por `contexto`/`tipo`, nunca fijo.
@@ -337,6 +336,36 @@ abiertos, para no deshacer la pila uno a uno.
   con los del tema; borrar la asignatura ya limpiaba las aristas por id, así que
   no hizo falta tocarlo. Los YAML anteriores no tienen el campo: se lee ausente
   como lista vacía.
+
+- **En Aprendizaje el nivel superior está aplanado.** El espacio YA ES "lo que
+  quiero aprender", así que pedir un contenedor antes del primer tema era pedir
+  dos veces lo mismo. El modelo curricular no cambia (los temas siguen colgando
+  de una `Unidad`): el editor crea un contenedor implícito titulado `Contenido`
+  la primera vez y no lo muestra nunca. Un espacio con bloques previos se
+  aplana en una sola lista **sin perderlos** —siguen en el YAML— y los temas
+  nuevos entran en el primero. Consecuencias que hubo que tapar: «Mover a otra
+  unidad…» desaparece del menú (no hay otra visible), el `Estado` y el
+  formulario de prácticas dejan de anteponer el título del contenedor, y el
+  «Se usa en» de la ficha del concepto salta ese tramo del camino (lo decide el
+  renderer mirando el `tipo` de la asignatura por su id; el índice no lo
+  guarda). El `filaTema` del editor se extrajo a una función justo para poder
+  pintarse dentro de la unidad (Docencia) o suelto (Aprendizaje).
+
+- **El pool de conceptos es único y se queda así.** Un concepto SIN vincular se
+  ve desde las dos capas; uno vinculado sólo desde la suya (`ListaConceptos`
+  filtra por las asignaturas del contexto). El **Mapa es estricto**: sólo pinta
+  conceptos con arista `usado_en` hacia una asignatura del contexto, así que un
+  concepto suelto no sale en ningún mapa y uno de Docencia no sale en el de
+  Aprendizaje. **Decisión: no se separan los pools por capa** —lo que aprendes
+  hoy es lo que enseñas mañana, y duplicar el concepto duplicaría su material,
+  que es justo lo que la app evita—; el cruce entre capas se descubre en el
+  «Se usa en» de la ficha, bajo demanda, no como ruido permanente en el mapa.
+  Lo que sí se arregló es cómo se leía: el grupo de sueltos se llama **«Todavía
+  sin usar»** (antes «Sin asignatura», que sonaba a error y hacía parecer que la
+  otra capa se colaba) y lleva una nota que dice que están disponibles en las
+  dos —sólo si las dos capas están encendidas—. Si algún día se quiere ver la
+  otra capa en el Mapa, que sea un filtro **apagado por defecto**, nunca la
+  mezcla plana.
 
 ## Trampas del vault que ya han mordido
 

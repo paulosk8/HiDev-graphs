@@ -189,7 +189,12 @@ export function FichaConcepto({ conceptoId }: Props): JSX.Element {
           </p>
         ) : (
           <ul className="space-y-2">
-            {usos.map((uso) => (
+            {usos.map((uso) => {
+              // En Aprendizaje el nivel superior está aplanado: el camino va del
+              // espacio directo al tema.
+              const enEspacio =
+                asignaturas.find((a) => a.id === uso.asignaturaId)?.tipo === 'aprendizaje'
+              return (
               <li
                 key={`${uso.asignaturaId}-${uso.temaId}-${uso.subtema ?? ''}`}
                 className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm text-slate-700"
@@ -198,7 +203,9 @@ export function FichaConcepto({ conceptoId }: Props): JSX.Element {
                   {uso.asignatura}
                   {uso.periodos.length > 0 && ` · ${uso.periodos.join(', ')}`}
                 </span>
-                <span className="text-slate-400"> › {uso.unidad} › </span>
+                <span className="text-slate-400">
+                  {enEspacio ? ' › ' : ` › ${uso.unidad} › `}
+                </span>
                 {/* Si el vínculo es del 3er nivel, el tema es sólo el camino. */}
                 {uso.subtema ? (
                   <>
@@ -209,7 +216,8 @@ export function FichaConcepto({ conceptoId }: Props): JSX.Element {
                   <span>{uso.tema}</span>
                 )}
               </li>
-            ))}
+              )
+            })}
           </ul>
         )}
       </section>
