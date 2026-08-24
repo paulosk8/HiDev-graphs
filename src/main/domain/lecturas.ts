@@ -15,6 +15,12 @@ export interface ResumenConcepto {
   readonly temas: string[]
   /** Etiquetas del docente, tal como las escribió. */
   readonly etiquetas: string[]
+  /**
+   * Glosario aplanado —«término definición» por entrada— SOLO para búsqueda,
+   * igual que `temas`. No se pinta en ningún sitio: la lista de verdad va en el
+   * concepto completo.
+   */
+  readonly glosario: string[]
   /** Dominio percibido 0..5 (0 si nunca se repasó). */
   readonly dominio: number
   /** Fecha ISO del próximo repaso, o null si nunca se ha repasado. */

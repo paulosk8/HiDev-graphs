@@ -31,6 +31,8 @@ export function editarConcepto(
     notas: datos.notas ?? actual.notas,
     // Igual que las notas: si la edición no las trae, se conservan.
     etiquetas: datos.etiquetas ?? actual.etiquetas,
+    // El glosario no se edita desde este formulario: se conserva entero.
+    terminos: actual.terminos,
     repaso: actual.repaso
   })
 

@@ -40,6 +40,8 @@ export interface ResumenConceptoDTO {
   temas: string[]
   /** Etiquetas del docente, tal como las escribió. */
   etiquetas: string[]
+  /** Glosario aplanado («término definición») solo para búsqueda; no se pinta. */
+  glosario: string[]
   /** Nombres de las asignaturas donde se usa (para agrupar/filtrar). */
   asignaturas: string[]
   /** Dominio percibido 0..5 (0 si nunca se repasó). Colorea el mapa. */
@@ -163,6 +165,19 @@ export interface NotaDTO {
 }
 
 /** Detalle completo de un concepto para su ficha. */
+/** Un término del glosario de un concepto. */
+export interface TerminoDTO {
+  id: string
+  termino: string
+  definicion: string
+}
+
+/** Alta o edición de un término (el id lo pone el proceso principal). */
+export interface DatosTerminoDTO {
+  termino: string
+  definicion: string
+}
+
 export interface ConceptoDTO {
   id: string
   nombre: string
@@ -173,6 +188,8 @@ export interface ConceptoDTO {
   relaciones: RelacionDTO[]
   /** Notas u observaciones propias sobre el concepto (varias). */
   notas: NotaDTO[]
+  /** Glosario: términos con su definición corta. */
+  terminos: TerminoDTO[]
   /** Etiquetas del docente, tal como las escribió. */
   etiquetas: string[]
   /** Dominio percibido 0..5 (0 si nunca se repasó). */

@@ -3,6 +3,7 @@ import type { ConceptoDTO, UsoDeConceptoDTO } from '@shared/dtos'
 import { api } from '../lib/api'
 import { useAsignaturasStore } from '../stores/asignaturasStore'
 import { NotasConcepto } from '../features/conceptos/NotasConcepto'
+import { TerminosConcepto } from '../features/conceptos/TerminosConcepto'
 import { ZonaMaterial } from '../features/conceptos/ZonaMaterial'
 import { useUiStore } from '../stores/uiStore'
 import { useVistazoStore } from '../stores/vistazoStore'
@@ -220,6 +221,12 @@ export function PanelVistazo(): JSX.Element | null {
                 ⠿ Arrastra este concepto al lienzo
               </button>
             )}
+
+            <TerminosConcepto
+              concepto={concepto}
+              onActualizado={(actualizado) => setConcepto(actualizado)}
+              compacto
+            />
 
             <section className="mt-5">
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">

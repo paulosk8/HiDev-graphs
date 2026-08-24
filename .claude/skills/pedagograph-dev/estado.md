@@ -368,6 +368,29 @@ abiertos, para no deshacer la pila uno a uno.
   estaba descartando—; los «conceptos relacionados» no se pierden porque el
   propio panel del mapa ya lista los conectados.
 
+- **Glosario del concepto** (`Concepto.terminos: Termino[]`, `{id, termino,
+  definicion}` en `concepto.yaml`): términos con su definición corta. **No son
+  conceptos en miniatura y la diferencia es deliberada**: "prop" o "estado" no
+  quieren material ni salir en el mapa —meterlos como conceptos llenaría el
+  grafo de micro-nodos y ahogaría la pregunta que el mapa responde—. Tampoco son
+  notas: la nota es prosa libre y por eso no se consulta; la forma fija es lo que
+  permite buscarlo, ordenarlo y (Fase 3) exportarlo como glosario para el
+  estudiante. Va **antes del material** en la ficha y en el panel: es referencia
+  que se consulta mientras se lee, no producción.
+  - **Texto plano a propósito.** Si necesita formato o código, eso es una nota.
+  - **Entrada en cadena**: los términos se vuelcan de ocho en ocho. `Enter` en la
+    definición guarda **y deja otra fila lista con el foco**. Sin eso se meten dos
+    y se abandona.
+  - **Duplicado avisado, no bloqueado** (ámbar + "editar el que ya existe"):
+    parar a quien está escribiendo es la peor opción.
+  - En el índice va en su tabla `terminos` (hermana de `tags`) SOLO para que el
+    buscador encuentre por término y por definición. El `ResumenConcepto` lleva
+    `glosario: string[]` **aplanado** («término definición») como heno de
+    búsqueda —igual que `temas`—, y no se pinta en ningún sitio.
+  - `reflejarMaterial` del store pasó a ser **`reflejarConcepto`** y refresca
+    también el glosario: esperar a que el observador del vault refresque el
+    listado para poder buscar lo que acabas de escribir no es respuesta.
+
 ## Trampas del vault que ya han mordido
 
 `RespaldarVault`, `RestaurarVault` y `MoverAlmacenamiento` llevan **su lista de

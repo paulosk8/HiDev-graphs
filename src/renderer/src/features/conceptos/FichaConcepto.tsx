@@ -18,6 +18,7 @@ import {
 } from '../../stores/eliminacionStore'
 import { FormularioConcepto } from './FormularioConcepto'
 import { NotasConcepto } from './NotasConcepto'
+import { TerminosConcepto } from './TerminosConcepto'
 import { ZonaMaterial } from './ZonaMaterial'
 import { FichaTarea } from '../tareas/FichaTarea'
 
@@ -157,6 +158,15 @@ export function FichaConcepto({ conceptoId }: Props): JSX.Element {
           </Boton>
         </div>
       </header>
+
+      {/* Términos y definiciones: referencia que se consulta mientras se lee,
+          así que va antes del material y de las notas. */}
+      <TerminosConcepto
+        concepto={concepto}
+        onActualizado={(actualizado) =>
+          setFicha((f) => (f ? { ...f, concepto: actualizado } : f))
+        }
+      />
 
       {/* Material */}
       <section className="mb-8">

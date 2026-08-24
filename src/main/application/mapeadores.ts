@@ -32,6 +32,11 @@ export function aConceptoDTO(concepto: Concepto): ConceptoDTO {
       carpeta: e.carpeta
     })),
     relaciones: concepto.relaciones.map((rel) => ({ destino: rel.destino, tipo: rel.tipo })),
+    terminos: concepto.terminos.map((t) => ({
+      id: t.id,
+      termino: t.termino,
+      definicion: t.definicion
+    })),
     notas: concepto.notas.map((n) => ({
       id: n.id,
       titulo: n.titulo,
@@ -57,6 +62,7 @@ export function aResumenConceptoDTO(concepto: Concepto): ResumenConceptoDTO {
     temas: [],
     asignaturas: [],
     etiquetas: [...concepto.etiquetas],
+    glosario: concepto.terminos.map((t) => `${t.termino} ${t.definicion}`),
     dominio: concepto.repaso?.dominio ?? 0,
     proximaRevision: concepto.repaso?.proximaRevision ?? null
   }

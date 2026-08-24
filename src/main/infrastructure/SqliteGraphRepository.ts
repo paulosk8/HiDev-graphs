@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3'
 import type { Asignatura } from '../domain/Asignatura'
 import { claveEtiqueta, type Concepto } from '../domain/Concepto'
+import { claveTermino } from '../domain/Termino'
 import type { IGraphRepository } from '../domain/IGraphRepository'
 import type {
   ResumenAsignatura,
@@ -97,6 +98,10 @@ export class SqliteGraphRepository implements IGraphRepository {
       `INSERT OR REPLACE INTO tags (concepto_id, clave, etiqueta)
        VALUES (@concepto_id, @clave, @etiqueta)`
     )
+    const insertarTermino = this.db.prepare(
+      `INSERT OR REPLACE INTO terminos (id, concepto_id, clave, termino, definicion)
+       VALUES (@id, @concepto_id, @clave, @termino, @definicion)`
+    )
 
     const tx = this.db.transaction((c: Concepto) => {
       // Idempotente: limpia lo que posee el concepto antes de reinsertar. No
@@ -104,6 +109,7 @@ export class SqliteGraphRepository implements IGraphRepository {
       // a las asignaturas.
       this.db.prepare('DELETE FROM resources WHERE concepto_id = ?').run(c.id)
       this.db.prepare('DELETE FROM tags WHERE concepto_id = ?').run(c.id)
+      this.db.prepare('DELETE FROM terminos WHERE concepto_id = ?').run(c.id)
       this.db
         .prepare("DELETE FROM edges WHERE origen_tipo = 'concepto' AND origen_id = ?")
         .run(c.id)
@@ -133,6 +139,15 @@ export class SqliteGraphRepository implements IGraphRepository {
           concepto_id: c.id,
           clave: claveEtiqueta(etiqueta),
           etiqueta
+        })
+      }
+      for (const t of c.terminos) {
+        insertarTermino.run({
+          id: t.id,
+          concepto_id: c.id,
+          clave: claveTermino(t.termino),
+          termino: t.termino,
+          definicion: t.definicion
         })
       }
     })
@@ -313,7 +328,9 @@ export class SqliteGraphRepository implements IGraphRepository {
               WHERE e.tipo_relacion = 'instancia'
                 AND e.destino_tipo = 'concepto' AND e.destino_id = n.id) AS temasRaw,
            (SELECT GROUP_CONCAT(g.etiqueta, char(10))
-              FROM tags g WHERE g.concepto_id = n.id) AS etiquetasRaw
+              FROM tags g WHERE g.concepto_id = n.id) AS etiquetasRaw,
+           (SELECT GROUP_CONCAT(x.termino || ' ' || x.definicion, char(10))
+              FROM terminos x WHERE x.concepto_id = n.id) AS glosarioRaw
     FROM nodes n
     LEFT JOIN resources r ON r.concepto_id = n.id
     WHERE n.tipo = 'concepto'`
@@ -328,6 +345,7 @@ export class SqliteGraphRepository implements IGraphRepository {
     totalEnlaces: number | null
     temasRaw: string | null
     etiquetasRaw: string | null
+    glosarioRaw: string | null
   }): ResumenConcepto {
     return {
       id: fila.id,
@@ -338,6 +356,7 @@ export class SqliteGraphRepository implements IGraphRepository {
       totalEnlaces: fila.totalEnlaces ?? 0,
       temas: fila.temasRaw ? fila.temasRaw.split('\n') : [],
       etiquetas: fila.etiquetasRaw ? fila.etiquetasRaw.split('\n') : [],
+      glosario: fila.glosarioRaw ? fila.glosarioRaw.split('\n') : [],
       // Sin repaso registrado → dominio 0 y próxima revisión null (nunca repasado).
       dominio: fila.dominio ?? 0,
       proximaRevision: fila.proximaRevision ?? null
@@ -358,8 +377,8 @@ export class SqliteGraphRepository implements IGraphRepository {
 
   buscarConceptos(texto: string): ResumenConcepto[] {
     const patron = `%${texto.trim()}%`
-    // Las etiquetas se guardan normalizadas (sin tildes ni mayúsculas), así que
-    // el texto buscado hay que normalizarlo igual para que coincidan.
+    // Las etiquetas y los términos se guardan normalizados (sin tildes ni
+    // mayúsculas), así que el texto buscado hay que normalizarlo igual.
     const patronClave = `%${claveEtiqueta(texto)}%`
     return (
       this.db
@@ -369,7 +388,11 @@ export class SqliteGraphRepository implements IGraphRepository {
                   OR n.descripcion LIKE @patron COLLATE NOCASE
                   OR EXISTS (SELECT 1 FROM tags g
                                WHERE g.concepto_id = n.id
-                                 AND g.clave LIKE @patronClave))
+                                 AND g.clave LIKE @patronClave)
+                  OR EXISTS (SELECT 1 FROM terminos t
+                               WHERE t.concepto_id = n.id
+                                 AND (t.clave LIKE @patronClave
+                                      OR t.definicion LIKE @patron COLLATE NOCASE)))
            GROUP BY n.id, n.nombre, n.descripcion
            ORDER BY n.nombre COLLATE NOCASE`
         )
