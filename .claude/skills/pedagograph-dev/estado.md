@@ -522,6 +522,13 @@ abiertos, para no deshacer la pila uno a uno.
   no se pinta —ahí el texto no se interpreta— y lo dice en vez de desaparecer sin
   explicación.
 
+- **La ficha de una tarea crece con su contenido** (`max-h-[85vh]`, no
+  `h-[86vh]`). Con alto fijo, una práctica de dos párrafos dejaba media ventana
+  en blanco y la caja quedaba pegada arriba y abajo. Medido con smoke: una corta
+  pasa de ~766 px a 335 px (278 px de margen a cada lado) y una larga se queda en
+  el tope (757 de 891) sin salirse. El `Modal` común ya lo hacía así; era la
+  ficha de tarea la que iba por su cuenta.
+
 ## Trampas del vault que ya han mordido
 
 `RespaldarVault`, `RestaurarVault` y `MoverAlmacenamiento` llevan **su lista de

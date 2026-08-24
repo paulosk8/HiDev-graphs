@@ -141,11 +141,14 @@ export function FichaTarea({ tareaId, onCerrar, onCambiada }: Props): JSX.Elemen
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-6"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-900/50 p-6 sm:p-10"
       onMouseDown={onCerrar}
     >
+      {/* Crece con su contenido hasta un tope, en vez de ocupar SIEMPRE el 86%
+          del alto: una tarea corta dejaba media ventana vacía y la ficha
+          parecía pegada al borde de arriba y al de abajo. */}
       <div
-        className="flex h-[86vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
+        className="flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <header className="flex items-start gap-3 border-b border-slate-200 px-6 py-4">
