@@ -502,6 +502,16 @@ abiertos, para no deshacer la pila uno a uno.
   mapas de tema (`.dark`, `.calido`, `.contraste`, `.dark.contraste`) — **el que
   se olvide deja el elemento con el color de Tailwind, fuera del tema**.
 
+- **Una sola barra de escritura** (`components/HerramientasTexto`): colores,
+  resaltado, contenido incrustado y atajos de Markdown. Estaba solo en el
+  formulario de tareas; en las **notas de un concepto** —que escriben exactamente
+  el mismo Markdown— había que teclearlo a mano. Se extrajo con su `insertar` y
+  su `envolver` en vez de copiarla: duplicada, era cuestión de tiempo que el
+  docente aprendiera una barra en las tareas y no la encontrara en una nota.
+  `BarraFormato` se movió de `features/tareas/` a `components/`. En modo Código
+  no se pinta —ahí el texto no se interpreta— y lo dice en vez de desaparecer sin
+  explicación.
+
 ## Trampas del vault que ya han mordido
 
 `RespaldarVault`, `RestaurarVault` y `MoverAlmacenamiento` llevan **su lista de

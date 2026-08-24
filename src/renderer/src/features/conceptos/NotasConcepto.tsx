@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import type { ConceptoDTO, FormatoInstrucciones, NotaDTO } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
 import { ContenidoFormateado } from '../../components/ContenidoFormateado'
+import { HerramientasTexto } from '../../components/HerramientasTexto'
 import { DialogoMover } from '../../components/DialogoMover'
 import { MenuContextual, useMenuContextual } from '../../components/MenuContextual'
 import { api } from '../../lib/api'
@@ -154,6 +155,15 @@ export function NotasConcepto({
             />
           ) : (
             <div className="relative">
+            {/* Las mismas herramientas que al escribir una práctica: color,
+                resaltado y atajos de Markdown. Antes solo estaban en las tareas
+                y aquí había que escribir el Markdown a mano. */}
+            <HerramientasTexto
+              formato={formato}
+              areaRef={areaRef}
+              valor={contenido}
+              onCambiar={setContenido}
+            />
             <textarea
               ref={areaRef}
               value={contenido}

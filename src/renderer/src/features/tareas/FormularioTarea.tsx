@@ -9,12 +9,9 @@ import { VistaHtml } from '../../components/VistaHtml'
 import { api } from '../../lib/api'
 import { manejarPegadoRico } from '../../lib/pegadoRico'
 import { useTareasStore } from '../../stores/tareasStore'
-import { BarraFormato } from './BarraFormato'
+import { HerramientasTexto } from '../../components/HerramientasTexto'
 import { BuscadorConceptos } from '../vinculos/BuscadorConceptos'
 import { useConceptosStore } from '../../stores/conceptosStore'
-
-/** Fragmentos que inserta la barra de formato. */
-const PLANTILLA_TABLA = '\n| Criterio | Puntos |\n| --- | --- |\n| … | … |\n| … | … |\n'
 
 interface Props {
   asignatura: AsignaturaDTO
@@ -93,39 +90,6 @@ export function FormularioTarea({
     }
     return [...ids]
   }, [asignatura, temas])
-
-  /** Inserta texto en la posición del cursor (o al final si no hay foco). */
-  const insertar = (texto: string): void => {
-    const el = areaRef.current
-    const inicio = el?.selectionStart ?? instrucciones.length
-    const fin = el?.selectionEnd ?? instrucciones.length
-    setInstrucciones(instrucciones.slice(0, inicio) + texto + instrucciones.slice(fin))
-    requestAnimationFrame(() => {
-      if (!el) return
-      el.focus()
-      const pos = inicio + texto.length
-      el.setSelectionRange(pos, pos)
-    })
-  }
-
-  /**
-   * Envuelve el texto seleccionado (o inserta un ejemplo si no hay selección).
-   * Es lo que hace falta para dar color: colorear "lo que acabo de escribir".
-   */
-  const envolver = (antes: string, despues: string, ejemplo: string): void => {
-    const el = areaRef.current
-    const inicio = el?.selectionStart ?? instrucciones.length
-    const fin = el?.selectionEnd ?? instrucciones.length
-    const seleccion = instrucciones.slice(inicio, fin) || ejemplo
-    const nuevo = antes + seleccion + despues
-    setInstrucciones(instrucciones.slice(0, inicio) + nuevo + instrucciones.slice(fin))
-    requestAnimationFrame(() => {
-      if (!el) return
-      el.focus()
-      // Deja seleccionado el texto coloreado, para poder seguir escribiendo encima.
-      el.setSelectionRange(inicio + antes.length, inicio + antes.length + seleccion.length)
-    })
-  }
 
   /** Al pegar: imágenes → base64 autocontenido; HTML con formato → Markdown/HTML. */
   const alPegar = (e: ClipboardEvent<HTMLTextAreaElement>): void =>
@@ -351,49 +315,14 @@ export function FormularioTarea({
             )
           ) : (
             <>
-              {/* Color y contenido incrustado: sirven en Markdown y en HTML,
-                  porque el Markdown de la app admite HTML dentro. En modo
-                  Código no, que ahí el texto no se interpreta. */}
-              {formato !== 'codigo' && (
-                <BarraFormato
-                  onEnvolver={envolver}
-                  onInsertar={insertar}
-                  mostrarIncrustado={formato === 'html'}
-                />
-              )}
-              {formato === 'markdown' ? (
-                <div className="mb-1.5 flex flex-wrap gap-1">
-                  {[
-                    { etiqueta: 'Título', frag: '\n## Título\n' },
-                    { etiqueta: 'Subtítulo', frag: '\n### Subtítulo\n' },
-                    { etiqueta: 'Lista', frag: '\n- \n' },
-                    { etiqueta: 'Tabla / rúbrica', frag: PLANTILLA_TABLA },
-                    { etiqueta: 'Enlace', frag: '[texto](https://…)' },
-                    { etiqueta: 'Negrita', frag: '**texto**' }
-                  ].map((b) => (
-                    <button
-                      key={b.etiqueta}
-                      type="button"
-                      onClick={() => insertar(b.frag)}
-                      className="rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 transition hover:bg-slate-50"
-                    >
-                      {b.etiqueta}
-                    </button>
-                  ))}
-                </div>
-              ) : formato === 'html' ? (
-                <p className="mb-1.5 text-xs text-slate-500">
-                  Modo HTML: pega o escribe HTML; admite <code>&lt;style&gt;</code>,{' '}
-                  <code>&lt;script&gt;</code> y contenido incrustado con{' '}
-                  <code>&lt;iframe&gt;</code> (Excalidraw, YouTube, GeoGebra…). Se guarda tal cual
-                  para copiarlo en Moodle.
-                </p>
-              ) : (
-                <p className="mb-1.5 text-xs text-slate-500">
-                  Modo Código: escribe o pega código; se muestra como en un editor (con números de
-                  línea), sin ejecutarse.
-                </p>
-              )}
+              {/* Las mismas herramientas que al escribir una nota de concepto:
+                  una sola barra que aprender. */}
+              <HerramientasTexto
+                formato={formato}
+                areaRef={areaRef}
+                valor={instrucciones}
+                onCambiar={setInstrucciones}
+              />
               <textarea
                 ref={areaRef}
                 value={instrucciones}
