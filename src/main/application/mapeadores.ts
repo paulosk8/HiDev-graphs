@@ -79,7 +79,12 @@ export function aAsignaturaDTO(asignatura: Asignatura): AsignaturaDTO {
         titulo: t.titulo,
         orden: t.orden,
         semana: t.semana,
-        subtemas: t.subtemas.map((s) => ({ id: s.id, titulo: s.titulo, orden: s.orden })),
+        subtemas: t.subtemas.map((s) => ({
+          id: s.id,
+          titulo: s.titulo,
+          orden: s.orden,
+          conceptos: [...s.conceptos]
+        })),
         conceptos: [...t.conceptos]
       }))
     })),

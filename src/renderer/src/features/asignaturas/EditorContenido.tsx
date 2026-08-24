@@ -80,8 +80,9 @@ interface Props {
   /** Conceptos del pool, por id: dan nombre y cuánto material tiene cada uno. */
   conceptoPorId: Map<string, ResumenConceptoDTO>
   tareas: ResumenTareaDTO[]
-  onVincular: (temaId: string, conceptoId: string) => void
-  onDesvincular: (temaId: string, conceptoId: string) => void
+  /** `puntoId` es el id de un tema O de un subtema: los dos aceptan conceptos. */
+  onVincular: (puntoId: string, conceptoId: string) => void
+  onDesvincular: (puntoId: string, conceptoId: string) => void
   onAbrirTarea: (id: string) => void
   onGuardar: (unidades: DatosUnidadEdicionDTO[]) => Promise<void>
 }
@@ -237,6 +238,15 @@ export function EditorContenido({
   const temaReal = (tId: string): AsignaturaDTO['unidades'][number]['temas'][number] | undefined =>
     asignatura.unidades.flatMap((u) => u.temas).find((t) => t.id === tId)
 
+  // Igual para el 3er nivel: también puede tener conceptos vinculados.
+  const subtemaReal = (
+    sId: string
+  ): AsignaturaDTO['unidades'][number]['temas'][number]['subtemas'][number] | undefined =>
+    asignatura.unidades
+      .flatMap((u) => u.temas)
+      .flatMap((t) => t.subtemas)
+      .find((s) => s.id === sId)
+
   // --- Confirmación de borrado (no se elimina directo si hay contenido) ---
   const plural = (n: number, palabra: string): string => `${n} ${palabra}${n > 1 ? 's' : ''}`
 
@@ -272,8 +282,18 @@ export function EditorContenido({
     })
   }
   const pedirQuitarSub = (uId: string, tId: string, sub: SubN): void => {
-    if (!sub.titulo.trim()) return quitarSub(uId, tId, sub.id)
-    setAEliminar({ tipo: 'sub', uId, tId, sId: sub.id, titulo: sub.titulo, mensaje: `Se eliminará «${sub.titulo}».` })
+    const nConc = subtemaReal(sub.id)?.conceptos.length ?? 0
+    if (!sub.titulo.trim() && nConc === 0) return quitarSub(uId, tId, sub.id)
+    setAEliminar({
+      tipo: 'sub',
+      uId,
+      tId,
+      sId: sub.id,
+      titulo: sub.titulo,
+      mensaje: nConc
+        ? `Se eliminará «${sub.titulo}» (incluye ${plural(nConc, 'concepto')} vinculado${nConc > 1 ? 's' : ''}). Los conceptos y su material NO se borran.`
+        : `Se eliminará «${sub.titulo}».`
+    })
   }
 
   const confirmarEliminar = (): void => {
@@ -346,7 +366,7 @@ export function EditorContenido({
             >
               {plegado(u.id) ? '▸' : '▾'}
             </button>
-            {inputTitulo(u.titulo, u.id, (v) => setTitulo(1, [u.id], v), `Título del ${N1} (ej. Unidad 1)`, 'flex-1 font-medium text-slate-800')}
+            {inputTitulo(u.titulo, u.id, (v) => setTitulo(1, [u.id], v), `Título del ${N1} (ej. Fundamentos)`, 'flex-1 font-medium text-slate-800')}
             {plegado(u.id) && (
               // Plegada, el recuento es lo único que dice qué hay dentro.
               <span className="shrink-0 px-1 text-xs text-slate-400">
@@ -447,19 +467,58 @@ export function EditorContenido({
                   {/* Sub-subtemas (3er nivel) */}
                   {t.subtemas.length > 0 && (
                     <ul className="mt-2 space-y-1 pl-4">
-                      {t.subtemas.map((sub) => (
-                        <li key={sub.id} className="flex items-center gap-1">
-                          <span className="text-slate-300">·</span>
-                          {inputTitulo(sub.titulo, sub.id, (v) => setTitulo(3, [u.id, t.id, sub.id], v), `Título del ${N3}`, 'flex-1 text-slate-600')}
-                          <button
-                            onClick={() => pedirQuitarSub(u.id, t.id, sub)}
-                            title={`Quitar ${N3}`}
-                            className="shrink-0 rounded-md px-2 py-0.5 text-xs text-slate-300 transition hover:bg-red-50 hover:text-red-600"
-                          >
-                            ✕
-                          </button>
-                        </li>
-                      ))}
+                      {t.subtemas.map((sub) => {
+                        const subReal = subtemaReal(sub.id)
+                        return (
+                          <li key={sub.id}>
+                            <div className="flex items-center gap-1">
+                              <span className="text-slate-300">·</span>
+                              {inputTitulo(sub.titulo, sub.id, (v) => setTitulo(3, [u.id, t.id, sub.id], v), `Título del ${N3}`, 'flex-1 text-slate-600')}
+                              <button
+                                onClick={() => pedirQuitarSub(u.id, t.id, sub)}
+                                title={`Quitar ${N3}`}
+                                className="shrink-0 rounded-md px-2 py-0.5 text-xs text-slate-300 transition hover:bg-red-50 hover:text-red-600"
+                              >
+                                ✕
+                              </button>
+                            </div>
+
+                            {/* Conceptos del subtema: el material también se engancha
+                                en el nivel más fino, no sólo en el intermedio. */}
+                            {subReal && (
+                              <div className="mt-1 flex flex-wrap items-center gap-1.5 pl-4">
+                                {subReal.conceptos.map((cid) => (
+                                  <ChipConcepto
+                                    key={cid}
+                                    concepto={conceptoPorId.get(cid)}
+                                    conceptoId={cid}
+                                    onAbrir={() => abrirVistazo(cid)}
+                                    onQuitar={() => onDesvincular(sub.id, cid)}
+                                  />
+                                ))}
+                                <span className="relative">
+                                  <button
+                                    onClick={() => setTemaBuscador((a) => (a === sub.id ? null : sub.id))}
+                                    className="rounded-full border border-dashed border-slate-300 px-2.5 py-0.5 text-[11px] text-slate-500 hover:border-marca-300 hover:text-marca-700"
+                                  >
+                                    + Vincular concepto
+                                  </button>
+                                  {temaBuscador === sub.id && (
+                                    <BuscadorConceptos
+                                      excluir={subReal.conceptos}
+                                      onSeleccionar={(cid) => {
+                                        onVincular(sub.id, cid)
+                                        setTemaBuscador(null)
+                                      }}
+                                      onCerrar={() => setTemaBuscador(null)}
+                                    />
+                                  )}
+                                </span>
+                              </div>
+                            )}
+                          </li>
+                        )
+                      })}
                     </ul>
                   )}
 

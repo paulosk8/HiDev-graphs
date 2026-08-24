@@ -43,4 +43,6 @@ export interface UsoDeConcepto {
   readonly unidad: string
   readonly temaId: string
   readonly tema: string
+  /** Título del subtema cuando el vínculo es del 3er nivel; ausente si es del tema. */
+  readonly subtema?: string
 }
