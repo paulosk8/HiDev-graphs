@@ -224,6 +224,8 @@ export interface SubtemaDTO {
   id: string
   titulo: string
   orden: number
+  /** Ids de conceptos vinculados (puente, igual que en el tema). */
+  conceptos: string[]
 }
 
 export interface TemaDTO {
@@ -302,6 +304,8 @@ export interface DatosSubtemaEdicionDTO {
   id?: string
   titulo: string
 }
+// Los conceptos vinculados a un subtema NO viajan aquí: se conservan por id,
+// igual que los del tema. Se cambian con vincular/desvincular.
 
 export interface DatosTemaEdicionDTO {
   /** Id del tema existente; ausente si es un tema nuevo. */
@@ -425,6 +429,8 @@ export interface UsoDeConceptoDTO {
   unidad: string
   temaId: string
   tema: string
+  /** Título del subtema cuando el vínculo es del 3er nivel; ausente si es del tema. */
+  subtema?: string
 }
 
 export interface ResultadoReindexadoDTO {

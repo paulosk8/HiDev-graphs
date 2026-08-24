@@ -503,7 +503,12 @@ export class VaultFileSystemService {
           titulo: t.titulo,
           orden: t.orden,
           semana: t.semana,
-          subtemas: t.subtemas.map((s) => ({ id: s.id, titulo: s.titulo, orden: s.orden })),
+          subtemas: t.subtemas.map((s) => ({
+            id: s.id,
+            titulo: s.titulo,
+            orden: s.orden,
+            conceptos: [...s.conceptos]
+          })),
           conceptos: [...t.conceptos]
         }))
       })),
@@ -781,7 +786,13 @@ function asignaturaDesdePlano(datos: Record<string, unknown>): Asignatura {
           const subtemas = lista(t.subtemas)
             .map((s) => s as Record<string, unknown>)
             .map((s, k) =>
-              crearSubtema({ id: texto(s.id), titulo: texto(s.titulo), orden: numero(s.orden, k + 1) })
+              crearSubtema({
+                id: texto(s.id),
+                titulo: texto(s.titulo),
+                orden: numero(s.orden, k + 1),
+                // Ausente en los YAML anteriores al vínculo por subtema.
+                conceptos: lista(s.conceptos).map((id) => texto(id)).filter((id) => id.length > 0)
+              })
             )
           const conceptos = lista(t.conceptos).map((id) => texto(id)).filter((id) => id.length > 0)
           return crearTema({

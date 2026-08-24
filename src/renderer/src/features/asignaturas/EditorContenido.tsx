@@ -39,6 +39,13 @@ interface Pendiente {
   mensaje: string
 }
 
+/**
+ * Título del contenedor que se crea solo cuando el nivel superior está aplanado
+ * (Aprendizaje). Nunca se muestra: existe para que los temas tengan de dónde
+ * colgar en el modelo curricular, que es común a las dos capas.
+ */
+const UNIDAD_IMPLICITA = 'Contenido'
+
 let seq = 0
 const tmpId = (): string => `tmp-${++seq}`
 const esTmp = (id: string): boolean => id.startsWith('tmp-')
@@ -80,8 +87,9 @@ interface Props {
   /** Conceptos del pool, por id: dan nombre y cuánto material tiene cada uno. */
   conceptoPorId: Map<string, ResumenConceptoDTO>
   tareas: ResumenTareaDTO[]
-  onVincular: (temaId: string, conceptoId: string) => void
-  onDesvincular: (temaId: string, conceptoId: string) => void
+  /** `puntoId` es el id de un tema O de un subtema: los dos aceptan conceptos. */
+  onVincular: (puntoId: string, conceptoId: string) => void
+  onDesvincular: (puntoId: string, conceptoId: string) => void
   onAbrirTarea: (id: string) => void
   onGuardar: (unidades: DatosUnidadEdicionDTO[]) => Promise<void>
 }
@@ -165,6 +173,23 @@ export function EditorContenido({
     setArbol((a) => a.map((u) => (u.id === uId ? { ...u, temas: [...u.temas, { id, titulo: '', subtemas: [] }] } : u)))
     setFoco(id)
   }
+  /**
+   * Alta de tema con el nivel superior aplanado (Aprendizaje). El contenedor
+   * curricular sigue existiendo por debajo —los temas cuelgan de una unidad—,
+   * así que se crea uno implícito la primera vez y nunca se le pide nombre.
+   */
+  const addTemaSuelto = (): void => {
+    const idTema = tmpId()
+    const idUnidad = tmpId()
+    setArbol((a) =>
+      a.length === 0
+        ? [{ id: idUnidad, titulo: UNIDAD_IMPLICITA, temas: [{ id: idTema, titulo: '', subtemas: [] }] }]
+        : a.map((u, i) =>
+            i === 0 ? { ...u, temas: [...u.temas, { id: idTema, titulo: '', subtemas: [] }] } : u
+          )
+    )
+    setFoco(idTema)
+  }
   const addSub = (uId: string, tId: string): void => {
     const id = tmpId()
     setArbol((a) =>
@@ -212,6 +237,9 @@ export function EditorContenido({
             .filter((t) => t.titulo.trim() || !esTmp(t.id))
         }))
         .filter((u) => u.titulo.trim() || !esTmp(u.id))
+        // Con el nivel superior aplanado el contenedor se crea solo: si el tema
+        // que lo estrenaba se descarta por venir vacío, no debe quedar suelto.
+        .filter((u) => !(esAprendizaje && esTmp(u.id) && u.temas.length === 0))
       const guardadoActual = JSON.stringify(aDTO(desdeAsignatura(asignatura)))
       if (JSON.stringify(aDTO(limpio)) !== guardadoActual) {
         queueMicrotask(() => void guardar(aDTO(limpio)))
@@ -236,6 +264,15 @@ export function EditorContenido({
   // Conceptos/tareas del tema (desde la asignatura, por id).
   const temaReal = (tId: string): AsignaturaDTO['unidades'][number]['temas'][number] | undefined =>
     asignatura.unidades.flatMap((u) => u.temas).find((t) => t.id === tId)
+
+  // Igual para el 3er nivel: también puede tener conceptos vinculados.
+  const subtemaReal = (
+    sId: string
+  ): AsignaturaDTO['unidades'][number]['temas'][number]['subtemas'][number] | undefined =>
+    asignatura.unidades
+      .flatMap((u) => u.temas)
+      .flatMap((t) => t.subtemas)
+      .find((s) => s.id === sId)
 
   // --- Confirmación de borrado (no se elimina directo si hay contenido) ---
   const plural = (n: number, palabra: string): string => `${n} ${palabra}${n > 1 ? 's' : ''}`
@@ -272,8 +309,18 @@ export function EditorContenido({
     })
   }
   const pedirQuitarSub = (uId: string, tId: string, sub: SubN): void => {
-    if (!sub.titulo.trim()) return quitarSub(uId, tId, sub.id)
-    setAEliminar({ tipo: 'sub', uId, tId, sId: sub.id, titulo: sub.titulo, mensaje: `Se eliminará «${sub.titulo}».` })
+    const nConc = subtemaReal(sub.id)?.conceptos.length ?? 0
+    if (!sub.titulo.trim() && nConc === 0) return quitarSub(uId, tId, sub.id)
+    setAEliminar({
+      tipo: 'sub',
+      uId,
+      tId,
+      sId: sub.id,
+      titulo: sub.titulo,
+      mensaje: nConc
+        ? `Se eliminará «${sub.titulo}» (incluye ${plural(nConc, 'concepto')} vinculado${nConc > 1 ? 's' : ''}). Los conceptos y su material NO se borran.`
+        : `Se eliminará «${sub.titulo}».`
+    })
   }
 
   const confirmarEliminar = (): void => {
@@ -305,6 +352,157 @@ export function EditorContenido({
     />
   )
 
+  /**
+   * Fila de un tema. Vive dentro de su unidad en Docencia y suelta en la
+   * lista aplanada de Aprendizaje, así que se pinta desde una función.
+   */
+  const filaTema = (u: UniN, t: TemaN): JSX.Element => {
+    const real = temaReal(t.id)
+    const tareasTema = tareas.filter((x) => x.temas.includes(t.id))
+    return (
+      <li
+        key={t.id}
+        onContextMenu={(e) => abrirMenu(e, { unidadId: u.id, tema: t })}
+        className="border-l-2 border-slate-100 pl-3 text-sm"
+      >
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => alternarPlegado(t.id)}
+            title={plegado(t.id) ? `Desplegar ${N2}` : `Plegar ${N2}`}
+            aria-expanded={!plegado(t.id)}
+            className="shrink-0 rounded px-1 text-slate-400 transition hover:text-slate-700"
+          >
+            {plegado(t.id) ? '▸' : '▾'}
+          </button>
+          {inputTitulo(t.titulo, t.id, (v) => setTitulo(2, [u.id, t.id], v), `Título del ${N2}`, 'flex-1 font-medium text-slate-700')}
+          {plegado(t.id) && t.subtemas.length > 0 && (
+            <span className="shrink-0 px-1 text-xs text-slate-400">
+              {t.subtemas.length}
+            </span>
+          )}
+          <button
+            onClick={() => pedirQuitarTema(u.id, t)}
+            title={`Quitar ${N2}`}
+            className="shrink-0 rounded-md px-2 py-0.5 text-xs text-slate-300 transition hover:bg-red-50 hover:text-red-600"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className={plegado(t.id) ? 'hidden' : ''}>
+        {/* Conceptos vinculados (puente), solo para temas existentes */}
+        {real && (
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 pl-2">
+            {real.conceptos.map((cid) => (
+              <ChipConcepto
+                key={cid}
+                concepto={conceptoPorId.get(cid)}
+                conceptoId={cid}
+                onAbrir={() => abrirVistazo(cid)}
+                onQuitar={() => onDesvincular(t.id, cid)}
+              />
+            ))}
+            <span className="relative">
+              <button
+                onClick={() => setTemaBuscador((a) => (a === t.id ? null : t.id))}
+                className="rounded-full border border-dashed border-slate-300 px-2.5 py-0.5 text-xs text-slate-500 hover:border-marca-300 hover:text-marca-700"
+              >
+                + Vincular concepto
+              </button>
+              {temaBuscador === t.id && (
+                <BuscadorConceptos
+                  excluir={real.conceptos}
+                  onSeleccionar={(cid) => {
+                    onVincular(t.id, cid)
+                    setTemaBuscador(null)
+                  }}
+                  onCerrar={() => setTemaBuscador(null)}
+                />
+              )}
+            </span>
+          </div>
+        )}
+
+        {/* Tareas del tema */}
+        {tareasTema.length > 0 && (
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 pl-2">
+            <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+              {esAprendizaje ? 'Prácticas:' : 'Tareas:'}
+            </span>
+            {tareasTema.map((x) => (
+              <button key={x.id} onClick={() => onAbrirTarea(x.id)} className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs text-amber-800 hover:bg-amber-100">
+                {x.titulo}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Sub-subtemas (3er nivel) */}
+        {t.subtemas.length > 0 && (
+          <ul className="mt-2 space-y-1 pl-4">
+            {t.subtemas.map((sub) => {
+              const subReal = subtemaReal(sub.id)
+              return (
+                <li key={sub.id}>
+                  <div className="flex items-center gap-1">
+                    <span className="text-slate-300">·</span>
+                    {inputTitulo(sub.titulo, sub.id, (v) => setTitulo(3, [u.id, t.id, sub.id], v), `Título del ${N3}`, 'flex-1 text-slate-600')}
+                    <button
+                      onClick={() => pedirQuitarSub(u.id, t.id, sub)}
+                      title={`Quitar ${N3}`}
+                      className="shrink-0 rounded-md px-2 py-0.5 text-xs text-slate-300 transition hover:bg-red-50 hover:text-red-600"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  {/* Conceptos del subtema: el material también se engancha
+                      en el nivel más fino, no sólo en el intermedio. */}
+                  {subReal && (
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5 pl-4">
+                      {subReal.conceptos.map((cid) => (
+                        <ChipConcepto
+                          key={cid}
+                          concepto={conceptoPorId.get(cid)}
+                          conceptoId={cid}
+                          onAbrir={() => abrirVistazo(cid)}
+                          onQuitar={() => onDesvincular(sub.id, cid)}
+                        />
+                      ))}
+                      <span className="relative">
+                        <button
+                          onClick={() => setTemaBuscador((a) => (a === sub.id ? null : sub.id))}
+                          className="rounded-full border border-dashed border-slate-300 px-2.5 py-0.5 text-[11px] text-slate-500 hover:border-marca-300 hover:text-marca-700"
+                        >
+                          + Vincular concepto
+                        </button>
+                        {temaBuscador === sub.id && (
+                          <BuscadorConceptos
+                            excluir={subReal.conceptos}
+                            onSeleccionar={(cid) => {
+                              onVincular(sub.id, cid)
+                              setTemaBuscador(null)
+                            }}
+                            onCerrar={() => setTemaBuscador(null)}
+                          />
+                        )}
+                      </span>
+                    </div>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        )}
+
+        <button onClick={() => addSub(u.id, t.id)} className="mt-1.5 pl-2 text-xs text-marca-600 hover:text-marca-700">
+          + Agregar {N3}
+        </button>
+        </div>
+      </li>
+    )
+  }
+
   return (
     <div className="space-y-4">
       {/* Estado del autosave (aparece solo al guardar; sin avisos intrusivos). */}
@@ -335,7 +533,13 @@ export function EditorContenido({
         </div>
       )}
 
-      {arbol.map((u) => (
+      {esAprendizaje ? (
+        // Aplanado: el espacio YA ES el tema que se quiere aprender, así que sus
+        // temas cuelgan directos. El contenedor de la capa curricular sigue
+        // existiendo por debajo (una unidad implícita), pero no se pide ni se ve.
+        <ul className="space-y-3">{arbol.flatMap((u) => u.temas.map((t) => filaTema(u, t)))}</ul>
+      ) : (
+        arbol.map((u) => (
         <div key={u.id} className="rounded-xl border border-slate-200 p-4">
           <div className="mb-2 flex items-center gap-1">
             <button
@@ -346,7 +550,7 @@ export function EditorContenido({
             >
               {plegado(u.id) ? '▸' : '▾'}
             </button>
-            {inputTitulo(u.titulo, u.id, (v) => setTitulo(1, [u.id], v), `Título del ${N1} (ej. Unidad 1)`, 'flex-1 font-medium text-slate-800')}
+            {inputTitulo(u.titulo, u.id, (v) => setTitulo(1, [u.id], v), `Título del ${N1} (ej. Fundamentos)`, 'flex-1 font-medium text-slate-800')}
             {plegado(u.id) && (
               // Plegada, el recuento es lo único que dice qué hay dentro.
               <span className="shrink-0 px-1 text-xs text-slate-400">
@@ -363,126 +567,21 @@ export function EditorContenido({
           </div>
 
           <ul className={`space-y-3 pl-3 ${plegado(u.id) ? 'hidden' : ''}`}>
-            {u.temas.map((t) => {
-              const real = temaReal(t.id)
-              const tareasTema = tareas.filter((x) => x.temas.includes(t.id))
-              return (
-                <li
-                  key={t.id}
-                  onContextMenu={(e) => abrirMenu(e, { unidadId: u.id, tema: t })}
-                  className="border-l-2 border-slate-100 pl-3 text-sm"
-                >
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => alternarPlegado(t.id)}
-                      title={plegado(t.id) ? `Desplegar ${N2}` : `Plegar ${N2}`}
-                      aria-expanded={!plegado(t.id)}
-                      className="shrink-0 rounded px-1 text-slate-400 transition hover:text-slate-700"
-                    >
-                      {plegado(t.id) ? '▸' : '▾'}
-                    </button>
-                    {inputTitulo(t.titulo, t.id, (v) => setTitulo(2, [u.id, t.id], v), `Título del ${N2}`, 'flex-1 font-medium text-slate-700')}
-                    {plegado(t.id) && t.subtemas.length > 0 && (
-                      <span className="shrink-0 px-1 text-xs text-slate-400">
-                        {t.subtemas.length}
-                      </span>
-                    )}
-                    <button
-                      onClick={() => pedirQuitarTema(u.id, t)}
-                      title={`Quitar ${N2}`}
-                      className="shrink-0 rounded-md px-2 py-0.5 text-xs text-slate-300 transition hover:bg-red-50 hover:text-red-600"
-                    >
-                      ✕
-                    </button>
-                  </div>
-
-                  <div className={plegado(t.id) ? 'hidden' : ''}>
-                  {/* Conceptos vinculados (puente), solo para temas existentes */}
-                  {real && (
-                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5 pl-2">
-                      {real.conceptos.map((cid) => (
-                        <ChipConcepto
-                          key={cid}
-                          concepto={conceptoPorId.get(cid)}
-                          conceptoId={cid}
-                          onAbrir={() => abrirVistazo(cid)}
-                          onQuitar={() => onDesvincular(t.id, cid)}
-                        />
-                      ))}
-                      <span className="relative">
-                        <button
-                          onClick={() => setTemaBuscador((a) => (a === t.id ? null : t.id))}
-                          className="rounded-full border border-dashed border-slate-300 px-2.5 py-0.5 text-xs text-slate-500 hover:border-marca-300 hover:text-marca-700"
-                        >
-                          + Vincular concepto
-                        </button>
-                        {temaBuscador === t.id && (
-                          <BuscadorConceptos
-                            excluir={real.conceptos}
-                            onSeleccionar={(cid) => {
-                              onVincular(t.id, cid)
-                              setTemaBuscador(null)
-                            }}
-                            onCerrar={() => setTemaBuscador(null)}
-                          />
-                        )}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Tareas del tema */}
-                  {tareasTema.length > 0 && (
-                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5 pl-2">
-                      <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-                        {esAprendizaje ? 'Prácticas:' : 'Tareas:'}
-                      </span>
-                      {tareasTema.map((x) => (
-                        <button key={x.id} onClick={() => onAbrirTarea(x.id)} className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs text-amber-800 hover:bg-amber-100">
-                          {x.titulo}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Sub-subtemas (3er nivel) */}
-                  {t.subtemas.length > 0 && (
-                    <ul className="mt-2 space-y-1 pl-4">
-                      {t.subtemas.map((sub) => (
-                        <li key={sub.id} className="flex items-center gap-1">
-                          <span className="text-slate-300">·</span>
-                          {inputTitulo(sub.titulo, sub.id, (v) => setTitulo(3, [u.id, t.id, sub.id], v), `Título del ${N3}`, 'flex-1 text-slate-600')}
-                          <button
-                            onClick={() => pedirQuitarSub(u.id, t.id, sub)}
-                            title={`Quitar ${N3}`}
-                            className="shrink-0 rounded-md px-2 py-0.5 text-xs text-slate-300 transition hover:bg-red-50 hover:text-red-600"
-                          >
-                            ✕
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-
-                  <button onClick={() => addSub(u.id, t.id)} className="mt-1.5 pl-2 text-xs text-marca-600 hover:text-marca-700">
-                    + Agregar {N3}
-                  </button>
-                  </div>
-                </li>
-              )
-            })}
+            {u.temas.map((t) => filaTema(u, t))}
           </ul>
 
           <button onClick={() => addTema(u.id)} className="mt-3 pl-3 text-sm text-marca-600 hover:text-marca-700">
             + Agregar {N2}
           </button>
         </div>
-      ))}
+        ))
+      )}
 
       <button
-        onClick={addUnidad}
+        onClick={esAprendizaje ? addTemaSuelto : addUnidad}
         className="w-full rounded-xl border border-dashed border-slate-300 py-2.5 text-sm text-slate-500 hover:border-marca-300 hover:text-marca-700"
       >
-        + Agregar {N1}
+        + Agregar {esAprendizaje ? N2 : N1}
       </button>
 
       {menu && (
@@ -491,6 +590,10 @@ export function EditorContenido({
           y={menu.y}
           onCerrar={cerrarMenu}
           opciones={[
+            // Sin nivel superior visible no hay "otra unidad" a la que mover.
+            ...(esAprendizaje
+              ? []
+              : [
             {
               etiqueta: `Mover a otra ${N1.toLowerCase()}…`,
               icono: '→',
@@ -500,7 +603,8 @@ export function EditorContenido({
                 ? 'Guarda los cambios antes de moverlo.'
                 : `Solo hay una ${N1.toLowerCase()}.`,
               onElegir: () => setMoviendo(menu.dato)
-            },
+            }
+                ]),
             {
               etiqueta: 'Eliminar',
               icono: '✕',

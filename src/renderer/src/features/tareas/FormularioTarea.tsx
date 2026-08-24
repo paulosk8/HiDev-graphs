@@ -32,6 +32,8 @@ export function FormularioTarea({
   onGuardada
 }: Props): JSX.Element {
   const editando = tareaInicial !== undefined
+  // En un espacio de aprendizaje no hay asignatura y las tareas son "prácticas".
+  const esAprendizaje = asignatura.tipo === 'aprendizaje'
   const crear = useTareasStore((s) => s.crear)
   const editar = useTareasStore((s) => s.editar)
   const agregarAdjunto = useTareasStore((s) => s.agregarAdjunto)
@@ -128,7 +130,19 @@ export function FormularioTarea({
   }
 
   return (
-    <Modal titulo={editando ? 'Editar tarea' : 'Nueva tarea'} ancho="xl" onCerrar={onCerrar}>
+    <Modal
+      titulo={
+        editando
+          ? esAprendizaje
+            ? 'Editar práctica'
+            : 'Editar tarea'
+          : esAprendizaje
+            ? 'Nueva práctica'
+            : 'Nueva tarea'
+      }
+      ancho="xl"
+      onCerrar={onCerrar}
+    >
       <form onSubmit={guardar} className="space-y-4">
         <CampoTexto
           etiqueta="Título"
@@ -144,7 +158,9 @@ export function FormularioTarea({
           <div className="max-h-40 space-y-2 overflow-y-auto rounded-lg border border-slate-200 p-3">
             {asignatura.unidades.map((u) => (
               <div key={u.id}>
-                <p className="text-xs font-semibold text-slate-400">{u.titulo}</p>
+                {!esAprendizaje && (
+                  <p className="text-xs font-semibold text-slate-400">{u.titulo}</p>
+                )}
                 {u.temas.map((t) => (
                   <label key={t.id} className="flex items-center gap-2 py-0.5 text-sm text-slate-700">
                     <input
@@ -158,7 +174,11 @@ export function FormularioTarea({
               </div>
             ))}
             {asignatura.unidades.length === 0 && (
-              <p className="text-xs text-slate-400">Esta asignatura no tiene temas todavía.</p>
+              <p className="text-xs text-slate-400">
+                {esAprendizaje
+                  ? 'Este espacio no tiene temas todavía.'
+                  : 'Esta asignatura no tiene temas todavía.'}
+              </p>
             )}
           </div>
         </div>

@@ -48,17 +48,17 @@ export interface IGraphRepository {
   /** Todas las asignaturas, resumidas, para el listado lateral. */
   listarAsignaturas(): ResumenAsignatura[]
 
-  /** Lugares (asignatura › unidad › tema) donde se usa un concepto. */
+  /** Lugares (asignatura › unidad › tema › subtema) donde se usa un concepto. */
   usosDeConcepto(conceptoId: string): UsoDeConcepto[]
 
   // --- Grafo ---
 
-  /** Pares (concepto, asignatura) donde el concepto se instancia en algún tema. */
+  /** Pares (concepto, asignatura) donde el concepto se instancia en algún tema o subtema. */
   usosConceptoAsignatura(): Array<{ conceptoId: string; asignaturaId: string }>
 
   /** Relaciones tipadas concepto → concepto. */
   relacionesEntreConceptos(): Array<{ origen: string; destino: string; tipo: string }>
 
-  /** Pares de conceptos que se instancian en un MISMO tema (co-ocurrencia). */
+  /** Pares de conceptos que se instancian en un MISMO tema o subtema (co-ocurrencia). */
   coocurrenciasDeConceptos(): Array<{ a: string; b: string }>
 }

@@ -39,6 +39,9 @@ export function FichaConcepto({ conceptoId }: Props): JSX.Element {
   /** Lienzos donde aparece este concepto (o su material). */
   const [lienzos, setLienzos] = useState<ResumenLienzoDTO[]>([])
 
+  // La ficha se abre desde las dos capas: en Aprendizaje no hay asignaturas
+  // ni períodos, así que los textos se adaptan al contexto activo.
+  const esAprendizaje = useUiStore((s) => s.contexto) === 'aprendizaje'
   const volver = useUiStore((s) => s.seleccionarConcepto)
   const irASeccion = useUiStore((s) => s.irASeccion)
   const fijarEtiqueta = useUiStore((s) => s.filtrarPorEtiqueta)
@@ -180,22 +183,41 @@ export function FichaConcepto({ conceptoId }: Props): JSX.Element {
         </h2>
         {usos.length === 0 ? (
           <p className="rounded-xl border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-400">
-            Este concepto todavía no se usa en ninguna asignatura.
+            {esAprendizaje
+              ? 'Este concepto todavía no se usa en ningún espacio de aprendizaje.'
+              : 'Este concepto todavía no se usa en ninguna asignatura.'}
           </p>
         ) : (
           <ul className="space-y-2">
-            {usos.map((uso) => (
+            {usos.map((uso) => {
+              // En Aprendizaje el nivel superior está aplanado: el camino va del
+              // espacio directo al tema.
+              const enEspacio =
+                asignaturas.find((a) => a.id === uso.asignaturaId)?.tipo === 'aprendizaje'
+              return (
               <li
-                key={`${uso.asignaturaId}-${uso.temaId}`}
+                key={`${uso.asignaturaId}-${uso.temaId}-${uso.subtema ?? ''}`}
                 className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm text-slate-700"
               >
                 <span className="font-medium">
-                  {uso.asignatura} · {uso.periodos.join(', ')}
+                  {uso.asignatura}
+                  {uso.periodos.length > 0 && ` · ${uso.periodos.join(', ')}`}
                 </span>
-                <span className="text-slate-400"> › {uso.unidad} › </span>
-                <span>{uso.tema}</span>
+                <span className="text-slate-400">
+                  {enEspacio ? ' › ' : ` › ${uso.unidad} › `}
+                </span>
+                {/* Si el vínculo es del 3er nivel, el tema es sólo el camino. */}
+                {uso.subtema ? (
+                  <>
+                    <span className="text-slate-400">{uso.tema} › </span>
+                    <span>{uso.subtema}</span>
+                  </>
+                ) : (
+                  <span>{uso.tema}</span>
+                )}
               </li>
-            ))}
+              )
+            })}
           </ul>
         )}
       </section>
