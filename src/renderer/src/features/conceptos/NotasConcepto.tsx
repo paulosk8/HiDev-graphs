@@ -32,6 +32,7 @@ export function NotasConcepto({
   const editar = useConceptosStore((s) => s.editar)
   const conceptos = useConceptosStore((s) => s.lista)
   const notificarError = useUiStore((s) => s.notificarError)
+  const notificar = useUiStore((s) => s.notificar)
   const { menu, abrir: abrirMenu, cerrar: cerrarMenu } = useMenuContextual<NotaDTO>()
   const [moviendo, setMoviendo] = useState<NotaDTO | null>(null)
   // Id de la nota en edición, 'nuevo' para una nota nueva, o null (solo lista).
@@ -157,7 +158,17 @@ export function NotasConcepto({
               ref={areaRef}
               value={contenido}
               onChange={(e) => setContenido(e.target.value)}
-              onPaste={(e) => manejarPegadoRico(e, { formato, ref: areaRef, setValor: setContenido })}
+              onPaste={(e) =>
+                manejarPegadoRico(e, {
+                  formato,
+                  ref: areaRef,
+                  setValor: setContenido,
+                  // Con el concepto, las imágenes pegadas se guardan junto a él
+                  // en vez de engordar su YAML en base64.
+                  conceptoId: concepto.id,
+                  onAviso: (mensaje) => notificar({ tipo: 'info', mensaje })
+                })
+              }
               rows={8}
               placeholder={
                 formato === 'codigo'

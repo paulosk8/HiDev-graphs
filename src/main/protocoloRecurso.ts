@@ -62,7 +62,8 @@ const CSP_CONTENIDO = [
   "default-src 'self' 'unsafe-inline' data:",
   "script-src 'unsafe-inline' 'unsafe-eval'",
   "style-src 'unsafe-inline'",
-  'img-src data: blob: https:',
+  // `recurso:` es donde viven las imágenes que el docente pega en sus notas.
+  'img-src data: blob: https: recurso:',
   'media-src data: blob: https:',
   'font-src data: https:',
   `frame-src ${SITIOS_INCRUSTABLES.join(' ')}`,

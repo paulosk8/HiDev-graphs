@@ -4,6 +4,10 @@ import { existsSync } from 'node:fs'
 
 import { CANALES } from '../../shared/canales'
 import {
+  guardarImagenDeNota,
+  guardarImagenDeUrlEnNota
+} from '../application/ImagenesNota'
+import {
   agregarTerminoAConcepto,
   editarTerminoDeConcepto,
   eliminarTerminoDeConcepto,
@@ -321,6 +325,16 @@ export function registrarHandlersIpc(servicios: Servicios): void {
     CANALES.conceptoTerminoPromover,
     (_evento, conceptoId: string, terminoId: string) =>
       envolver(() => promoverTerminoAConcepto(servicios, conceptoId, terminoId))
+  )
+
+  ipcMain.handle(
+    CANALES.notaImagenGuardar,
+    (_evento, conceptoId: string, nombre: string, base64: string) =>
+      envolver(() => guardarImagenDeNota(servicios, conceptoId, nombre, base64))
+  )
+
+  ipcMain.handle(CANALES.notaImagenDesdeUrl, (_evento, conceptoId: string, url: string) =>
+    envolver(() => guardarImagenDeUrlEnNota(servicios, conceptoId, url))
   )
 
   ipcMain.handle(

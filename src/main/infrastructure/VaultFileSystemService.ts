@@ -67,6 +67,9 @@ function formatoInstruccionesDesde(v: unknown): FormatoInstrucciones {
  * Esta clase es agnóstica de Electron: recibe la ruta del vault ya resuelta.
  * El docente nunca ve estos archivos: la app los escribe y lee por él.
  */
+/** Subcarpeta (oculta) donde viven las imágenes incrustadas en las notas. */
+const CARPETA_IMAGENES = '.imagenes'
+
 export class VaultFileSystemService {
   /**
    * @param rutaVault  Carpeta del vault (fuente de verdad: YAML + material).
@@ -347,6 +350,42 @@ export class VaultFileSystemService {
     if (yaExiste) throw new Error(`Ya existe una carpeta llamada «${seguro}».`)
     renameSync(origen, destino)
     return seguro
+  }
+
+  /**
+   * Guarda una imagen incrustada en una nota, dentro de la carpeta del concepto.
+   *
+   * Va a una subcarpeta OCULTA (`.imagenes`) a propósito: no es material que el
+   * docente organice —es parte del texto de su nota—, así que no debe aparecer
+   * en la lista de carpetas ni entre sus archivos. `listarCarpetasConcepto` ya
+   * descarta las que empiezan por punto.
+   *
+   * Se guarda como archivo y NO como base64 dentro del YAML: un documento de
+   * Word con diez capturas dejaría un `concepto.yaml` de decenas de megas que
+   * hay que parsear entero cada vez que se lee el concepto y que la nube
+   * sincroniza completo en cada edición.
+   *
+   * Devuelve la ruta relativa al concepto (`.imagenes/x.png`), que es lo que se
+   * escribe en la nota y lo que sirve el protocolo `recurso://`.
+   */
+  guardarImagenDeNota(conceptoId: string, nombre: string, datos: Uint8Array): string {
+    const dir = join(this.carpetaConcepto(conceptoId), CARPETA_IMAGENES)
+    mkdirSync(dir, { recursive: true })
+
+    const limpio = basename(nombre).replace(/[^\w.\- ]+/g, '').trim() || 'imagen.png'
+    const ext = extname(limpio) || '.png'
+    const base = limpio.slice(0, limpio.length - ext.length) || 'imagen'
+
+    // Nombre libre: dos capturas pegadas seguidas se llaman igual.
+    let archivo = `${base}${ext}`
+    let n = 2
+    while (existsSync(join(dir, archivo))) {
+      archivo = `${base}-${n}${ext}`
+      n += 1
+    }
+
+    writeFileSync(join(dir, archivo), datos)
+    return `${CARPETA_IMAGENES}/${archivo}`
   }
 
   /**

@@ -414,6 +414,28 @@ abiertos, para no deshacer la pila uno a uno.
   no viaja (notas, glosario, material) se conserva. Las reglas comunes con
   `CampoEtiquetas` viven en `lib/etiquetas.ts` para que no se separen.
 
+- **Las imágenes pegadas se traen al vault** (`application/ImagenesNota.ts`).
+  Al pegar de Word o de la web, cada `<img>` llega con una dirección que solo
+  vale en el sitio de origen —un `file://` temporal de Word, una URL, un
+  `https://file+.vscode-resource.vscode-cdn.net/...` del visor de VS Code— y la
+  CSP de la ventana solo admite `data:` y `recurso:`: la nota se quedaba con el
+  icono de imagen rota. Ahora el pegado **descarga o lee esos bytes una vez**,
+  los guarda junto al concepto y escribe `recurso://c/<id>/.imagenes/x.png`, que
+  siempre carga, funciona sin conexión y viaja con el vault.
+  - **Archivo y no base64**: un Word con diez capturas dejaría un
+    `concepto.yaml` de decenas de megas, que hay que parsear entero en cada
+    lectura y que la nube sincroniza completo en cada edición.
+  - Van a **`.imagenes/` (oculta)**: no son material que el docente organice, así
+    que no deben salir en sus carpetas — `listarCarpetasConcepto` ya descarta las
+    que empiezan por punto— ni entre sus recursos (no se registran en el YAML).
+  - **Las tareas siguen con base64**: no tienen concepto donde colgar el archivo,
+    y sus instrucciones se exportan a Moodle, donde lo autocontenido conviene.
+  - Lo que no se pueda traer se sustituye por su **texto alternativo** y se avisa;
+    y al PINTAR Markdown, una imagen con dirección no pintable se enseña como su
+    descripción (`.imagen-no-disponible`) en vez de un icono roto — eso arregla de
+    paso las notas guardadas ANTES de este cambio.
+  - `CSP_CONTENIDO` (el visor HTML aislado) tuvo que sumar `recurso:` a `img-src`.
+
 ## Trampas del vault que ya han mordido
 
 `RespaldarVault`, `RestaurarVault` y `MoverAlmacenamiento` llevan **su lista de
