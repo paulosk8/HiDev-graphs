@@ -217,6 +217,17 @@ export class SqliteGraphRepository implements IGraphRepository {
               destino_id: s.id,
               tipo: 'contiene'
             })
+
+            // Puente subtema -> concepto (mismo tipo de arista que el del tema).
+            for (const conceptoId of s.conceptos) {
+              insertarArista.run({
+                origen_tipo: 'subtema',
+                origen_id: s.id,
+                destino_tipo: 'concepto',
+                destino_id: conceptoId,
+                tipo: 'instancia'
+              })
+            }
           }
 
           // Puente tema -> concepto.
@@ -297,7 +308,8 @@ export class SqliteGraphRepository implements IGraphRepository {
            COUNT(DISTINCT r.id) AS totalRecursos,
            n.total_enlaces AS totalEnlaces,
            (SELECT GROUP_CONCAT(t.nombre, char(10))
-              FROM edges e JOIN nodes t ON t.tipo = 'tema' AND t.id = e.origen_id
+              FROM edges e
+              JOIN nodes t ON t.tipo IN ('tema', 'subtema') AND t.id = e.origen_id
               WHERE e.tipo_relacion = 'instancia'
                 AND e.destino_tipo = 'concepto' AND e.destino_id = n.id) AS temasRaw,
            (SELECT GROUP_CONCAT(g.etiqueta, char(10))
@@ -408,10 +420,13 @@ export class SqliteGraphRepository implements IGraphRepository {
   }
 
   usosDeConcepto(conceptoId: string): UsoDeConcepto[] {
+    // Dos orígenes con la misma forma: el vínculo del tema y el del subtema
+    // (que aporta además su propio título). `orden2` ordena dentro del tema.
     const filas = this.db
       .prepare(
         `SELECT a.id AS asignaturaId, a.nombre AS asignatura, a.periodo AS periodo,
-                u.nombre AS unidad, t.id AS temaId, t.nombre AS tema
+                u.nombre AS unidad, t.id AS temaId, t.nombre AS tema,
+                NULL AS subtema, u.orden AS orden1, t.orden AS orden2, 0 AS orden3
          FROM edges e
          JOIN nodes t ON t.tipo = 'tema' AND t.id = e.origen_id
          JOIN nodes u ON u.tipo = 'unidad' AND u.id = t.padre_id
@@ -420,7 +435,20 @@ export class SqliteGraphRepository implements IGraphRepository {
            AND e.destino_tipo = 'concepto'
            AND e.destino_id = @conceptoId
            AND e.tipo_relacion = 'instancia'
-         ORDER BY a.nombre COLLATE NOCASE, u.orden, t.orden`
+         UNION ALL
+         SELECT a.id AS asignaturaId, a.nombre AS asignatura, a.periodo AS periodo,
+                u.nombre AS unidad, t.id AS temaId, t.nombre AS tema,
+                s.nombre AS subtema, u.orden AS orden1, t.orden AS orden2, s.orden AS orden3
+         FROM edges e
+         JOIN nodes s ON s.tipo = 'subtema' AND s.id = e.origen_id
+         JOIN nodes t ON t.tipo = 'tema' AND t.id = s.padre_id
+         JOIN nodes u ON u.tipo = 'unidad' AND u.id = t.padre_id
+         JOIN nodes a ON a.tipo = 'asignatura' AND a.id = u.padre_id
+         WHERE e.origen_tipo = 'subtema'
+           AND e.destino_tipo = 'concepto'
+           AND e.destino_id = @conceptoId
+           AND e.tipo_relacion = 'instancia'
+         ORDER BY asignatura COLLATE NOCASE, orden1, orden2, orden3`
       )
       .all({ conceptoId }) as Array<{
       asignaturaId: string
@@ -429,6 +457,7 @@ export class SqliteGraphRepository implements IGraphRepository {
       unidad: string
       temaId: string
       tema: string
+      subtema: string | null
     }>
     return filas.map((f) => ({
       asignaturaId: f.asignaturaId,
@@ -436,7 +465,8 @@ export class SqliteGraphRepository implements IGraphRepository {
       periodos: dividirPeriodos(f.periodo),
       unidad: f.unidad,
       temaId: f.temaId,
-      tema: f.tema
+      tema: f.tema,
+      ...(f.subtema ? { subtema: f.subtema } : {})
     }))
   }
 
@@ -445,10 +475,12 @@ export class SqliteGraphRepository implements IGraphRepository {
       .prepare(
         `SELECT DISTINCT e.destino_id AS conceptoId, a.id AS asignaturaId
          FROM edges e
-         JOIN nodes t ON t.tipo = 'tema' AND t.id = e.origen_id
+         JOIN nodes p ON p.tipo IN ('tema', 'subtema') AND p.id = e.origen_id
+         -- El punto puede ser un tema (padre = unidad) o un subtema (padre = tema).
+         JOIN nodes t ON t.tipo = 'tema' AND t.id = CASE WHEN p.tipo = 'tema' THEN p.id ELSE p.padre_id END
          JOIN nodes u ON u.tipo = 'unidad' AND u.id = t.padre_id
          JOIN nodes a ON a.tipo = 'asignatura' AND a.id = u.padre_id
-         WHERE e.origen_tipo = 'tema'
+         WHERE e.origen_tipo IN ('tema', 'subtema')
            AND e.destino_tipo = 'concepto'
            AND e.tipo_relacion = 'instancia'`
       )
@@ -471,7 +503,7 @@ export class SqliteGraphRepository implements IGraphRepository {
         `SELECT DISTINCT e1.destino_id AS a, e2.destino_id AS b
          FROM edges e1
          JOIN edges e2 ON e1.origen_id = e2.origen_id
-         WHERE e1.origen_tipo = 'tema' AND e2.origen_tipo = 'tema'
+         WHERE e1.origen_tipo IN ('tema', 'subtema') AND e2.origen_tipo IN ('tema', 'subtema')
            AND e1.destino_tipo = 'concepto' AND e2.destino_tipo = 'concepto'
            AND e1.tipo_relacion = 'instancia' AND e2.tipo_relacion = 'instancia'
            AND e1.destino_id < e2.destino_id`

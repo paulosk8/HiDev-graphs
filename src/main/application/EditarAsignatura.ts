@@ -60,7 +60,9 @@ export function editarAsignatura(
                 crearSubtema({
                   id: st.id && prevPorId.has(st.id) ? st.id : randomUUID(),
                   titulo: st.titulo,
-                  orden: k + 1
+                  orden: k + 1,
+                  // Los vínculos a conceptos no se editan aquí: se conservan.
+                  conceptos: (st.id ? prevPorId.get(st.id)?.conceptos : undefined) ?? []
                 })
               )
           })()
