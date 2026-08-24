@@ -8,7 +8,13 @@ import { useConceptosStore } from '../../stores/conceptosStore'
 import { useUiStore, type Contexto } from '../../stores/uiStore'
 import { FormularioConcepto } from './FormularioConcepto'
 
-const SIN_ASIGNATURA = 'Sin asignatura'
+/**
+ * Clave interna del grupo que reúne los conceptos que todavía no se usan en
+ * ninguna asignatura (Docencia) ni espacio (Aprendizaje). Es un centinela, no
+ * un texto: el rótulo visible depende del contexto — en Aprendizaje no hay
+ * asignaturas, así que nombrarlas ahí confundiría.
+ */
+const SIN_GRUPO = '\u0000sin-grupo'
 
 /** Normaliza para buscar sin distinguir mayúsculas ni acentos. */
 function normalizar(texto: string): string {
@@ -106,13 +112,13 @@ export function ListaConceptos({ contexto }: Props): JSX.Element {
     )
   }, [delContexto])
 
-  // Agrupa los conceptos por asignatura de este contexto; los que no se usan en
-  // ninguna van a "Sin asignatura", al final.
+  // Agrupa los conceptos por la asignatura (o espacio) de este contexto; los
+  // que no se usan en ninguna van al grupo de sueltos, al final.
   const grupos = useMemo(() => {
     const mapa = new Map<string, ResumenConceptoDTO[]>()
     for (const c of filtrada) {
       const propias = c.asignaturas.filter((a) => nombresContexto.has(a))
-      const claves = propias.length > 0 ? propias : [SIN_ASIGNATURA]
+      const claves = propias.length > 0 ? propias : [SIN_GRUPO]
       for (const clave of claves) {
         const arr = mapa.get(clave) ?? []
         arr.push(c)
@@ -120,11 +126,15 @@ export function ListaConceptos({ contexto }: Props): JSX.Element {
       }
     }
     return [...mapa.entries()].sort((a, b) => {
-      if (a[0] === SIN_ASIGNATURA) return 1
-      if (b[0] === SIN_ASIGNATURA) return -1
+      if (a[0] === SIN_GRUPO) return 1
+      if (b[0] === SIN_GRUPO) return -1
       return a[0].localeCompare(b[0], 'es')
     })
   }, [filtrada, nombresContexto])
+
+  /** Rótulo visible de un grupo: su nombre real o, para los sueltos, el del contexto. */
+  const rotuloGrupo = (clave: string): string =>
+    clave !== SIN_GRUPO ? clave : esAprendizaje ? 'Sin espacio' : 'Sin asignatura'
 
   const alternarGrupo = (nombre: string): void =>
     setGruposAbiertos((prev) => {
@@ -228,16 +238,16 @@ export function ListaConceptos({ contexto }: Props): JSX.Element {
         </p>
       ) : (
         <div className="space-y-3">
-          {grupos.map(([asignatura, conceptos]) => {
-            const abierto = hayBusqueda || gruposAbiertos.has(asignatura)
+          {grupos.map(([grupo, conceptos]) => {
+            const abierto = hayBusqueda || gruposAbiertos.has(grupo)
             return (
-              <section key={asignatura} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+              <section key={grupo} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
                 <button
-                  onClick={() => alternarGrupo(asignatura)}
+                  onClick={() => alternarGrupo(grupo)}
                   className="flex w-full items-center justify-between px-4 py-3 text-left transition hover:bg-slate-50"
                 >
                   <span className="font-medium text-slate-800">
-                    {asignatura}{' '}
+                    {rotuloGrupo(grupo)}{' '}
                     <span className="text-sm font-normal text-slate-400">({conceptos.length})</span>
                   </span>
                   <span className="text-slate-400">{abierto ? '▾' : '▸'}</span>

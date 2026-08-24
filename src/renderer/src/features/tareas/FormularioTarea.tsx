@@ -32,6 +32,8 @@ export function FormularioTarea({
   onGuardada
 }: Props): JSX.Element {
   const editando = tareaInicial !== undefined
+  // En un espacio de aprendizaje no hay asignatura y las tareas son "prácticas".
+  const esAprendizaje = asignatura.tipo === 'aprendizaje'
   const crear = useTareasStore((s) => s.crear)
   const editar = useTareasStore((s) => s.editar)
   const agregarAdjunto = useTareasStore((s) => s.agregarAdjunto)
@@ -128,7 +130,19 @@ export function FormularioTarea({
   }
 
   return (
-    <Modal titulo={editando ? 'Editar tarea' : 'Nueva tarea'} ancho="xl" onCerrar={onCerrar}>
+    <Modal
+      titulo={
+        editando
+          ? esAprendizaje
+            ? 'Editar práctica'
+            : 'Editar tarea'
+          : esAprendizaje
+            ? 'Nueva práctica'
+            : 'Nueva tarea'
+      }
+      ancho="xl"
+      onCerrar={onCerrar}
+    >
       <form onSubmit={guardar} className="space-y-4">
         <CampoTexto
           etiqueta="Título"
@@ -158,7 +172,11 @@ export function FormularioTarea({
               </div>
             ))}
             {asignatura.unidades.length === 0 && (
-              <p className="text-xs text-slate-400">Esta asignatura no tiene temas todavía.</p>
+              <p className="text-xs text-slate-400">
+                {esAprendizaje
+                  ? 'Este espacio no tiene temas todavía.'
+                  : 'Esta asignatura no tiene temas todavía.'}
+              </p>
             )}
           </div>
         </div>

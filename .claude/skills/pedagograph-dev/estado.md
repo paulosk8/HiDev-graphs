@@ -302,6 +302,17 @@ abiertos, para no deshacer la pila uno a uno.
   Contrastes MEDIDOS con smoke. Se arregló de paso que `text-slate-400` daba
   2,56:1 en el tema por defecto.
 
+- **La capa de Aprendizaje no nombra asignaturas.** Un espacio de aprendizaje es
+  por dentro una `Asignatura` con `tipo: 'aprendizaje'` (se reutilizan vault,
+  índice, tareas y grafo; separar el modelo sería duplicarlo casi entero), pero
+  esa decisión **no puede asomar en la UI**: el docente que estudia no tiene
+  asignaturas. Se revisaron y adaptaron por contexto los rótulos que lo
+  delataban: el grupo de conceptos sueltos («Sin espacio» / «Sin asignatura»,
+  con clave interna centinela para no chocar con un espacio que se llamara
+  así), el «Se usa en» vacío de la ficha, el filtro y la leyenda del Mapa
+  («Espacio:», «Se usa en el espacio») y el formulario de tareas («Nueva
+  práctica», «Este espacio no tiene temas todavía»). Regla: cualquier texto
+  compartido entre las dos capas se decide por `contexto`/`tipo`, nunca fijo.
 ## Trampas del vault que ya han mordido
 
 `RespaldarVault`, `RestaurarVault` y `MoverAlmacenamiento` llevan **su lista de
