@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { ConceptoDTO, UsoDeConceptoDTO } from '@shared/dtos'
 import { api } from '../lib/api'
 import { useAsignaturasStore } from '../stores/asignaturasStore'
+import { EtiquetasConcepto } from '../features/conceptos/EtiquetasConcepto'
 import { NotasConcepto } from '../features/conceptos/NotasConcepto'
 import { TerminosConcepto } from '../features/conceptos/TerminosConcepto'
 import { ZonaMaterial } from '../features/conceptos/ZonaMaterial'
@@ -158,18 +159,12 @@ export function PanelVistazo(): JSX.Element | null {
               <p className="text-sm text-slate-600">{concepto.descripcion}</p>
             )}
 
-            {concepto.etiquetas.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {concepto.etiquetas.map((e) => (
-                  <span
-                    key={e}
-                    className="rounded-full bg-marca-50 px-2 py-0.5 text-xs font-medium text-marca-700"
-                  >
-                    {e}
-                  </span>
-                ))}
-              </div>
-            )}
+            <div className="mt-3">
+              <EtiquetasConcepto
+                concepto={concepto}
+                onActualizado={(actualizado) => setConcepto(actualizado)}
+              />
+            </div>
 
             {/* Dónde se usa: es la pregunta que traía al mapa ("¿dónde di
                 esto?"), así que va arriba y en una línea por uso. */}

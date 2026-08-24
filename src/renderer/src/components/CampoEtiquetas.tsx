@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import type { EtiquetaDTO } from '@shared/dtos'
 import { api } from '../lib/api'
+import { claveEtiqueta as clave, limpiarEtiqueta } from '../lib/etiquetas'
 
 /**
  * Campo de etiquetas: se escribe una y se confirma con Enter, coma o Tab.
@@ -31,16 +32,8 @@ export function CampoEtiquetas({
       .catch(() => setConocidas([]))
   }, [])
 
-  const clave = (t: string): string =>
-    t
-      .replace(/^#+/, '')
-      .trim()
-      .normalize('NFD')
-      .replace(/[̀-ͯ]/g, '')
-      .toLowerCase()
-
   const agregar = (bruta: string): void => {
-    const etiqueta = bruta.replace(/^#+/, '').trim()
+    const etiqueta = limpiarEtiqueta(bruta)
     if (!etiqueta) return
     if (etiquetas.some((e) => clave(e) === clave(etiqueta))) {
       setTexto('')

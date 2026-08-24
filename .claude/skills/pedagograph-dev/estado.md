@@ -399,6 +399,21 @@ abiertos, para no deshacer la pila uno a uno.
     principio con qué merece ser concepto, así que la decisión no se pide por
     adelantado, se corrige cuando se nota.
 
+- **Las etiquetas del concepto se editan donde se ven** (`EtiquetasConcepto`, en
+  la ficha y en el `PanelVistazo`). Antes solo se tocaban abriendo «Editar», y
+  ese viaje —modal, cambiar, guardar, volver— es demasiado para añadir una
+  palabra. Se escriben como los términos: Enter guarda y **deja el campo listo
+  para la siguiente**, Backspace con el campo vacío quita la última, Esc cierra.
+  Repetida → aviso ámbar («Ya tiene la etiqueta X»), nunca duplicado silencioso.
+  Sigue **sugiriendo las que ya usas** (misma razón que el campo del formulario:
+  sin sugerencias cada ficha inventa su variante y el filtro deja de servir); las
+  sugerencias se pulsan con `onMouseDown`, porque con `onClick` el blur del campo
+  se adelanta y la lista se cierra antes de recibirlo. En la ficha el texto del
+  chip filtra el listado; en el panel NO, que te sacaría de donde estabas. Se
+  guarda con `editarConcepto` mandando solo nombre/descripción/etiquetas: lo que
+  no viaja (notas, glosario, material) se conserva. Las reglas comunes con
+  `CampoEtiquetas` viven en `lib/etiquetas.ts` para que no se separen.
+
 ## Trampas del vault que ya han mordido
 
 `RespaldarVault`, `RestaurarVault` y `MoverAlmacenamiento` llevan **su lista de

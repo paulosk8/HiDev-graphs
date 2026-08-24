@@ -25,8 +25,8 @@ interface ConceptosState {
   ) => Promise<ConceptoDTO | null>
   eliminarMaterial: (conceptoId: string, recursoId: string) => Promise<ConceptoDTO | null>
   /**
-   * Refleja en el listado un concepto recién modificado: su material y su
-   * glosario.
+   * Refleja en el listado un concepto recién modificado: su material, su
+   * glosario y sus etiquetas.
    *
    * Los enlaces web y los términos se agregan y quitan por `api` desde la ficha,
    * sin pasar por este store; sin esto, el contador del listado (y el del chip
@@ -50,6 +50,7 @@ function conConceptoReflejado(
           ...c,
           totalRecursos: concepto.recursos.length,
           totalEnlaces: concepto.enlaces.length,
+          etiquetas: [...concepto.etiquetas],
           // Aplanado igual que en el índice: es el heno de la búsqueda.
           glosario: concepto.terminos.map((t) => `${t.termino} ${t.definicion}`)
         }
