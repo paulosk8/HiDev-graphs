@@ -328,6 +328,20 @@ abiertos, para no deshacer la pila uno a uno.
   no hizo falta tocarlo. Los YAML anteriores no tienen el campo: se lee ausente
   como lista vacía.
 
+- **En Aprendizaje el nivel superior está aplanado.** El espacio YA ES "lo que
+  quiero aprender", así que pedir un contenedor antes del primer tema era pedir
+  dos veces lo mismo. El modelo curricular no cambia (los temas siguen colgando
+  de una `Unidad`): el editor crea un contenedor implícito titulado `Contenido`
+  la primera vez y no lo muestra nunca. Un espacio con bloques previos se
+  aplana en una sola lista **sin perderlos** —siguen en el YAML— y los temas
+  nuevos entran en el primero. Consecuencias que hubo que tapar: «Mover a otra
+  unidad…» desaparece del menú (no hay otra visible), el `Estado` y el
+  formulario de prácticas dejan de anteponer el título del contenedor, y el
+  «Se usa en» de la ficha del concepto salta ese tramo del camino (lo decide el
+  renderer mirando el `tipo` de la asignatura por su id; el índice no lo
+  guarda). El `filaTema` del editor se extrajo a una función justo para poder
+  pintarse dentro de la unidad (Docencia) o suelto (Aprendizaje).
+
 ## Trampas del vault que ya han mordido
 
 `RespaldarVault`, `RestaurarVault` y `MoverAlmacenamiento` llevan **su lista de

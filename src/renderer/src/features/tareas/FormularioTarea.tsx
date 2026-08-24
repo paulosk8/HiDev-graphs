@@ -158,7 +158,9 @@ export function FormularioTarea({
           <div className="max-h-40 space-y-2 overflow-y-auto rounded-lg border border-slate-200 p-3">
             {asignatura.unidades.map((u) => (
               <div key={u.id}>
-                <p className="text-xs font-semibold text-slate-400">{u.titulo}</p>
+                {!esAprendizaje && (
+                  <p className="text-xs font-semibold text-slate-400">{u.titulo}</p>
+                )}
                 {u.temas.map((t) => (
                   <label key={t.id} className="flex items-center gap-2 py-0.5 text-sm text-slate-700">
                     <input
