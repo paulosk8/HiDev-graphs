@@ -101,6 +101,10 @@ export const api = {
     desenvolver(window.api.eliminarTermino(conceptoId, terminoId)),
   promoverTermino: (conceptoId: string, terminoId: string) =>
     desenvolver(window.api.promoverTermino(conceptoId, terminoId)),
+  guardarImagenDeNota: (conceptoId: string, nombre: string, base64: string) =>
+    desenvolver(window.api.guardarImagenDeNota(conceptoId, nombre, base64)),
+  guardarImagenDeNotaDesdeUrl: (conceptoId: string, url: string) =>
+    desenvolver(window.api.guardarImagenDeNotaDesdeUrl(conceptoId, url)),
   moverEnlaceACarpeta: (conceptoId: string, enlaceId: string, carpeta: string) =>
     desenvolver(window.api.moverEnlaceACarpeta(conceptoId, enlaceId, carpeta)),
   /** URL del protocolo local para previsualizar un material (PDF/HTML/imagen). */

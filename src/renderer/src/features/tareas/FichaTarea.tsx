@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { AsignaturaDTO, CruceDTO, RecursoDTO, TareaDTO } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
 import { ContenidoFormateado } from '../../components/ContenidoFormateado'
 import { DialogoConfirmacion } from '../../components/DialogoConfirmacion'
 import { api } from '../../lib/api'
+import { useConceptosStore } from '../../stores/conceptosStore'
 import { useTareasStore } from '../../stores/tareasStore'
+import { useVistazoStore } from '../../stores/vistazoStore'
 import { useUiStore } from '../../stores/uiStore'
 import {
   avisoDeEliminacion,
@@ -68,6 +70,16 @@ export function FichaTarea({ tareaId, onCerrar, onCambiada }: Props): JSX.Elemen
     window.addEventListener('keydown', alPulsar)
     return () => window.removeEventListener('keydown', alPulsar)
   }, [onCerrar, editando])
+
+  // Los hooks van ANTES del return temprano de abajo: si se quedan detrás, la
+  // primera pintada (sin tarea aún) ejecuta menos hooks que la siguiente y React
+  // aborta la aplicación entera (error #310).
+  const listaConceptos = useConceptosStore((st) => st.lista)
+  const abrirVistazo = useVistazoStore((st) => st.abrir)
+  const nombreConcepto = useMemo(
+    () => new Map(listaConceptos.map((c) => [c.id, c.nombre] as const)),
+    [listaConceptos]
+  )
 
   if (!tarea || !asignatura) return <></>
 
@@ -150,6 +162,18 @@ export function FichaTarea({ tareaId, onCerrar, onCambiada }: Props): JSX.Elemen
                 <span key={id} className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
                   {nombreTema.get(id) ?? id}
                 </span>
+              ))}
+              {/* Los conceptos que cubre: es lo que la hace reutilizable, y desde
+                  aquí se llega a su material sin salir de la tarea. */}
+              {tarea.conceptos.map((id) => (
+                <button
+                  key={id}
+                  onClick={() => abrirVistazo(id)}
+                  title={`Ver el material de «${nombreConcepto.get(id) ?? id}»`}
+                  className="rounded-full bg-marca-50 px-2 py-0.5 text-xs text-marca-700 transition hover:bg-marca-100"
+                >
+                  💡 {nombreConcepto.get(id) ?? id}
+                </button>
               ))}
             </div>
           </div>

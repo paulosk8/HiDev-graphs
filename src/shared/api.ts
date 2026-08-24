@@ -152,6 +152,20 @@ export interface PedagoGraphApi {
     conceptoId: string,
     terminoId: string
   ): Promise<Resultado<PromocionTerminoDTO>>
+  /**
+   * Guarda una imagen pegada en una nota junto al concepto y devuelve su ruta
+   * relativa (`.imagenes/x.png`), que se escribe como `recurso://`.
+   */
+  guardarImagenDeNota(
+    conceptoId: string,
+    nombre: string,
+    base64: string
+  ): Promise<Resultado<{ archivo: string }>>
+  /** Igual, pero trayendo la imagen de su dirección de origen (web o disco). */
+  guardarImagenDeNotaDesdeUrl(
+    conceptoId: string,
+    url: string
+  ): Promise<Resultado<{ archivo: string }>>
   /** Mueve un enlace a otra carpeta del concepto ('' = suelto). */
   moverEnlaceACarpeta(
     conceptoId: string,

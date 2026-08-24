@@ -424,6 +424,104 @@ abiertos, para no deshacer la pila uno a uno.
   no viaja (notas, glosario, material) se conserva. Las reglas comunes con
   `CampoEtiquetas` viven en `lib/etiquetas.ts` para que no se separen.
 
+- **Las imágenes pegadas se traen al vault** (`application/ImagenesNota.ts`).
+  Al pegar de Word o de la web, cada `<img>` llega con una dirección que solo
+  vale en el sitio de origen —un `file://` temporal de Word, una URL, un
+  `https://file+.vscode-resource.vscode-cdn.net/...` del visor de VS Code— y la
+  CSP de la ventana solo admite `data:` y `recurso:`: la nota se quedaba con el
+  icono de imagen rota. Ahora el pegado **descarga o lee esos bytes una vez**,
+  los guarda junto al concepto y escribe `recurso://c/<id>/.imagenes/x.png`, que
+  siempre carga, funciona sin conexión y viaja con el vault.
+  - **Archivo y no base64**: un Word con diez capturas dejaría un
+    `concepto.yaml` de decenas de megas, que hay que parsear entero en cada
+    lectura y que la nube sincroniza completo en cada edición.
+  - Van a **`.imagenes/` (oculta)**: no son material que el docente organice, así
+    que no deben salir en sus carpetas — `listarCarpetasConcepto` ya descarta las
+    que empiezan por punto— ni entre sus recursos (no se registran en el YAML).
+  - **Las tareas siguen con base64**: no tienen concepto donde colgar el archivo,
+    y sus instrucciones se exportan a Moodle, donde lo autocontenido conviene.
+  - Lo que no se pueda traer se sustituye por su **texto alternativo** y se avisa;
+    y al PINTAR Markdown, una imagen con dirección no pintable se enseña como su
+    descripción (`.imagen-no-disponible`) en vez de un icono roto — eso arregla de
+    paso las notas guardadas ANTES de este cambio.
+  - `CSP_CONTENIDO` (el visor HTML aislado) tuvo que sumar `recurso:` a `img-src`.
+
+- **Una tarea/práctica se vincula también a conceptos a mano**
+  (`Tarea.conceptosPropios`). Sus `conceptos` seguían saliendo SOLO de sus temas,
+  y eso deja fuera lo que una práctica ejercita de verdad cuando el tema no lo
+  declara. Ahora `conceptos = derivados ∪ propios`, y los propios se guardan
+  aparte **porque los derivados se recalculan en cada guardado**: mezclados, se
+  perderían al cambiar de tema. Duplicar y combinar los heredan (la combinada,
+  la unión, como con los adjuntos). De paso, `derivarConceptos` ya mira también
+  los **subtemas** —desde que instancian conceptos, una tarea del tema padre se
+  quedaba sin ellos—. En el formulario, los del tema se pintan grises y con la
+  coletilla «del tema» (no se quitan desde ahí: eso sería mentir sobre lo que el
+  tema declara) y los propios llevan su ✕.
+- **Las prácticas/tareas tienen pestaña propia**, con **filtro por tema** (chips
+  con su recuento) junto a «Contenido» y «Estado». En «Contenido» competían con
+  la estructura: con unas pocas ya la echaban fuera de la pantalla. Los chips del
+  tema en el árbol siguen estando —son el acceso contextual—; la pestaña es el
+  inventario, y responde a «¿qué tengo para este tema?».
+- **Crear la práctica al vincular un concepto: se OFRECE, no se hace sola.** Cada
+  concepto vinculado lleva un `＋` que abre el formulario con ese tema, ese
+  concepto ya vinculado y el título prellenado («Práctica: X»). Crearla
+  automáticamente al vincular sería crear registros que nadie pidió: vincular un
+  concepto dice «esto se estudia aquí», no siempre «y quiero ejercicio», y
+  vincular tres dejaría tres prácticas vacías que hay que borrar una a una. Es el
+  espejo de la regla de confirmar antes de eliminar.
+- **La práctica se crea desde la fila de su tema.** Estaba solo el botón del pie
+  de la ficha, que obliga a bajar, crear y volver a buscar el tema en una lista
+  de casillas. Ahora cada tema lleva su «+ Nueva práctica» (o «+ Nueva tarea») en
+  la misma fila donde ya se listaban las suyas, y el formulario abre con ese tema
+  marcado (`temaPreseleccionado`, que ya usaba la planificación semanal). La fila
+  se pinta aunque el tema no tenga ninguna todavía —es desde donde se crean— pero
+  solo para temas ya guardados: uno recién escrito aún no tiene id al que colgarlas.
+- **El «Componente» solo aparece si la asignatura tiene alguno.** En un espacio
+  de aprendizaje no hay componentes, así que el desplegable ofrecía una única
+  opción («General (sin componente)») que no decide nada; y la lista de prácticas
+  se encabezaba con un «General» que tampoco informaba. En Docencia con
+  componentes definidos sigue igual, con su opción vacía renombrada a «Sin
+  clasificar» y una línea que dice para qué sirve.
+- **Trampa: los hooks, SIEMPRE antes del `return` temprano.** `FichaTarea` hace
+  `if (!tarea) return <></>` mientras carga; unos `useConceptosStore`/`useMemo`
+  añadidos debajo se ejecutaban solo en la segunda pintada y React abortaba la
+  aplicación ENTERA (pantalla en blanco, «Minified React error #310»). Lo cazó el
+  smoke porque el `document.body` se quedó sin botones; para verlo hay que
+  escuchar `console-message` del `webContents`.
+- **Trampa del smoke, no del producto:** dentro de la plantilla anidada de
+  `executeJavaScript`, `\s` se resuelve a `s` y un `replace(/\s+/g, ' ')`
+  **borra todas las eses** del texto que compruebas («A ignatura», «Concepto »).
+  Hay que escribir `\\s+` en el fuente.
+- **Trampa: un `<button>` sin `type` dentro de un `<form>` es `type="submit"`.**
+  Los botones del `BuscadorConceptos` no lo llevaban; al reutilizarlo dentro del
+  formulario de tarea, **elegir un concepto enviaba la tarea a medio rellenar**.
+  Lo cazó el smoke de GUI. Cualquier botón que se pinte dentro de un formulario
+  necesita `type="button"` explícito (el componente `Boton` ya lo pone por
+  defecto; los `<button>` a pelo, no).
+
+- **Cada material es una tarjeta, no una fila de texto.** Con un archivo cargado,
+  la zona parecía vacía: la fila no tenía ni fondo ni borde propios —flotaba
+  dentro del recuadro de soltar— y sus acciones («Ver», «Abrir», ⋯, ✕) iban en
+  grises tenues que se leían como deshabilitadas. Ahora cada elemento tiene su
+  tarjeta (`bg-slate-50` + borde, hover a `bg-slate-100`), la insignia del
+  formato sube a `bg-slate-200/text-slate-700` y las acciones son chips con
+  fondo al pasar por encima. **Medido con smoke en los cuatro temas**: antes la
+  insignia daba 4,34:1 en claro (por debajo de AA) y la fila no se distinguía
+  del panel; ahora lo peor está en 4,55:1 y el resto entre 7:1 y 21:1.
+  `bg-slate-200` es nueva en la app, así que hubo que traducirla en los cuatro
+  mapas de tema (`.dark`, `.calido`, `.contraste`, `.dark.contraste`) — **el que
+  se olvide deja el elemento con el color de Tailwind, fuera del tema**.
+
+- **Una sola barra de escritura** (`components/HerramientasTexto`): colores,
+  resaltado, contenido incrustado y atajos de Markdown. Estaba solo en el
+  formulario de tareas; en las **notas de un concepto** —que escriben exactamente
+  el mismo Markdown— había que teclearlo a mano. Se extrajo con su `insertar` y
+  su `envolver` en vez de copiarla: duplicada, era cuestión de tiempo que el
+  docente aprendiera una barra en las tareas y no la encontrara en una nota.
+  `BarraFormato` se movió de `features/tareas/` a `components/`. En modo Código
+  no se pinta —ahí el texto no se interpreta— y lo dice en vez de desaparecer sin
+  explicación.
+
 ## Trampas del vault que ya han mordido
 
 `RespaldarVault`, `RestaurarVault` y `MoverAlmacenamiento` llevan **su lista de

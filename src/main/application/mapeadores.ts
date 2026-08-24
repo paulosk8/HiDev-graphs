@@ -112,6 +112,7 @@ export function aTareaDTO(tarea: Tarea): TareaDTO {
     temas: [...tarea.temas],
     componente: tarea.componente,
     conceptos: [...tarea.conceptos],
+    conceptosPropios: [...tarea.conceptosPropios],
     recursos: tarea.recursos.map((r) => ({
       id: r.id,
       nombre: r.nombre,

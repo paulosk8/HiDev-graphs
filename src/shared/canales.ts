@@ -39,6 +39,8 @@ export const CANALES = {
   conceptoTerminoEditar: 'concepto:termino-editar',
   conceptoTerminoEliminar: 'concepto:termino-eliminar',
   conceptoTerminoPromover: 'concepto:termino-promover',
+  notaImagenGuardar: 'nota:imagen-guardar',
+  notaImagenDesdeUrl: 'nota:imagen-desde-url',
   materialEnlaceAgregar: 'material:enlace-agregar',
   materialEnlaceEditar: 'material:enlace-editar',
   materialEnlaceEliminar: 'material:enlace-eliminar',

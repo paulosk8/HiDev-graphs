@@ -13,7 +13,10 @@ import type { FormatoInstrucciones } from './tipos'
  * Cardinalidades (según el uso real):
  *  - `temas`: uno o varios (tarea integradora), de UNA misma asignatura.
  *  - `componente`: 0 ó 1 (opcional; si es null, es una tarea "general" del tema).
- *  - `conceptos`: los conceptos en que se basa (se derivan de sus temas).
+ *  - `conceptos`: los conceptos en que se basa. Salen de sus temas (y subtemas),
+ *    MÁS los que el docente añada a mano en `conceptosPropios`: una práctica
+ *    puede ejercitar algo que el tema no declara, y el vínculo directo es lo que
+ *    permite encontrarla desde la ficha del concepto y verla en el mapa.
  */
 /** Enlace a un recurso online (con su título visible). */
 export interface EnlaceRecurso {
@@ -34,6 +37,12 @@ export interface Tarea {
   /** Clave del componente de aprendizaje, o null si es general. */
   readonly componente: string | null
   readonly conceptos: readonly string[]
+  /**
+   * Conceptos añadidos a mano (no vienen de los temas). Se guardan aparte para
+   * que al recalcular `conceptos` —al cambiar de temas, al duplicar la tarea—
+   * no se pierdan.
+   */
+  readonly conceptosPropios: readonly string[]
   /** Archivos adjuntos propios de la tarea (para desarrollarla). */
   readonly recursos: readonly Recurso[]
   /** Enlaces a recursos online. */
@@ -49,6 +58,7 @@ export interface DatosTarea {
   temas?: readonly string[]
   componente?: string | null
   conceptos?: readonly string[]
+  conceptosPropios?: readonly string[]
   recursos?: readonly Recurso[]
   enlaces?: readonly EnlaceRecurso[]
 }
@@ -86,6 +96,7 @@ export function crearTarea(datos: DatosTarea): Tarea {
     temas: datos.temas ?? [],
     componente: componente ? componente : null,
     conceptos: datos.conceptos ?? [],
+    conceptosPropios: datos.conceptosPropios ?? [],
     recursos: datos.recursos ?? [],
     enlaces: normalizarEnlaces(datos.enlaces)
   }

@@ -65,6 +65,10 @@ const api: PedagoGraphApi = {
     ipcRenderer.invoke(CANALES.conceptoTerminoEliminar, conceptoId, terminoId),
   promoverTermino: (conceptoId, terminoId) =>
     ipcRenderer.invoke(CANALES.conceptoTerminoPromover, conceptoId, terminoId),
+  guardarImagenDeNota: (conceptoId, nombre, base64) =>
+    ipcRenderer.invoke(CANALES.notaImagenGuardar, conceptoId, nombre, base64),
+  guardarImagenDeNotaDesdeUrl: (conceptoId, url) =>
+    ipcRenderer.invoke(CANALES.notaImagenDesdeUrl, conceptoId, url),
   listarAsignaturas: () => ipcRenderer.invoke(CANALES.asignaturasListar),
   obtenerAsignatura: (id) => ipcRenderer.invoke(CANALES.asignaturaObtener, id),
   guardarPlanificacion: (asignaturaId, periodo, semanas) =>

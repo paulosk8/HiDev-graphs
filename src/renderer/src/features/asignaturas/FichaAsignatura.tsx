@@ -29,9 +29,18 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
   const [editando, setEditando] = useState(false)
   const [periodoNuevo, setPeriodoNuevo] = useState('')
   const [tareas, setTareas] = useState<ResumenTareaDTO[]>([])
-  const [creandoTarea, setCreandoTarea] = useState(false)
+  /**
+   * Alta de tarea/práctica. `null` = cerrado. Desde el botón general llega
+   * vacío; desde la fila de un tema trae su id, y desde el chip de un concepto,
+   * también el concepto: el formulario abre ya relleno.
+   */
+  const [creandoTarea, setCreandoTarea] = useState<
+    { temaId?: string; conceptoId?: string } | null
+  >(null)
   const [tareaAbierta, setTareaAbierta] = useState<string | null>(null)
-  const [vista, setVista] = useState<'contenido' | 'plan' | 'salud'>('contenido')
+  const [vista, setVista] = useState<'contenido' | 'tareas' | 'plan' | 'salud'>('contenido')
+  /** Tema por el que se filtra la lista de prácticas/tareas ('' = todas). */
+  const [temaFiltro, setTemaFiltro] = useState('')
 
   const cargarTareas = useCallback(async () => {
     try {
@@ -137,12 +146,15 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
 
   const asig = asignatura
   const esAprendizaje = asig.tipo === 'aprendizaje'
+  /** Temas del espacio/asignatura, aplanados, para filtrar la lista. */
+  const temasPlanos = asig.unidades.flatMap((u) => u.temas.map((t) => ({ id: t.id, titulo: t.titulo })))
+  const tareasFiltradas = temaFiltro ? tareas.filter((t) => t.temas.includes(temaFiltro)) : tareas
   const gruposTareas = [
     ...asig.componentes.map((c) => ({
       etiqueta: `${c.clave} · ${c.nombre}`,
-      items: tareas.filter((t) => t.componente === c.clave)
+      items: tareasFiltradas.filter((t) => t.componente === c.clave)
     })),
-    { etiqueta: 'General', items: tareas.filter((t) => !t.componente) }
+    { etiqueta: 'General', items: tareasFiltradas.filter((t) => !t.componente) }
   ].filter((g) => g.items.length > 0)
 
   return (
@@ -222,9 +234,13 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
           {(
             [
               { clave: 'contenido', etiqueta: 'Contenido' },
+              {
+                clave: 'tareas',
+                etiqueta: `${esAprendizaje ? 'Prácticas' : 'Tareas'}${tareas.length > 0 ? ` (${tareas.length})` : ''}`
+              },
               ...(!esAprendizaje ? [{ clave: 'plan', etiqueta: 'Planificación semanal' }] : []),
               { clave: 'salud', etiqueta: 'Estado' }
-            ] as { clave: 'contenido' | 'plan' | 'salud'; etiqueta: string }[]
+            ] as { clave: 'contenido' | 'tareas' | 'plan' | 'salud'; etiqueta: string }[]
           ).map((t) => (
             <button
               key={t.clave}
@@ -253,21 +269,48 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
             onVincular={(temaId, conceptoId) => void vincular(temaId, conceptoId)}
             onDesvincular={(temaId, conceptoId) => void desvincular(temaId, conceptoId)}
             onAbrirTarea={setTareaAbierta}
+            onCrearTarea={(temaId, conceptoId) => setCreandoTarea({ temaId, conceptoId })}
             onGuardar={guardarEstructura}
           />
         )}
       </section>
 
-      {/* Tareas */}
-      <section className="mt-8">
+      {/* Prácticas/Tareas: pestaña propia. En «Contenido» competían con la
+          estructura, y con unas pocas ya la dejaban fuera de la pantalla. */}
+      {vista === 'tareas' && (
+      <section className="mt-2">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
             {esAprendizaje ? 'Prácticas' : 'Tareas'}
           </h2>
-          <Boton variante="secundario" onClick={() => setCreandoTarea(true)}>
+          <Boton variante="secundario" onClick={() => setCreandoTarea({})}>
             {esAprendizaje ? '+ Nueva práctica' : '+ Nueva tarea'}
           </Boton>
         </div>
+
+        {/* Filtro por tema: responde a «¿qué tengo para esto?», que es la
+            pregunta con la que se entra aquí. */}
+        {temasPlanos.length > 1 && (
+          <div className="mb-4 flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 text-xs text-slate-400">Tema:</span>
+            <ChipTema activo={temaFiltro === ''} onClick={() => setTemaFiltro('')}>
+              Todos
+            </ChipTema>
+            {temasPlanos.map((t) => {
+              const total = tareas.filter((x) => x.temas.includes(t.id)).length
+              return (
+                <ChipTema
+                  key={t.id}
+                  activo={temaFiltro === t.id}
+                  onClick={() => setTemaFiltro(temaFiltro === t.id ? '' : t.id)}
+                >
+                  {t.titulo || 'Sin título'}
+                  <span className={total === 0 ? 'ml-1 text-slate-300' : 'ml-1 text-slate-400'}>{total}</span>
+                </ChipTema>
+              )
+            })}
+          </div>
+        )}
 
         {/* Componentes de aprendizaje: aquí, junto a las tareas que clasifican. */}
         {asignatura.componentes.length > 0 && (
@@ -293,17 +336,25 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
           </div>
         )}
 
-        {tareas.length === 0 ? (
+        {tareasFiltradas.length === 0 ? (
           <p className="rounded-xl border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-400">
-            {esAprendizaje
-              ? 'Aún no hay prácticas. Crea una para poner en práctica lo que aprendes.'
-              : 'Aún no hay tareas. Crea una para un tema y, opcionalmente, un componente.'}
+            {temaFiltro
+              ? esAprendizaje
+                ? 'Ese tema todavía no tiene prácticas.'
+                : 'Ese tema todavía no tiene tareas.'
+              : esAprendizaje
+                ? 'Aún no hay prácticas. Crea una para poner en práctica lo que aprendes.'
+                : 'Aún no hay tareas. Crea una para un tema y, opcionalmente, un componente.'}
           </p>
         ) : (
           <div className="space-y-4">
             {gruposTareas.map((grupo) => (
               <div key={grupo.etiqueta}>
-                <p className="mb-1.5 text-xs font-semibold text-slate-400">{grupo.etiqueta}</p>
+                {/* Sin componentes definidos solo existe «General», y encabezar
+                    una lista con el nombre de su único grupo no informa de nada. */}
+                {gruposTareas.length > 1 && (
+                  <p className="mb-1.5 text-xs font-semibold text-slate-400">{grupo.etiqueta}</p>
+                )}
                 <ul className="space-y-1.5">
                   {grupo.items.map((t) => (
                     <li key={t.id}>
@@ -325,11 +376,21 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
           </div>
         )}
       </section>
+      )}
 
       {creandoTarea && (
         <FormularioTarea
           asignatura={asig}
-          onCerrar={() => setCreandoTarea(false)}
+          temaPreseleccionado={creandoTarea.temaId}
+          conceptosPreseleccionados={creandoTarea.conceptoId ? [creandoTarea.conceptoId] : undefined}
+          tituloInicial={
+            creandoTarea.conceptoId
+              ? `${esAprendizaje ? 'Práctica' : 'Tarea'}: ${
+                  conceptoPorId.get(creandoTarea.conceptoId)?.nombre ?? ''
+                }`
+              : undefined
+          }
+          onCerrar={() => setCreandoTarea(null)}
           onGuardada={(t) => {
             void cargarTareas()
             setTareaAbierta(t.id)
@@ -365,5 +426,29 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
         />
       )}
     </div>
+  )
+}
+
+/** Chip del filtro por tema de la lista de prácticas/tareas. */
+function ChipTema({
+  activo,
+  onClick,
+  children
+}: {
+  activo: boolean
+  onClick: () => void
+  children: React.ReactNode
+}): JSX.Element {
+  return (
+    <button
+      onClick={onClick}
+      className={`rounded-full border px-3 py-1 text-xs transition ${
+        activo
+          ? 'border-marca-300 bg-marca-50 text-marca-700'
+          : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+      }`}
+    >
+      {children}
+    </button>
   )
 }

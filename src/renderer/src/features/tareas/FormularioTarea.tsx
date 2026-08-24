@@ -1,4 +1,4 @@
-import { useRef, useState, type ClipboardEvent, type FormEvent } from 'react'
+import { useMemo, useRef, useState, type ClipboardEvent, type FormEvent } from 'react'
 import { marked } from 'marked'
 import type { AsignaturaDTO, FormatoInstrucciones, TareaDTO } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
@@ -9,16 +9,19 @@ import { VistaHtml } from '../../components/VistaHtml'
 import { api } from '../../lib/api'
 import { manejarPegadoRico } from '../../lib/pegadoRico'
 import { useTareasStore } from '../../stores/tareasStore'
-import { BarraFormato } from './BarraFormato'
-
-/** Fragmentos que inserta la barra de formato. */
-const PLANTILLA_TABLA = '\n| Criterio | Puntos |\n| --- | --- |\n| … | … |\n| … | … |\n'
+import { HerramientasTexto } from '../../components/HerramientasTexto'
+import { BuscadorConceptos } from '../vinculos/BuscadorConceptos'
+import { useConceptosStore } from '../../stores/conceptosStore'
 
 interface Props {
   asignatura: AsignaturaDTO
   tareaInicial?: TareaDTO
   temaPreseleccionado?: string
   temasPreseleccionados?: string[]
+  /** Conceptos ya vinculados al abrir (crear la práctica DE un concepto). */
+  conceptosPreseleccionados?: string[]
+  /** Título de partida, editable (al crear desde un concepto). */
+  tituloInicial?: string
   onCerrar: () => void
   onGuardada: (tarea: TareaDTO) => void
 }
@@ -28,6 +31,8 @@ export function FormularioTarea({
   tareaInicial,
   temaPreseleccionado,
   temasPreseleccionados,
+  conceptosPreseleccionados,
+  tituloInicial,
   onCerrar,
   onGuardada
 }: Props): JSX.Element {
@@ -38,7 +43,7 @@ export function FormularioTarea({
   const editar = useTareasStore((s) => s.editar)
   const agregarAdjunto = useTareasStore((s) => s.agregarAdjunto)
 
-  const [titulo, setTitulo] = useState(tareaInicial?.titulo ?? '')
+  const [titulo, setTitulo] = useState(tareaInicial?.titulo ?? tituloInicial ?? '')
   const [componente, setComponente] = useState<string>(tareaInicial?.componente ?? '')
   const [temas, setTemas] = useState<Set<string>>(
     () =>
@@ -47,6 +52,17 @@ export function FormularioTarea({
           temasPreseleccionados ??
           (temaPreseleccionado ? [temaPreseleccionado] : [])
       )
+  )
+  // Conceptos vinculados a mano. Los que vienen de los temas se muestran aparte
+  // y no se tocan: quitarlos aquí sería mentir sobre lo que el tema declara.
+  const [conceptosPropios, setConceptosPropios] = useState<string[]>(
+    () => tareaInicial?.conceptosPropios ?? conceptosPreseleccionados ?? []
+  )
+  const [buscandoConcepto, setBuscandoConcepto] = useState(false)
+  const listaConceptos = useConceptosStore((st) => st.lista)
+  const conceptoPorId = useMemo(
+    () => new Map(listaConceptos.map((c) => [c.id, c] as const)),
+    [listaConceptos]
   )
   const [instrucciones, setInstrucciones] = useState(tareaInicial?.instrucciones ?? '')
   const [formato, setFormato] = useState<FormatoInstrucciones>(tareaInicial?.formato ?? 'markdown')
@@ -59,38 +75,21 @@ export function FormularioTarea({
   const [ocupado, setOcupado] = useState(false)
   const areaRef = useRef<HTMLTextAreaElement>(null)
 
-  /** Inserta texto en la posición del cursor (o al final si no hay foco). */
-  const insertar = (texto: string): void => {
-    const el = areaRef.current
-    const inicio = el?.selectionStart ?? instrucciones.length
-    const fin = el?.selectionEnd ?? instrucciones.length
-    setInstrucciones(instrucciones.slice(0, inicio) + texto + instrucciones.slice(fin))
-    requestAnimationFrame(() => {
-      if (!el) return
-      el.focus()
-      const pos = inicio + texto.length
-      el.setSelectionRange(pos, pos)
-    })
-  }
-
   /**
-   * Envuelve el texto seleccionado (o inserta un ejemplo si no hay selección).
-   * Es lo que hace falta para dar color: colorear "lo que acabo de escribir".
+   * Conceptos que ya trae la tarea por sus temas (y por los subtemas de esos
+   * temas). Se enseñan para que el docente no vuelva a añadir lo que ya está.
    */
-  const envolver = (antes: string, despues: string, ejemplo: string): void => {
-    const el = areaRef.current
-    const inicio = el?.selectionStart ?? instrucciones.length
-    const fin = el?.selectionEnd ?? instrucciones.length
-    const seleccion = instrucciones.slice(inicio, fin) || ejemplo
-    const nuevo = antes + seleccion + despues
-    setInstrucciones(instrucciones.slice(0, inicio) + nuevo + instrucciones.slice(fin))
-    requestAnimationFrame(() => {
-      if (!el) return
-      el.focus()
-      // Deja seleccionado el texto coloreado, para poder seguir escribiendo encima.
-      el.setSelectionRange(inicio + antes.length, inicio + antes.length + seleccion.length)
-    })
-  }
+  const derivados = useMemo(() => {
+    const ids = new Set<string>()
+    for (const u of asignatura.unidades) {
+      for (const t of u.temas) {
+        if (!temas.has(t.id)) continue
+        for (const c of t.conceptos) ids.add(c)
+        for (const sub of t.subtemas) for (const c of sub.conceptos) ids.add(c)
+      }
+    }
+    return [...ids]
+  }, [asignatura, temas])
 
   /** Al pegar: imágenes → base64 autocontenido; HTML con formato → Markdown/HTML. */
   const alPegar = (e: ClipboardEvent<HTMLTextAreaElement>): void =>
@@ -114,6 +113,7 @@ export function FormularioTarea({
       asignaturaId: asignatura.id,
       temas: [...temas],
       componente: componente || null,
+      conceptosPropios,
       enlaces: enlaces.filter((e) => e.url.trim().length > 0)
     }
     let tarea = editando ? await editar(tareaInicial.id, datos) : await crear(datos)
@@ -183,24 +183,88 @@ export function FormularioTarea({
           </div>
         </div>
 
-        {/* Componente */}
-        <label className="block">
-          <span className="mb-1.5 block text-sm font-medium text-slate-700">
-            Componente (opcional)
-          </span>
-          <select
-            value={componente}
-            onChange={(e) => setComponente(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-marca-500 focus:ring-2 focus:ring-marca-100"
-          >
-            <option value="">General (sin componente)</option>
-            {asignatura.componentes.map((c) => (
-              <option key={c.clave} value={c.clave}>
-                {c.clave} · {c.nombre}
-              </option>
+        {/* Conceptos: los que trae el tema, más los que se vinculen aquí */}
+        <div>
+          <span className="mb-1.5 block text-sm font-medium text-slate-700">Conceptos</span>
+          <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-slate-200 p-2.5">
+            {derivados.map((id) => (
+              <span
+                key={id}
+                title="Viene del tema. Se quita desvinculándolo del tema."
+                className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-600"
+              >
+                {conceptoPorId.get(id)?.nombre ?? id}
+                <span className="ml-1 text-slate-400">del tema</span>
+              </span>
             ))}
-          </select>
-        </label>
+            {conceptosPropios
+              .filter((id) => !derivados.includes(id))
+              .map((id) => (
+                <span
+                  key={id}
+                  className="inline-flex items-center gap-1 rounded-full bg-marca-50 py-0.5 pl-2.5 pr-1 text-xs font-medium text-marca-700"
+                >
+                  {conceptoPorId.get(id)?.nombre ?? id}
+                  <button
+                    type="button"
+                    onClick={() => setConceptosPropios((c) => c.filter((x) => x !== id))}
+                    aria-label={`Quitar ${conceptoPorId.get(id)?.nombre ?? id}`}
+                    className="text-marca-400 transition hover:text-red-600"
+                  >
+                    ✕
+                  </button>
+                </span>
+              ))}
+            <span className="relative">
+              <button
+                type="button"
+                onClick={() => setBuscandoConcepto((v) => !v)}
+                className="rounded-full border border-dashed border-slate-300 px-2.5 py-0.5 text-xs text-slate-500 transition hover:border-marca-300 hover:text-marca-700"
+              >
+                + Vincular concepto
+              </button>
+              {buscandoConcepto && (
+                <BuscadorConceptos
+                  excluir={[...new Set([...derivados, ...conceptosPropios])]}
+                  onSeleccionar={(id) => {
+                    setConceptosPropios((c) => (c.includes(id) ? c : [...c, id]))
+                    setBuscandoConcepto(false)
+                  }}
+                  onCerrar={() => setBuscandoConcepto(false)}
+                />
+              )}
+            </span>
+          </div>
+          <span className="mt-1 block text-xs text-slate-400">
+            Los de sus temas se añaden solos. Vincula aquí lo que además ejercita.
+          </span>
+        </div>
+
+        {/* Componente: solo si la asignatura tiene alguno definido. En un espacio
+            de aprendizaje no los hay, y un desplegable con una sola opción
+            («General») no decide nada: solo estorba. */}
+        {asignatura.componentes.length > 0 && (
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-medium text-slate-700">
+              Componente de aprendizaje (opcional)
+            </span>
+            <select
+              value={componente}
+              onChange={(e) => setComponente(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-marca-500 focus:ring-2 focus:ring-marca-100"
+            >
+              <option value="">Sin clasificar</option>
+              {asignatura.componentes.map((c) => (
+                <option key={c.clave} value={c.clave}>
+                  {c.clave} · {c.nombre}
+                </option>
+              ))}
+            </select>
+            <span className="mt-1 block text-xs text-slate-400">
+              Agrupa las tareas por el componente al que cuentan.
+            </span>
+          </label>
+        )}
 
         {/* Instrucciones (Markdown) */}
         <div>
@@ -251,49 +315,14 @@ export function FormularioTarea({
             )
           ) : (
             <>
-              {/* Color y contenido incrustado: sirven en Markdown y en HTML,
-                  porque el Markdown de la app admite HTML dentro. En modo
-                  Código no, que ahí el texto no se interpreta. */}
-              {formato !== 'codigo' && (
-                <BarraFormato
-                  onEnvolver={envolver}
-                  onInsertar={insertar}
-                  mostrarIncrustado={formato === 'html'}
-                />
-              )}
-              {formato === 'markdown' ? (
-                <div className="mb-1.5 flex flex-wrap gap-1">
-                  {[
-                    { etiqueta: 'Título', frag: '\n## Título\n' },
-                    { etiqueta: 'Subtítulo', frag: '\n### Subtítulo\n' },
-                    { etiqueta: 'Lista', frag: '\n- \n' },
-                    { etiqueta: 'Tabla / rúbrica', frag: PLANTILLA_TABLA },
-                    { etiqueta: 'Enlace', frag: '[texto](https://…)' },
-                    { etiqueta: 'Negrita', frag: '**texto**' }
-                  ].map((b) => (
-                    <button
-                      key={b.etiqueta}
-                      type="button"
-                      onClick={() => insertar(b.frag)}
-                      className="rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 transition hover:bg-slate-50"
-                    >
-                      {b.etiqueta}
-                    </button>
-                  ))}
-                </div>
-              ) : formato === 'html' ? (
-                <p className="mb-1.5 text-xs text-slate-500">
-                  Modo HTML: pega o escribe HTML; admite <code>&lt;style&gt;</code>,{' '}
-                  <code>&lt;script&gt;</code> y contenido incrustado con{' '}
-                  <code>&lt;iframe&gt;</code> (Excalidraw, YouTube, GeoGebra…). Se guarda tal cual
-                  para copiarlo en Moodle.
-                </p>
-              ) : (
-                <p className="mb-1.5 text-xs text-slate-500">
-                  Modo Código: escribe o pega código; se muestra como en un editor (con números de
-                  línea), sin ejecutarse.
-                </p>
-              )}
+              {/* Las mismas herramientas que al escribir una nota de concepto:
+                  una sola barra que aprender. */}
+              <HerramientasTexto
+                formato={formato}
+                areaRef={areaRef}
+                valor={instrucciones}
+                onCambiar={setInstrucciones}
+              />
               <textarea
                 ref={areaRef}
                 value={instrucciones}

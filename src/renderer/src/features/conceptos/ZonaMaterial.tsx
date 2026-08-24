@@ -470,7 +470,7 @@ export function ZonaMaterial({
                       onClick={(e) => abrirMenuCarpeta(e, carpeta)}
                       title={`Opciones de la carpeta «${carpeta}»`}
                       aria-label={`Opciones de la carpeta ${carpeta}`}
-                      className="rounded px-1 text-sm leading-none text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                      className="shrink-0 rounded-md px-1.5 py-1 text-sm leading-none text-slate-500 transition hover:bg-slate-200 hover:text-slate-800"
                     >
                       ⋯
                     </button>
@@ -480,11 +480,11 @@ export function ZonaMaterial({
               {carpeta !== RAIZ && !abiertas.has(carpeta) ? (
                 // Cerrada: sigue siendo zona de destino, para poder soltarle
                 // algo sin tener que abrirla antes.
-                <p className="px-3 py-1.5 text-xs text-slate-300">
+                <p className="px-3 py-1.5 text-xs text-slate-500">
                   {arrastrando === carpeta ? 'Suelta aquí para guardarlo dentro' : ''}
                 </p>
               ) : items.length === 0 ? (
-                <p className="px-3 py-2 text-xs text-slate-300">
+                <p className="px-3 py-2 text-xs text-slate-500">
                   {arrastrando === carpeta
                     ? 'Suelta aquí para guardarlo en esta carpeta'
                     : // La raíz no es una carpeta: llamarla "carpeta vacía"
@@ -494,7 +494,7 @@ export function ZonaMaterial({
                       : 'Carpeta vacía · arrastra archivos aquí'}
                 </p>
               ) : (
-                <ul className="divide-y divide-slate-100">
+                <ul className="space-y-1.5 px-1.5 pb-1.5">
                   {items.map((item) =>
                     item.clase === 'archivo' ? (
                       <li
@@ -510,25 +510,25 @@ export function ZonaMaterial({
                           })
                         }
                         onContextMenu={(e) => abrirMenu(e, item)}
-                        className="group flex cursor-grab items-center gap-3 px-3 py-2.5 active:cursor-grabbing"
+                        className="group flex cursor-grab items-center gap-2.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 transition hover:border-marca-300 hover:bg-slate-100 active:cursor-grabbing"
                       >
-                        <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold uppercase text-slate-500">
+                        <span className="shrink-0 rounded bg-slate-200 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-700">
                           {item.recurso.formato}
                         </span>
-                        <span className="flex-1 truncate text-sm text-slate-700">
+                        <span className="flex-1 truncate text-sm font-medium text-slate-800">
                           {item.recurso.nombre}
                         </span>
                         {PREVISUALIZABLES.includes(item.recurso.formato) && (
                           <button
                             onClick={() => setAVer(item.recurso)}
-                            className="text-xs text-slate-500 transition hover:text-marca-700"
+                            className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-200 hover:text-marca-700"
                           >
                             Ver
                           </button>
                         )}
                         <button
                           onClick={() => abrir(item.recurso)}
-                          className="text-xs text-slate-500 transition hover:text-marca-700"
+                          className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-200 hover:text-marca-700"
                         >
                           Abrir
                         </button>
@@ -538,7 +538,7 @@ export function ZonaMaterial({
                         />
                         <button
                           onClick={() => setAEliminar(item.recurso)}
-                          className="text-slate-400 transition hover:text-red-600"
+                          className="shrink-0 rounded-md px-1.5 py-1 text-slate-500 transition hover:bg-red-50 hover:text-red-600"
                           aria-label={`Quitar ${item.recurso.nombre}`}
                         >
                           ✕
@@ -560,17 +560,17 @@ export function ZonaMaterial({
                           })
                         }
                         onContextMenu={(e) => abrirMenu(e, item)}
-                        className="group flex cursor-grab items-center gap-3 px-3 py-2.5 active:cursor-grabbing"
+                        className="group flex cursor-grab items-center gap-2.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 transition hover:border-marca-300 hover:bg-slate-100 active:cursor-grabbing"
                       >
-                        <span className="rounded bg-sky-100 px-2 py-0.5 text-xs font-semibold uppercase text-sky-800">
+                        <span className="shrink-0 rounded bg-sky-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-sky-800">
                           web
                         </span>
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm text-slate-700">
+                          <span className="block truncate text-sm font-medium text-slate-800">
                             {item.enlace.titulo}
                           </span>
                           {item.enlace.titulo !== item.enlace.url && (
-                            <span className="block truncate text-xs text-slate-400">
+                            <span className="block truncate text-xs text-slate-500">
                               {item.enlace.url.replace(/^https?:\/\//i, '')}
                             </span>
                           )}
@@ -584,7 +584,7 @@ export function ZonaMaterial({
                           /* Un ancla arrastra su URL por defecto y le ganaría al
                              arrastre de la fila, que es el que mueve de carpeta. */
                           draggable={false}
-                          className="text-xs text-slate-500 transition hover:text-marca-700"
+                          className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-200 hover:text-marca-700"
                         >
                           Abrir
                         </a>
@@ -594,7 +594,7 @@ export function ZonaMaterial({
                         />
                         <button
                           onClick={() => setEnlaceAEliminar(item.enlace)}
-                          className="text-slate-400 transition hover:text-red-600"
+                          className="shrink-0 rounded-md px-1.5 py-1 text-slate-500 transition hover:bg-red-50 hover:text-red-600"
                           aria-label={`Quitar ${item.enlace.titulo}`}
                         >
                           ✕

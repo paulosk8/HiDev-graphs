@@ -15,6 +15,36 @@ import { VistaHtml } from './VistaHtml'
  * En Markdown reconoce además los enlaces `[[Concepto]]` y los convierte en
  * algo pulsable que abre el panel de vistazo.
  */
+/**
+ * Direcciones de imagen que la ventana puede pintar de verdad. Su política de
+ * contenido solo admite `data:` y `recurso:`; una `https://` o un `file://` de
+ * otro programa se quedarían en el icono de imagen rota.
+ */
+function sePuedePintar(src: string): boolean {
+  return src.startsWith('data:') || src.startsWith('recurso://')
+}
+
+/**
+ * Convierte el Markdown a HTML sustituyendo las imágenes que no se pueden
+ * pintar por su texto alternativo.
+ *
+ * Es para el contenido ANTERIOR a que las imágenes pegadas se guardaran junto
+ * al concepto: esas notas llevan direcciones que solo valían en el programa de
+ * origen. Leer «Árbol de carpetas: dentro de react-sin-magia…» sirve de algo;
+ * un icono roto, no.
+ */
+function aHtml(markdown: string): string {
+  const renderizador = new marked.Renderer()
+  renderizador.image = ({ href, text, title }): string => {
+    if (sePuedePintar(href ?? '')) {
+      const titulo = title ? ` title="${title}"` : ''
+      return `<img src="${href}" alt="${text ?? ''}"${titulo}>`
+    }
+    return `<span class="imagen-no-disponible">${text || 'Imagen no disponible'}</span>`
+  }
+  return marked.parse(markdown, { renderer: renderizador }) as string
+}
+
 export function ContenidoFormateado({
   texto,
   formato,
@@ -67,12 +97,13 @@ export function ContenidoFormateado({
     )
     return encontrado ? { id: encontrado.id, nombre: encontrado.nombre } : null
   })
+  const html = aHtml(conEnlaces)
 
   return (
     <div
       onClick={alPulsar}
       className={`markdown-preview ${className ?? ''}`}
-      dangerouslySetInnerHTML={{ __html: marked.parse(conEnlaces) as string }}
+      dangerouslySetInnerHTML={{ __html: html }}
     />
   )
 }
