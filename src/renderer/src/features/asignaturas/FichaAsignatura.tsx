@@ -29,7 +29,11 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
   const [editando, setEditando] = useState(false)
   const [periodoNuevo, setPeriodoNuevo] = useState('')
   const [tareas, setTareas] = useState<ResumenTareaDTO[]>([])
-  const [creandoTarea, setCreandoTarea] = useState(false)
+  /**
+   * Alta de tarea/práctica: `true` desde el botón general, o el id del tema
+   * cuando se pide desde su fila (llega ya marcado en el formulario).
+   */
+  const [creandoTarea, setCreandoTarea] = useState<boolean | string>(false)
   const [tareaAbierta, setTareaAbierta] = useState<string | null>(null)
   const [vista, setVista] = useState<'contenido' | 'plan' | 'salud'>('contenido')
 
@@ -253,6 +257,7 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
             onVincular={(temaId, conceptoId) => void vincular(temaId, conceptoId)}
             onDesvincular={(temaId, conceptoId) => void desvincular(temaId, conceptoId)}
             onAbrirTarea={setTareaAbierta}
+            onCrearTarea={(temaId) => setCreandoTarea(temaId)}
             onGuardar={guardarEstructura}
           />
         )}
@@ -333,6 +338,7 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
       {creandoTarea && (
         <FormularioTarea
           asignatura={asig}
+          temaPreseleccionado={typeof creandoTarea === 'string' ? creandoTarea : undefined}
           onCerrar={() => setCreandoTarea(false)}
           onGuardada={(t) => {
             void cargarTareas()

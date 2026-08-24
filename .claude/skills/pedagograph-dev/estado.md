@@ -447,6 +447,13 @@ abiertos, para no deshacer la pila uno a uno.
   quedaba sin ellos—. En el formulario, los del tema se pintan grises y con la
   coletilla «del tema» (no se quitan desde ahí: eso sería mentir sobre lo que el
   tema declara) y los propios llevan su ✕.
+- **La práctica se crea desde la fila de su tema.** Estaba solo el botón del pie
+  de la ficha, que obliga a bajar, crear y volver a buscar el tema en una lista
+  de casillas. Ahora cada tema lleva su «+ Nueva práctica» (o «+ Nueva tarea») en
+  la misma fila donde ya se listaban las suyas, y el formulario abre con ese tema
+  marcado (`temaPreseleccionado`, que ya usaba la planificación semanal). La fila
+  se pinta aunque el tema no tenga ninguna todavía —es desde donde se crean— pero
+  solo para temas ya guardados: uno recién escrito aún no tiene id al que colgarlas.
 - **El «Componente» solo aparece si la asignatura tiene alguno.** En un espacio
   de aprendizaje no hay componentes, así que el desplegable ofrecía una única
   opción («General (sin componente)») que no decide nada; y la lista de prácticas
