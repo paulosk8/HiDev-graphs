@@ -21,12 +21,26 @@ import type { Servicios } from '../servicios'
 import { aResumenTareaDTO, aTareaDTO } from './mapeadores'
 
 /** Conceptos que instancian los temas indicados (unión, sin duplicados). */
-function derivarConceptos(asignatura: Asignatura, temaIds: readonly string[]): string[] {
-  const conjunto = new Set<string>()
+/**
+ * Conceptos en que se apoya una tarea: los de los temas elegidos —incluidos los
+ * que cuelgan de sus SUBTEMAS, que también instancian conceptos— más los que el
+ * docente vinculó a mano.
+ *
+ * Los propios van aparte precisamente para esto: aquí se recalcula en cada
+ * guardado, y si se mezclaran con los derivados se perderían al cambiar de tema.
+ */
+function derivarConceptos(
+  asignatura: Asignatura,
+  temaIds: readonly string[],
+  propios: readonly string[] = []
+): string[] {
+  const conjunto = new Set<string>(propios)
   for (const unidad of asignatura.unidades) {
     for (const tema of unidad.temas) {
-      if (temaIds.includes(tema.id)) {
-        for (const conceptoId of tema.conceptos) conjunto.add(conceptoId)
+      if (!temaIds.includes(tema.id)) continue
+      for (const conceptoId of tema.conceptos) conjunto.add(conceptoId)
+      for (const sub of tema.subtemas) {
+        for (const conceptoId of sub.conceptos) conjunto.add(conceptoId)
       }
     }
   }
@@ -53,7 +67,8 @@ export function crearTarea(servicios: Servicios, datos: DatosTareaDTO): TareaDTO
     asignaturaId: datos.asignaturaId,
     temas: datos.temas,
     componente: datos.componente,
-    conceptos: derivarConceptos(asignatura, datos.temas),
+    conceptos: derivarConceptos(asignatura, datos.temas, datos.conceptosPropios),
+    conceptosPropios: datos.conceptosPropios,
     enlaces: datos.enlaces
   })
 
@@ -77,7 +92,13 @@ export function editarTarea(servicios: Servicios, id: string, datos: DatosTareaD
     asignaturaId: datos.asignaturaId,
     temas: datos.temas,
     componente: datos.componente,
-    conceptos: derivarConceptos(asignatura, datos.temas),
+    // Si la edición no los trae, se conservan los que ya tenía.
+    conceptos: derivarConceptos(
+      asignatura,
+      datos.temas,
+      datos.conceptosPropios ?? actual.conceptosPropios
+    ),
+    conceptosPropios: datos.conceptosPropios ?? actual.conceptosPropios,
     recursos: actual.recursos,
     enlaces: datos.enlaces
   })
@@ -217,7 +238,9 @@ export function duplicarTarea(
     asignaturaId: destino.asignaturaId,
     temas: destino.temas,
     componente,
-    conceptos: derivarConceptos(asignatura, destino.temas),
+    // La copia hereda los vínculos a mano: son parte de lo que la tarea trata.
+    conceptos: derivarConceptos(asignatura, destino.temas, original.conceptosPropios),
+    conceptosPropios: original.conceptosPropios,
     enlaces: original.enlaces
   })
 
@@ -269,6 +292,8 @@ export function combinarTareas(servicios: Servicios, datos: CombinarTareasDTO): 
     return true
   })
 
+  const propiosDeOrigenes = [...new Set(origenes.flatMap((o) => [...o.conceptosPropios]))]
+
   const id = slugUnico(datos.titulo, new Set(vault.listarIdsTareas()), 'tarea')
   let combinada = nuevaTarea({
     id,
@@ -277,7 +302,9 @@ export function combinarTareas(servicios: Servicios, datos: CombinarTareasDTO): 
     asignaturaId: datos.asignaturaId,
     temas: datos.temas,
     componente: datos.componente ?? null,
-    conceptos: derivarConceptos(asignatura, datos.temas),
+    // Como con los adjuntos: la combinada hereda la UNIÓN de lo que traían.
+    conceptos: derivarConceptos(asignatura, datos.temas, propiosDeOrigenes),
+    conceptosPropios: propiosDeOrigenes,
     enlaces
   })
 

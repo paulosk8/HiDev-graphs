@@ -436,6 +436,30 @@ abiertos, para no deshacer la pila uno a uno.
     paso las notas guardadas ANTES de este cambio.
   - `CSP_CONTENIDO` (el visor HTML aislado) tuvo que sumar `recurso:` a `img-src`.
 
+- **Una tarea/práctica se vincula también a conceptos a mano**
+  (`Tarea.conceptosPropios`). Sus `conceptos` seguían saliendo SOLO de sus temas,
+  y eso deja fuera lo que una práctica ejercita de verdad cuando el tema no lo
+  declara. Ahora `conceptos = derivados ∪ propios`, y los propios se guardan
+  aparte **porque los derivados se recalculan en cada guardado**: mezclados, se
+  perderían al cambiar de tema. Duplicar y combinar los heredan (la combinada,
+  la unión, como con los adjuntos). De paso, `derivarConceptos` ya mira también
+  los **subtemas** —desde que instancian conceptos, una tarea del tema padre se
+  quedaba sin ellos—. En el formulario, los del tema se pintan grises y con la
+  coletilla «del tema» (no se quitan desde ahí: eso sería mentir sobre lo que el
+  tema declara) y los propios llevan su ✕.
+- **El «Componente» solo aparece si la asignatura tiene alguno.** En un espacio
+  de aprendizaje no hay componentes, así que el desplegable ofrecía una única
+  opción («General (sin componente)») que no decide nada; y la lista de prácticas
+  se encabezaba con un «General» que tampoco informaba. En Docencia con
+  componentes definidos sigue igual, con su opción vacía renombrada a «Sin
+  clasificar» y una línea que dice para qué sirve.
+- **Trampa: un `<button>` sin `type` dentro de un `<form>` es `type="submit"`.**
+  Los botones del `BuscadorConceptos` no lo llevaban; al reutilizarlo dentro del
+  formulario de tarea, **elegir un concepto enviaba la tarea a medio rellenar**.
+  Lo cazó el smoke de GUI. Cualquier botón que se pinte dentro de un formulario
+  necesita `type="button"` explícito (el componente `Boton` ya lo pone por
+  defecto; los `<button>` a pelo, no).
+
 ## Trampas del vault que ya han mordido
 
 `RespaldarVault`, `RestaurarVault` y `MoverAlmacenamiento` llevan **su lista de

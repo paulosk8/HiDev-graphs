@@ -379,7 +379,10 @@ export interface TareaDTO {
   temas: string[]
   /** Clave del componente, o null si es una tarea general. */
   componente: string | null
+  /** Conceptos que cubre: los de sus temas más los vinculados a mano. */
   conceptos: string[]
+  /** Solo los vinculados a mano (para distinguirlos en el formulario). */
+  conceptosPropios: string[]
   recursos: RecursoDTO[]
   /** Enlaces a recursos online (con su título visible). */
   enlaces: EnlaceDTO[]
@@ -402,6 +405,11 @@ export interface DatosTareaDTO {
   asignaturaId: string
   temas: string[]
   componente: string | null
+  /**
+   * Conceptos vinculados a mano. Si se omite al editar, se conservan los que la
+   * tarea ya tenía.
+   */
+  conceptosPropios?: string[]
   /** Enlaces a recursos online (opcional). */
   enlaces?: EnlaceDTO[]
 }

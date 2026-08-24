@@ -110,6 +110,7 @@ export function BuscadorConceptos({
         {resultados.map((c) => (
           <li key={c.id}>
             <button
+              type="button"
               onClick={() => void seleccionar(c.id)}
               disabled={ocupado}
               className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
@@ -127,6 +128,7 @@ export function BuscadorConceptos({
         {nombreLimpio && !hayCoincidenciaExacta && (
           <li>
             <button
+              type="button"
               onClick={() => void crearYVincular()}
               disabled={ocupado}
               className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-marca-700 hover:bg-marca-50"
@@ -144,6 +146,7 @@ export function BuscadorConceptos({
 
       {/* Registrar aquí mismo, con descripción y etiquetas, sin ir a «Conceptos». */}
       <button
+        type="button"
         onClick={() => setRegistrando(true)}
         disabled={ocupado}
         className="flex w-full items-center gap-2 border-t border-slate-100 px-3 py-2 text-left text-xs text-slate-500 hover:bg-slate-50 hover:text-marca-700"

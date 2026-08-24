@@ -646,6 +646,10 @@ export class VaultFileSystemService {
       temas: [...tarea.temas],
       componente: tarea.componente,
       conceptos: [...tarea.conceptos],
+      // Solo si hay alguno, para no meter una clave vacía en los YAML previos.
+      ...(tarea.conceptosPropios.length > 0
+        ? { conceptosPropios: [...tarea.conceptosPropios] }
+        : {}),
       recursos: tarea.recursos.map((r) => ({
         id: r.id,
         nombre: r.nombre,
@@ -928,6 +932,8 @@ function tareaDesdePlano(datos: Record<string, unknown>, instrucciones: string):
     temas: listaTextos(datos.temas),
     componente: componente.length > 0 ? componente : null,
     conceptos: listaTextos(datos.conceptos),
+    // Ausente en las tareas anteriores al vínculo directo con conceptos.
+    conceptosPropios: listaTextos(datos.conceptosPropios),
     recursos,
     enlaces
   })

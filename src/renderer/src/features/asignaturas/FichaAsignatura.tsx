@@ -303,7 +303,11 @@ export function FichaAsignatura({ asignaturaId }: Props): JSX.Element {
           <div className="space-y-4">
             {gruposTareas.map((grupo) => (
               <div key={grupo.etiqueta}>
-                <p className="mb-1.5 text-xs font-semibold text-slate-400">{grupo.etiqueta}</p>
+                {/* Sin componentes definidos solo existe «General», y encabezar
+                    una lista con el nombre de su único grupo no informa de nada. */}
+                {gruposTareas.length > 1 && (
+                  <p className="mb-1.5 text-xs font-semibold text-slate-400">{grupo.etiqueta}</p>
+                )}
                 <ul className="space-y-1.5">
                   {grupo.items.map((t) => (
                     <li key={t.id}>

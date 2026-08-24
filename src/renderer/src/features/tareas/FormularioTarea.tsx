@@ -1,4 +1,4 @@
-import { useRef, useState, type ClipboardEvent, type FormEvent } from 'react'
+import { useMemo, useRef, useState, type ClipboardEvent, type FormEvent } from 'react'
 import { marked } from 'marked'
 import type { AsignaturaDTO, FormatoInstrucciones, TareaDTO } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
@@ -10,6 +10,8 @@ import { api } from '../../lib/api'
 import { manejarPegadoRico } from '../../lib/pegadoRico'
 import { useTareasStore } from '../../stores/tareasStore'
 import { BarraFormato } from './BarraFormato'
+import { BuscadorConceptos } from '../vinculos/BuscadorConceptos'
+import { useConceptosStore } from '../../stores/conceptosStore'
 
 /** Fragmentos que inserta la barra de formato. */
 const PLANTILLA_TABLA = '\n| Criterio | Puntos |\n| --- | --- |\n| … | … |\n| … | … |\n'
@@ -48,6 +50,17 @@ export function FormularioTarea({
           (temaPreseleccionado ? [temaPreseleccionado] : [])
       )
   )
+  // Conceptos vinculados a mano. Los que vienen de los temas se muestran aparte
+  // y no se tocan: quitarlos aquí sería mentir sobre lo que el tema declara.
+  const [conceptosPropios, setConceptosPropios] = useState<string[]>(
+    () => tareaInicial?.conceptosPropios ?? []
+  )
+  const [buscandoConcepto, setBuscandoConcepto] = useState(false)
+  const listaConceptos = useConceptosStore((st) => st.lista)
+  const conceptoPorId = useMemo(
+    () => new Map(listaConceptos.map((c) => [c.id, c] as const)),
+    [listaConceptos]
+  )
   const [instrucciones, setInstrucciones] = useState(tareaInicial?.instrucciones ?? '')
   const [formato, setFormato] = useState<FormatoInstrucciones>(tareaInicial?.formato ?? 'markdown')
   const [enlaces, setEnlaces] = useState<{ url: string; titulo: string }[]>(
@@ -58,6 +71,22 @@ export function FormularioTarea({
   const [previa, setPrevia] = useState(false)
   const [ocupado, setOcupado] = useState(false)
   const areaRef = useRef<HTMLTextAreaElement>(null)
+
+  /**
+   * Conceptos que ya trae la tarea por sus temas (y por los subtemas de esos
+   * temas). Se enseñan para que el docente no vuelva a añadir lo que ya está.
+   */
+  const derivados = useMemo(() => {
+    const ids = new Set<string>()
+    for (const u of asignatura.unidades) {
+      for (const t of u.temas) {
+        if (!temas.has(t.id)) continue
+        for (const c of t.conceptos) ids.add(c)
+        for (const sub of t.subtemas) for (const c of sub.conceptos) ids.add(c)
+      }
+    }
+    return [...ids]
+  }, [asignatura, temas])
 
   /** Inserta texto en la posición del cursor (o al final si no hay foco). */
   const insertar = (texto: string): void => {
@@ -114,6 +143,7 @@ export function FormularioTarea({
       asignaturaId: asignatura.id,
       temas: [...temas],
       componente: componente || null,
+      conceptosPropios,
       enlaces: enlaces.filter((e) => e.url.trim().length > 0)
     }
     let tarea = editando ? await editar(tareaInicial.id, datos) : await crear(datos)
@@ -183,24 +213,88 @@ export function FormularioTarea({
           </div>
         </div>
 
-        {/* Componente */}
-        <label className="block">
-          <span className="mb-1.5 block text-sm font-medium text-slate-700">
-            Componente (opcional)
-          </span>
-          <select
-            value={componente}
-            onChange={(e) => setComponente(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-marca-500 focus:ring-2 focus:ring-marca-100"
-          >
-            <option value="">General (sin componente)</option>
-            {asignatura.componentes.map((c) => (
-              <option key={c.clave} value={c.clave}>
-                {c.clave} · {c.nombre}
-              </option>
+        {/* Conceptos: los que trae el tema, más los que se vinculen aquí */}
+        <div>
+          <span className="mb-1.5 block text-sm font-medium text-slate-700">Conceptos</span>
+          <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-slate-200 p-2.5">
+            {derivados.map((id) => (
+              <span
+                key={id}
+                title="Viene del tema. Se quita desvinculándolo del tema."
+                className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-600"
+              >
+                {conceptoPorId.get(id)?.nombre ?? id}
+                <span className="ml-1 text-slate-400">del tema</span>
+              </span>
             ))}
-          </select>
-        </label>
+            {conceptosPropios
+              .filter((id) => !derivados.includes(id))
+              .map((id) => (
+                <span
+                  key={id}
+                  className="inline-flex items-center gap-1 rounded-full bg-marca-50 py-0.5 pl-2.5 pr-1 text-xs font-medium text-marca-700"
+                >
+                  {conceptoPorId.get(id)?.nombre ?? id}
+                  <button
+                    type="button"
+                    onClick={() => setConceptosPropios((c) => c.filter((x) => x !== id))}
+                    aria-label={`Quitar ${conceptoPorId.get(id)?.nombre ?? id}`}
+                    className="text-marca-400 transition hover:text-red-600"
+                  >
+                    ✕
+                  </button>
+                </span>
+              ))}
+            <span className="relative">
+              <button
+                type="button"
+                onClick={() => setBuscandoConcepto((v) => !v)}
+                className="rounded-full border border-dashed border-slate-300 px-2.5 py-0.5 text-xs text-slate-500 transition hover:border-marca-300 hover:text-marca-700"
+              >
+                + Vincular concepto
+              </button>
+              {buscandoConcepto && (
+                <BuscadorConceptos
+                  excluir={[...new Set([...derivados, ...conceptosPropios])]}
+                  onSeleccionar={(id) => {
+                    setConceptosPropios((c) => (c.includes(id) ? c : [...c, id]))
+                    setBuscandoConcepto(false)
+                  }}
+                  onCerrar={() => setBuscandoConcepto(false)}
+                />
+              )}
+            </span>
+          </div>
+          <span className="mt-1 block text-xs text-slate-400">
+            Los de sus temas se añaden solos. Vincula aquí lo que además ejercita.
+          </span>
+        </div>
+
+        {/* Componente: solo si la asignatura tiene alguno definido. En un espacio
+            de aprendizaje no los hay, y un desplegable con una sola opción
+            («General») no decide nada: solo estorba. */}
+        {asignatura.componentes.length > 0 && (
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-medium text-slate-700">
+              Componente de aprendizaje (opcional)
+            </span>
+            <select
+              value={componente}
+              onChange={(e) => setComponente(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-marca-500 focus:ring-2 focus:ring-marca-100"
+            >
+              <option value="">Sin clasificar</option>
+              {asignatura.componentes.map((c) => (
+                <option key={c.clave} value={c.clave}>
+                  {c.clave} · {c.nombre}
+                </option>
+              ))}
+            </select>
+            <span className="mt-1 block text-xs text-slate-400">
+              Agrupa las tareas por el componente al que cuentan.
+            </span>
+          </label>
+        )}
 
         {/* Instrucciones (Markdown) */}
         <div>
