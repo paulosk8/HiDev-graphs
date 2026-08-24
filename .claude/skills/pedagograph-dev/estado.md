@@ -357,6 +357,17 @@ abiertos, para no deshacer la pila uno a uno.
   otra capa en el Mapa, que sea un filtro **apagado por defecto**, nunca la
   mezcla plana.
 
+- **En el Mapa, el concepto se mira en el panel lateral, no en una modal.** La
+  modal centrada tapaba justo el grafo que se está consultando y obligaba a
+  cerrarla para seguir mirando. Ahora el doble clic (en el nodo, en la lista
+  lateral o en un concepto aislado) abre el mismo `PanelVistazo` de los lienzos
+  y los `[[enlaces]]`: es una columna, empuja el mapa en vez de taparlo, apila
+  conceptos si se sigue tirando del hilo, y su material y notas se editan ahí
+  mismo (la modal era de solo lectura). Al panel se le añadió el **«Se usa en»**
+  que sólo tenía la modal —la ficha ya lo traía en la misma respuesta y se
+  estaba descartando—; los «conceptos relacionados» no se pierden porque el
+  propio panel del mapa ya lista los conectados.
+
 ## Trampas del vault que ya han mordido
 
 `RespaldarVault`, `RestaurarVault` y `MoverAlmacenamiento` llevan **su lista de

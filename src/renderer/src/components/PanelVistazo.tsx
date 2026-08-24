@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { ConceptoDTO } from '@shared/dtos'
+import type { ConceptoDTO, UsoDeConceptoDTO } from '@shared/dtos'
 import { api } from '../lib/api'
+import { useAsignaturasStore } from '../stores/asignaturasStore'
 import { NotasConcepto } from '../features/conceptos/NotasConcepto'
 import { ZonaMaterial } from '../features/conceptos/ZonaMaterial'
 import { useUiStore } from '../stores/uiStore'
@@ -27,10 +28,13 @@ export function PanelVistazo(): JSX.Element | null {
   const cerrar = useVistazoStore((s) => s.cerrar)
   const llevarAlLienzo = useVistazoStore((s) => s.llevarAlLienzo)
   const irAConcepto = useUiStore((s) => s.seleccionarConcepto)
+  const asignaturas = useAsignaturasStore((s) => s.lista)
   const irASeccion = useUiStore((s) => s.irASeccion)
 
   const conceptoId = pila[pila.length - 1] ?? null
   const [concepto, setConcepto] = useState<ConceptoDTO | null>(null)
+  /** Dónde se usa. Venía en la misma ficha y antes se descartaba. */
+  const [usos, setUsos] = useState<UsoDeConceptoDTO[]>([])
   const [cargando, setCargando] = useState(false)
   /** Nombre de cada concepto de la pila, para rotular sus pestañas. */
   const [nombres, setNombres] = useState<Record<string, string>>({})
@@ -39,11 +43,14 @@ export function PanelVistazo(): JSX.Element | null {
     if (!conceptoId) return
     setCargando(true)
     try {
-      const c = (await api.obtenerFichaConcepto(conceptoId)).concepto
+      const ficha = await api.obtenerFichaConcepto(conceptoId)
+      const c = ficha.concepto
       setConcepto(c)
+      setUsos(ficha.usos)
       setNombres((n) => ({ ...n, [c.id]: c.nombre }))
     } catch {
       setConcepto(null)
+      setUsos([])
     } finally {
       setCargando(false)
     }
@@ -52,6 +59,7 @@ export function PanelVistazo(): JSX.Element | null {
   useEffect(() => {
     if (!conceptoId) {
       setConcepto(null)
+      setUsos([])
       return
     }
     void cargar()
@@ -160,6 +168,42 @@ export function PanelVistazo(): JSX.Element | null {
                   </span>
                 ))}
               </div>
+            )}
+
+            {/* Dónde se usa: es la pregunta que traía al mapa ("¿dónde di
+                esto?"), así que va arriba y en una línea por uso. */}
+            {usos.length > 0 && (
+              <section className="mt-4">
+                <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Se usa en
+                </h3>
+                <ul className="space-y-1">
+                  {usos.map((u) => {
+                    // En Aprendizaje el nivel superior está aplanado.
+                    const enEspacio =
+                      asignaturas.find((a) => a.id === u.asignaturaId)?.tipo === 'aprendizaje'
+                    return (
+                      <li key={`${u.asignaturaId}-${u.temaId}-${u.subtema ?? ''}`} className="text-xs text-slate-600">
+                        <span className="font-medium">
+                          {u.asignatura}
+                          {u.periodos.length > 0 && ` · ${u.periodos.join(', ')}`}
+                        </span>
+                        <span className="text-slate-400">
+                          {enEspacio ? ' › ' : ` › ${u.unidad} › `}
+                        </span>
+                        {u.subtema ? (
+                          <>
+                            <span className="text-slate-400">{u.tema} › </span>
+                            <span>{u.subtema}</span>
+                          </>
+                        ) : (
+                          <span>{u.tema}</span>
+                        )}
+                      </li>
+                    )
+                  })}
+                </ul>
+              </section>
             )}
 
             {/* En un lienzo, todo esto se arrastra allí. Se conserva el clic

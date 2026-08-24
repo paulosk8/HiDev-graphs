@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as R
 import cytoscape from 'cytoscape'
 import fcose from 'cytoscape-fcose'
 import {
-  type FichaConceptoDTO,
   type GrafoDTO,
   type NodoGrafoDTO,
   type TipoAristaGrafo,
@@ -17,6 +16,7 @@ import { api } from '../../lib/api'
 import { useAsignaturasStore } from '../../stores/asignaturasStore'
 import { useConceptosStore } from '../../stores/conceptosStore'
 import { useUiStore, type Contexto } from '../../stores/uiStore'
+import { useVistazoStore } from '../../stores/vistazoStore'
 import { TEMAS_OSCUROS, useLayoutStore } from '../../stores/layoutStore'
 import { colorDominio } from '../../lib/repaso'
 
@@ -415,8 +415,6 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
   const [vinculando, setVinculando] = useState<string | null>(null)
   const [busqueda, setBusqueda] = useState('')
   const [seleccionado, setSeleccionado] = useState<string | null>(null)
-  const [modalId, setModalId] = useState<string | null>(null)
-  const [detalle, setDetalle] = useState<FichaConceptoDTO | null>(null)
   const [tooltip, setTooltip] = useState<{ x: number; y: number; texto: string } | null>(null)
   const [usosSel, setUsosSel] = useState<UsoDeConceptoDTO[]>([])
   const [modalPrompt, setModalPrompt] = useState(false)
@@ -448,9 +446,10 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
   const notificarError = useUiStore((s) => s.notificarError)
   const notificar = useUiStore((s) => s.notificar)
   const irASeccion = useUiStore((s) => s.irASeccion)
-  const seleccionarConcepto = useUiStore((s) => s.seleccionarConcepto)
   const seleccionarAsignatura = useUiStore((s) => s.seleccionarAsignatura)
-  const cargarConceptos = useConceptosStore((s) => s.cargar)
+  // El mismo panel del lienzo y de los [[enlaces]]: mirar un concepto sin salir
+  // del mapa. Sustituye a la modal, que tapaba justo el grafo que se consulta.
+  const abrirVistazo = useVistazoStore((s) => s.abrir)
   const conceptosLista = useConceptosStore((s) => s.lista)
   // Dominio por concepto (para colorear el mapa por repaso espaciado).
   const dominioPorId = useMemo(
@@ -542,7 +541,7 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
     window.__cy = cy
 
     cy.on('tap', 'node[tipo="concepto"]', (evt) => setSeleccionado(evt.target.id().slice(2)))
-    cy.on('dbltap', 'node[tipo="concepto"]', (evt) => setModalId(evt.target.id().slice(2)))
+    cy.on('dbltap', 'node[tipo="concepto"]', (evt) => abrirVistazo(evt.target.id().slice(2)))
     // Clic en una tarea: añádela/quítala de la selección para combinar.
     // Doble clic: ir a su asignatura para ver la ficha.
     cy.on('tap', 'node[tipo="tarea"]', (evt) => {
@@ -628,16 +627,6 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
     cy.nodes('[tipo="tarea"]').removeClass('combinar')
     for (const id of tareasCombinar) cy.getElementById(`t:${id}`).addClass('combinar')
   }, [tareasCombinar, elementos])
-
-  // Carga el detalle para la modal.
-  useEffect(() => {
-    if (!modalId) {
-      setDetalle(null)
-      return
-    }
-    setDetalle(null)
-    api.obtenerFichaConcepto(modalId).then(setDetalle).catch((e) => notificarError(e))
-  }, [modalId, notificarError])
 
   // Temas donde se usa el concepto seleccionado (contexto para los prompts de IA).
   useEffect(() => {
@@ -1126,7 +1115,7 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
                   <button
                     key={c.id}
                     onClick={() => setSeleccionado(id)}
-                    onDoubleClick={() => setModalId(id)}
+                    onDoubleClick={() => abrirVistazo(id)}
                     title={c.etiqueta}
                     className="h-3.5 w-3.5 shrink-0 rounded-full transition"
                     style={{
@@ -1179,7 +1168,7 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
                   <li key={c.id}>
                     <button
                       onClick={() => setSeleccionado(id)}
-                      onDoubleClick={() => setModalId(id)}
+                      onDoubleClick={() => abrirVistazo(id)}
                       title={c.etiqueta}
                       className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm transition ${
                         activo ? 'bg-marca-50 text-marca-700' : 'text-slate-700 hover:bg-slate-100'
@@ -1202,10 +1191,10 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
                 <p className="mb-2 px-1 text-xs text-slate-400">
                   {relacionados.length === 0
                     ? 'Este concepto aún no tiene conexiones.'
-                    : `Mostrando «${nombreSel}» y sus ${relacionados.length} conexiones. Doble clic abre el detalle.`}
+                    : `Mostrando «${nombreSel}» y sus ${relacionados.length} conexiones. Doble clic abre su panel.`}
                 </p>
-                <Boton variante="secundario" className="w-full" onClick={() => setModalId(seleccionado)}>
-                  Ver descripción y datos
+                <Boton variante="secundario" className="w-full" onClick={() => abrirVistazo(seleccionado)}>
+                  Ver descripción y material
                 </Boton>
               </div>
             )}
@@ -1213,73 +1202,6 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
         </aside>
         )}
       </div>
-
-      {/* Modal de detalle del concepto */}
-      {modalId && (
-        <Modal titulo={detalle?.concepto.nombre ?? 'Cargando…'} ancho="lg" onCerrar={() => setModalId(null)}>
-          {detalle ? (
-            <div className="space-y-5 text-sm">
-              {detalle.concepto.descripcion && <p className="text-slate-600">{detalle.concepto.descripcion}</p>}
-              <p className="text-xs text-slate-400">
-                {detalle.concepto.recursos.length === 0
-                  ? 'Sin material'
-                  : `${detalle.concepto.recursos.length} ${detalle.concepto.recursos.length === 1 ? 'material' : 'materiales'}`}
-              </p>
-
-              <section>
-                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Se usa en</h3>
-                {detalle.usos.length === 0 ? (
-                  <p className="text-xs text-slate-400">No se usa en ninguna asignatura.</p>
-                ) : (
-                  <ul className="space-y-1.5">
-                    {detalle.usos.map((u) => (
-                      <li key={`${u.asignaturaId}-${u.temaId}`} className="text-xs text-slate-600">
-                        <span className="font-medium">{u.asignatura} · {u.periodos.join(', ')}</span>
-                        <span className="text-slate-400"> › {u.unidad} › {u.tema}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-
-              <section>
-                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Conceptos relacionados</h3>
-                {relacionadosDe(grafo as GrafoDTO, modalId).length === 0 ? (
-                  <p className="text-xs text-slate-400">Sin conexiones todavía.</p>
-                ) : (
-                  <ul className="flex flex-wrap gap-1.5">
-                    {relacionadosDe(grafo as GrafoDTO, modalId).map((r) => (
-                      <li key={r.id}>
-                        <button
-                          onClick={() => setModalId(r.id)}
-                          className="rounded-full bg-marca-50 px-2.5 py-1 text-xs text-marca-700 hover:bg-marca-100"
-                        >
-                          {r.etiqueta}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-
-              <div className="flex justify-end">
-                <Boton
-                  variante="primario"
-                  onClick={() => {
-                    irASeccion('conceptos', contexto)
-                    void cargarConceptos()
-                    seleccionarConcepto(detalle.concepto.id)
-                  }}
-                >
-                  Abrir ficha completa
-                </Boton>
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm text-slate-400">Cargando…</p>
-          )}
-        </Modal>
-      )}
 
       {/* Diálogo para combinar las tareas seleccionadas en una nueva */}
       {dialogoCombinar && tareasOrigen.length >= 2 && (
@@ -1348,7 +1270,7 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
                       {analisis.aislados.map((c) => (
                         <li key={c.id}>
                           <button
-                            onClick={() => setModalId(c.id)}
+                            onClick={() => abrirVistazo(c.id)}
                             className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600 hover:bg-slate-200"
                           >
                             {c.nombre}
