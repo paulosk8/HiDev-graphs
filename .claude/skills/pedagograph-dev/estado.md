@@ -390,6 +390,14 @@ abiertos, para no deshacer la pila uno a uno.
   - `reflejarMaterial` del store pasó a ser **`reflejarConcepto`** y refresca
     también el glosario: esperar a que el observador del vault refresque el
     listado para poder buscar lo que acabas de escribir no es respuesta.
+  - **Promover a concepto** (`promoverTerminoAConcepto`) es la salida cuando un
+    término crece y quiere material propio: se lleva su definición como
+    descripción, queda `relacionado_con` el de origen —esa procedencia es
+    información— y sale del glosario para no vivir en dos sitios. **Si ya existe
+    un concepto con ese nombre se usa ese**, comparando sin mayúsculas ni
+    tildes: duplicar conceptos es justo lo que la app evita. Nadie acierta al
+    principio con qué merece ser concepto, así que la decisión no se pide por
+    adelantado, se corrige cuando se nota.
 
 ## Trampas del vault que ya han mordido
 

@@ -178,6 +178,17 @@ export interface DatosTerminoDTO {
   definicion: string
 }
 
+/** Resultado de promover un término a concepto propio. */
+export interface PromocionTerminoDTO {
+  /** El concepto de origen, ya sin el término y con la relación puesta. */
+  concepto: ConceptoDTO
+  /** Id del concepto resultante (nuevo, o el que ya existía con ese nombre). */
+  conceptoId: string
+  nombre: string
+  /** false si se reutilizó un concepto que ya existía. */
+  creado: boolean
+}
+
 export interface ConceptoDTO {
   id: string
   nombre: string

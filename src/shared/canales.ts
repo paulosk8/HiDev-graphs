@@ -38,6 +38,7 @@ export const CANALES = {
   conceptoTerminoAgregar: 'concepto:termino-agregar',
   conceptoTerminoEditar: 'concepto:termino-editar',
   conceptoTerminoEliminar: 'concepto:termino-eliminar',
+  conceptoTerminoPromover: 'concepto:termino-promover',
   materialEnlaceAgregar: 'material:enlace-agregar',
   materialEnlaceEditar: 'material:enlace-editar',
   materialEnlaceEliminar: 'material:enlace-eliminar',

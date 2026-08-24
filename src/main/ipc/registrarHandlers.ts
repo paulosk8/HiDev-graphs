@@ -6,7 +6,8 @@ import { CANALES } from '../../shared/canales'
 import {
   agregarTerminoAConcepto,
   editarTerminoDeConcepto,
-  eliminarTerminoDeConcepto
+  eliminarTerminoDeConcepto,
+  promoverTerminoAConcepto
 } from '../application/TerminosConcepto'
 import type {
   LienzoDTO,
@@ -314,6 +315,12 @@ export function registrarHandlersIpc(servicios: Servicios): void {
     CANALES.conceptoTerminoEliminar,
     (_evento, conceptoId: string, terminoId: string) =>
       envolver(() => eliminarTerminoDeConcepto(servicios, conceptoId, terminoId))
+  )
+
+  ipcMain.handle(
+    CANALES.conceptoTerminoPromover,
+    (_evento, conceptoId: string, terminoId: string) =>
+      envolver(() => promoverTerminoAConcepto(servicios, conceptoId, terminoId))
   )
 
   ipcMain.handle(

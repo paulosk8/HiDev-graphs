@@ -99,6 +99,8 @@ export const api = {
     desenvolver(window.api.editarTermino(conceptoId, terminoId, datos)),
   eliminarTermino: (conceptoId: string, terminoId: string) =>
     desenvolver(window.api.eliminarTermino(conceptoId, terminoId)),
+  promoverTermino: (conceptoId: string, terminoId: string) =>
+    desenvolver(window.api.promoverTermino(conceptoId, terminoId)),
   moverEnlaceACarpeta: (conceptoId: string, enlaceId: string, carpeta: string) =>
     desenvolver(window.api.moverEnlaceACarpeta(conceptoId, enlaceId, carpeta)),
   /** URL del protocolo local para previsualizar un material (PDF/HTML/imagen). */

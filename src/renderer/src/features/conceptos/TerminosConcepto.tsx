@@ -42,9 +42,11 @@ interface Props {
  */
 export function TerminosConcepto({ concepto, onActualizado, compacto = false }: Props): JSX.Element {
   const notificarError = useUiStore((s) => s.notificarError)
+  const notificar = useUiStore((s) => s.notificar)
   // Sin esto, buscar por un término recién escrito no lo encontraría hasta que
   // el observador del vault refrescara el listado.
   const reflejarConcepto = useConceptosStore((s) => s.reflejarConcepto)
+  const cargarConceptos = useConceptosStore((s) => s.cargar)
   const { menu, abrir: abrirMenu, cerrar: cerrarMenu } = useMenuContextual<TerminoDTO>()
 
   /** Id en edición, 'nuevo' para la fila de alta, o null. */
@@ -53,6 +55,7 @@ export function TerminosConcepto({ concepto, onActualizado, compacto = false }: 
   const [definicion, setDefinicion] = useState('')
   const [ocupado, setOcupado] = useState(false)
   const [aEliminar, setAEliminar] = useState<TerminoDTO | null>(null)
+  const [aPromover, setAPromover] = useState<TerminoDTO | null>(null)
   const [plegado, setPlegado] = useState(true)
   const campoTermino = useRef<HTMLInputElement>(null)
 
@@ -109,6 +112,30 @@ export function TerminosConcepto({ concepto, onActualizado, compacto = false }: 
       notificarError(error)
     } finally {
       setOcupado(false)
+    }
+  }
+
+  /**
+   * Un término que ya no cabe en una frase se convierte en concepto propio: se
+   * lleva su definición como descripción y queda relacionado con este. Si ya
+   * existía un concepto con ese nombre se usa ese, nunca se duplica.
+   */
+  const promover = async (t: TerminoDTO): Promise<void> => {
+    try {
+      const r = await api.promoverTermino(concepto.id, t.id)
+      onActualizado(r.concepto)
+      reflejarConcepto(r.concepto)
+      await cargarConceptos()
+      notificar({
+        tipo: 'exito',
+        mensaje: r.creado
+          ? `«${r.nombre}» ya es un concepto propio, relacionado con este.`
+          : `«${r.nombre}» ya existía como concepto: se relacionó con este y se quitó del glosario.`
+      })
+    } catch (error) {
+      notificarError(error)
+    } finally {
+      setAPromover(null)
     }
   }
 
@@ -262,12 +289,28 @@ export function TerminosConcepto({ concepto, onActualizado, compacto = false }: 
           opciones={[
             { etiqueta: 'Editar', icono: '✎', onElegir: () => abrirEdicion(menu.dato) },
             {
+              etiqueta: 'Convertir en concepto…',
+              icono: '💡',
+              onElegir: () => setAPromover(menu.dato)
+            },
+            {
               etiqueta: 'Eliminar',
               icono: '✕',
               destructiva: true,
               onElegir: () => setAEliminar(menu.dato)
             }
           ]}
+        />
+      )}
+
+      {aPromover && (
+        <DialogoConfirmacion
+          titulo={`¿Convertir «${aPromover.termino}» en concepto?`}
+          mensaje={`Se creará un concepto con ese nombre y su definición como descripción, quedará relacionado con «${concepto.nombre}» y saldrá del glosario. Desde ahí podrás darle material propio. Si ya tienes un concepto con ese nombre, se usará ese en vez de crear otro.`}
+          textoConfirmar="Convertir"
+          textoOcupado="Convirtiendo…"
+          onConfirmar={() => promover(aPromover)}
+          onCancelar={() => setAPromover(null)}
         />
       )}
 
