@@ -87,6 +87,9 @@ export function CampoEtiquetas({
             {e}
             <button
               type="button"
+              // Igual que en las sugerencias: quitar una etiqueta no debe
+              // confirmar de paso lo que haya a medio escribir en el campo.
+              onMouseDown={(ev) => ev.preventDefault()}
               onClick={() => quitar(e)}
               className="text-marca-400 transition hover:text-red-600"
               aria-label={`Quitar la etiqueta ${e}`}
@@ -118,6 +121,13 @@ export function CampoEtiquetas({
             <button
               key={s.etiqueta}
               type="button"
+              // Sin esto, elegir una sugerencia con lo escrito a medias agregaba
+              // lo escrito y no la elegida: el mousedown saca el foco del campo,
+              // el onBlur confirma «cre» como etiqueta nueva, la lista se
+              // recalcula sin filtro y el botón desaparece antes de que llegue
+              // el click. Impedir el cambio de foco deja que el clic haga su
+              // trabajo; `agregar` ya limpia lo tecleado.
+              onMouseDown={(ev) => ev.preventDefault()}
               onClick={() => agregar(s.etiqueta)}
               className="rounded-full border border-slate-200 px-2.5 py-0.5 text-xs text-slate-600 transition hover:border-marca-300 hover:bg-marca-50 hover:text-marca-700"
             >
