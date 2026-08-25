@@ -28,17 +28,29 @@ interface TipoArista {
   etiqueta: string
   color: string
   estilo: EstiloLinea
+  /** Grosor en el lienzo. La leyenda lo respeta: si no, enseñaría otra cosa. */
+  grosor: number
   /** true si la línea lleva flecha (relación con dirección/orden). */
   flecha: boolean
   ayuda: string
 }
 
 const TIPOS_ARISTA: TipoArista[] = [
+  // «Se usa en» y «Relacionado» eran dos grises contiguos de la misma escala,
+  // los dos continuos y sin flecha: en el lienzo no había manera de saber cuál
+  // era cuál. Se separan por FORMA (punteada y fina contra continua y gruesa) y
+  // no por matiz, porque la paleta ya tiene cian, violeta, rosa, índigo, rojo,
+  // verde y ámbar ocupados, y porque así se distinguen igual en claro que en
+  // oscuro y también sin distinguir colores.
   {
     tipo: 'usado_en',
+    // Es la única que NO une dos conceptos: cuelga de la asignatura o el
+    // espacio. Va punteada y fina, del gris de ese nodo, para que se lea como
+    // el andamiaje que es y deje el primer plano a las relaciones.
     etiqueta: 'Se usa en la asignatura',
     color: '#94a3b8',
-    estilo: 'solid',
+    estilo: 'dotted',
+    grosor: 1,
     flecha: false,
     ayuda: 'El concepto forma parte de esa asignatura.'
   },
@@ -47,6 +59,7 @@ const TIPOS_ARISTA: TipoArista[] = [
     etiqueta: 'Se aprende antes',
     color: '#ef4444',
     estilo: 'solid',
+    grosor: 1.5,
     flecha: true,
     ayuda: 'Conviene dominar un concepto antes que el otro (la flecha marca el orden).'
   },
@@ -55,14 +68,18 @@ const TIPOS_ARISTA: TipoArista[] = [
     etiqueta: 'Profundiza en',
     color: '#10b981',
     estilo: 'solid',
+    grosor: 1.5,
     flecha: true,
     ayuda: 'Un concepto amplía o profundiza en el otro (la flecha marca hacia dónde).'
   },
   {
     tipo: 'relacionado_con',
+    // Sí une dos conceptos, como «se aprende antes» y «profundiza»; lo que la
+    // distingue de ellas es que no tiene dirección. Línea continua y gruesa.
     etiqueta: 'Relacionado',
     color: '#64748b',
     estilo: 'solid',
+    grosor: 2,
     flecha: false,
     ayuda: 'Conceptos vinculados, sin un orden ni jerarquía.'
   },
@@ -71,6 +88,7 @@ const TIPOS_ARISTA: TipoArista[] = [
     etiqueta: 'Se enseñan juntos',
     color: '#818cf8',
     estilo: 'dashed',
+    grosor: 1.5,
     flecha: false,
     ayuda: 'Aparecen en el mismo tema (relación sugerida por la app).'
   }
@@ -82,10 +100,13 @@ const COLOR_TAREA = '#f59e0b'
 function MuestraLinea({
   color,
   estilo,
+  grosor = 1.5,
   flecha
 }: {
   color: string
   estilo: EstiloLinea
+  /** El mismo grosor que en el lienzo, a escala de la muestra. */
+  grosor?: number
   flecha: boolean
 }): JSX.Element {
   const dash = estilo === 'dashed' ? '5,3' : estilo === 'dotted' ? '1.5,3' : undefined
@@ -97,7 +118,7 @@ function MuestraLinea({
         x2={flecha ? 23 : 30}
         y2="6"
         stroke={color}
-        strokeWidth="2.2"
+        strokeWidth={grosor * 1.5}
         strokeDasharray={dash}
         strokeLinecap="round"
       />
@@ -210,7 +231,8 @@ const ESTILO: cytoscape.StylesheetStyle[] = [
   { selector: 'edge[tipo="coocurre"]', style: { 'line-color': '#818cf8', 'line-style': 'dashed' } },
   { selector: 'edge[tipo="tarea_concepto"]', style: { 'line-color': '#f59e0b', 'line-style': 'dotted', width: 1 } },
   { selector: 'edge[tipo="prerequisito_de"]', style: { 'line-color': '#ef4444', 'target-arrow-shape': 'triangle', 'target-arrow-color': '#ef4444' } },
-  { selector: 'edge[tipo="relacionado_con"]', style: { 'line-color': '#64748b' } },
+  { selector: 'edge[tipo="usado_en"]', style: { 'line-color': '#94a3b8', 'line-style': 'dotted', width: 1 } },
+  { selector: 'edge[tipo="relacionado_con"]', style: { 'line-color': '#64748b', width: 2 } },
   { selector: 'edge[tipo="profundiza"]', style: { 'line-color': '#10b981', 'target-arrow-shape': 'triangle', 'target-arrow-color': '#10b981' } },
   { selector: '.atenuado', style: { opacity: 0.1 } },
   { selector: 'node.foco', style: { 'border-width': 3, 'border-color': '#4338ca' } },
@@ -1000,7 +1022,7 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
                           }`}
                         >
                           <span className="mt-0.5">
-                            <MuestraLinea color={t.color} estilo={t.estilo} flecha={t.flecha} />
+                            <MuestraLinea color={t.color} estilo={t.estilo} grosor={t.grosor} flecha={t.flecha} />
                           </span>
                           <span className="min-w-0">
                             <span className="block text-xs font-medium text-slate-700">{etiquetaArista(t)}</span>
@@ -1018,7 +1040,7 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
                         }`}
                       >
                         <span className="mt-0.5">
-                          <MuestraLinea color={COLOR_TAREA} estilo="dotted" flecha={false} />
+                          <MuestraLinea color={COLOR_TAREA} estilo="dotted" grosor={1} flecha={false} />
                         </span>
                         <span className="min-w-0">
                           <span className="block text-xs font-medium text-slate-700">Tareas</span>
