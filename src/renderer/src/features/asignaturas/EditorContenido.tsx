@@ -130,6 +130,15 @@ export function EditorContenido({
     tema: TemaN
   }>()
   const [moviendo, setMoviendo] = useState<{ unidadId: string; tema: TemaN } | null>(null)
+  /**
+   * Reordenar arrastrando. Se guarda QUÉ se arrastra (y de qué lista) para no
+   * permitir soltarlo en otra: el orden es dentro de su propio nivel.
+   */
+  const [arrastrando, setArrastrando] = useState<
+    { nivel: 'unidad' | 'tema' | 'sub'; uId: string; tId?: string; id: string } | null
+  >(null)
+  /** Elemento sobre el que caería, para marcar el hueco antes de soltar. */
+  const [sobre, setSobre] = useState<string | null>(null)
   const notificarError = useUiStore((s) => s.notificarError)
   const [foco, setFoco] = useState<string | null>(null)
   const [temaBuscador, setTemaBuscador] = useState<string | null>(null)
@@ -264,6 +273,77 @@ export function EditorContenido({
       )
     )
 
+  /** Mueve un elemento delante de otro dentro de la misma lista. */
+  function reordenar<T extends { id: string }>(lista: T[], origenId: string, destinoId: string): T[] {
+    const desde = lista.findIndex((x) => x.id === origenId)
+    const hasta = lista.findIndex((x) => x.id === destinoId)
+    if (desde < 0 || hasta < 0 || desde === hasta) return lista
+    const copia = [...lista]
+    const [movido] = copia.splice(desde, 1)
+    copia.splice(hasta, 0, movido)
+    return copia
+  }
+
+  const soltarTema = (uId: string, destinoId: string): void => {
+    if (!arrastrando || arrastrando.nivel !== 'tema' || arrastrando.uId !== uId) return
+    void persistir(
+      arbol.map((u) => (u.id === uId ? { ...u, temas: reordenar(u.temas, arrastrando.id, destinoId) } : u))
+    )
+    setArrastrando(null)
+    setSobre(null)
+  }
+
+  const soltarUnidad = (destinoId: string): void => {
+    if (!arrastrando || arrastrando.nivel !== 'unidad') return
+    void persistir(reordenar(arbol, arrastrando.id, destinoId))
+    setArrastrando(null)
+    setSobre(null)
+  }
+
+  const soltarSub = (uId: string, tId: string, destinoId: string): void => {
+    if (!arrastrando || arrastrando.nivel !== 'sub' || arrastrando.tId !== tId) return
+    void persistir(
+      arbol.map((u) =>
+        u.id === uId
+          ? {
+              ...u,
+              temas: u.temas.map((t) =>
+                t.id === tId ? { ...t, subtemas: reordenar(t.subtemas, arrastrando.id, destinoId) } : t
+              )
+            }
+          : u
+      )
+    )
+    setArrastrando(null)
+    setSobre(null)
+  }
+
+  /** Asa de arrastre. Va en el asa y no en la fila entera para que el título se pueda seleccionar con el ratón. */
+  const asaArrastre = (
+    datos: { nivel: 'unidad' | 'tema' | 'sub'; uId: string; tId?: string; id: string },
+    etiqueta: string
+  ): JSX.Element => (
+    <span
+      draggable
+      onDragStart={(e) => {
+        // Algunos navegadores no inician el arrastre sin datos, aunque el
+        // reordenado se resuelva con el estado y no con el portapapeles.
+        e.dataTransfer.setData('text/plain', datos.id)
+        e.dataTransfer.effectAllowed = 'move'
+        setArrastrando(datos)
+      }}
+      onDragEnd={() => {
+        setArrastrando(null)
+        setSobre(null)
+      }}
+      title={`Arrastra para reordenar ${etiqueta}`}
+      aria-label={`Reordenar ${etiqueta}`}
+      className="shrink-0 cursor-grab select-none px-1 text-slate-400 transition hover:text-slate-700 active:cursor-grabbing"
+    >
+      ⠿
+    </span>
+  )
+
   // Conceptos/tareas del tema (desde la asignatura, por id).
   const temaReal = (tId: string): AsignaturaDTO['unidades'][number]['temas'][number] | undefined =>
     asignatura.unidades.flatMap((u) => u.temas).find((t) => t.id === tId)
@@ -366,27 +446,42 @@ export function EditorContenido({
       <li
         key={t.id}
         onContextMenu={(e) => abrirMenu(e, { unidadId: u.id, tema: t })}
-        className="border-l-2 border-slate-100 pl-3 text-sm"
+        onDragOver={(e) => {
+          if (arrastrando?.nivel !== 'tema' || arrastrando.uId !== u.id) return
+          e.preventDefault()
+          setSobre(t.id)
+        }}
+        onDragLeave={() => setSobre((x) => (x === t.id ? null : x))}
+        onDrop={(e) => {
+          e.preventDefault()
+          soltarTema(u.id, t.id)
+        }}
+        className={`rounded-lg border bg-slate-50 p-2.5 text-sm transition ${
+          sobre === t.id && arrastrando?.nivel === 'tema'
+            ? 'border-marca-400 ring-2 ring-marca-100'
+            : 'border-slate-200'
+        } ${arrastrando?.id === t.id ? 'opacity-50' : ''}`}
       >
         <div className="flex items-center gap-1">
+          {asaArrastre({ nivel: 'tema', uId: u.id, id: t.id }, `este ${N2}`)}
           <button
             onClick={() => alternarPlegado(t.id)}
             title={plegado(t.id) ? `Desplegar ${N2}` : `Plegar ${N2}`}
             aria-expanded={!plegado(t.id)}
-            className="shrink-0 rounded px-1 text-slate-400 transition hover:text-slate-700"
+            className="shrink-0 rounded px-1 text-slate-500 transition hover:text-slate-800"
           >
             {plegado(t.id) ? '▸' : '▾'}
           </button>
-          {inputTitulo(t.titulo, t.id, (v) => setTitulo(2, [u.id, t.id], v), `Título del ${N2}`, 'flex-1 font-medium text-slate-700')}
+          {inputTitulo(t.titulo, t.id, (v) => setTitulo(2, [u.id, t.id], v), `Título del ${N2}`, 'flex-1 font-medium text-slate-800')}
           {plegado(t.id) && t.subtemas.length > 0 && (
-            <span className="shrink-0 px-1 text-xs text-slate-400">
+            <span className="shrink-0 px-1 text-xs text-slate-500">
               {t.subtemas.length}
             </span>
           )}
           <button
             onClick={() => pedirQuitarTema(u.id, t)}
             title={`Quitar ${N2}`}
-            className="shrink-0 rounded-md px-2 py-0.5 text-xs text-slate-300 transition hover:bg-red-50 hover:text-red-600"
+            className="shrink-0 rounded-md px-2 py-1 text-xs text-slate-500 transition hover:bg-red-50 hover:text-red-600"
           >
             ✕
           </button>
@@ -395,7 +490,10 @@ export function EditorContenido({
         <div className={plegado(t.id) ? 'hidden' : ''}>
         {/* Conceptos vinculados (puente), solo para temas existentes */}
         {real && (
-          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 pl-2">
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-6">
+            <span className="w-16 shrink-0 text-[11px] font-medium uppercase tracking-wide text-slate-500">
+              Conceptos
+            </span>
             {real.conceptos.map((cid) => (
               <ChipConcepto
                 key={cid}
@@ -410,7 +508,7 @@ export function EditorContenido({
             <span className="relative">
               <button
                 onClick={() => setTemaBuscador((a) => (a === t.id ? null : t.id))}
-                className="rounded-full border border-dashed border-slate-300 px-2.5 py-0.5 text-xs text-slate-500 hover:border-marca-300 hover:text-marca-700"
+className="rounded-full border border-dashed border-slate-400 px-2.5 py-0.5 text-xs text-slate-600 transition hover:border-marca-400 hover:bg-marca-50 hover:text-marca-700"
               >
                 + Vincular concepto
               </button>
@@ -432,18 +530,23 @@ export function EditorContenido({
             donde se crean, ya asociadas a este tema. Solo para temas guardados:
             uno recién escrito todavía no tiene id al que colgarlas. */}
         {real && (
-          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 pl-2">
-            <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-              {esAprendizaje ? 'Prácticas:' : 'Tareas:'}
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 pl-6">
+            <span className="w-16 shrink-0 text-[11px] font-medium uppercase tracking-wide text-slate-500">
+              {esAprendizaje ? 'Prácticas' : 'Tareas'}
             </span>
             {tareasTema.map((x) => (
-              <button key={x.id} onClick={() => onAbrirTarea(x.id)} className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs text-amber-800 hover:bg-amber-100">
+              <button
+                key={x.id}
+                onClick={() => onAbrirTarea(x.id)}
+                title={`Abrir «${x.titulo}»`}
+                className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs text-amber-800 transition hover:border-amber-400"
+              >
                 {x.titulo}
               </button>
             ))}
             <button
               onClick={() => onCrearTarea(t.id)}
-              className="rounded-full border border-dashed border-slate-300 px-2.5 py-0.5 text-xs text-slate-500 transition hover:border-amber-300 hover:text-amber-800"
+className="rounded-full border border-dashed border-slate-400 px-2.5 py-0.5 text-xs text-slate-600 transition hover:border-marca-400 hover:bg-marca-50 hover:text-marca-700"
             >
               + {esAprendizaje ? 'Nueva práctica' : 'Nueva tarea'}
             </button>
@@ -452,18 +555,35 @@ export function EditorContenido({
 
         {/* Sub-subtemas (3er nivel) */}
         {t.subtemas.length > 0 && (
-          <ul className="mt-2 space-y-1 pl-4">
+          <ul className="mt-2 space-y-0.5 pl-6">
             {t.subtemas.map((sub) => {
               const subReal = subtemaReal(sub.id)
               return (
-                <li key={sub.id}>
+                <li
+                  key={sub.id}
+                  onDragOver={(e) => {
+                    if (arrastrando?.nivel !== 'sub' || arrastrando.tId !== t.id) return
+                    e.preventDefault()
+                    setSobre(sub.id)
+                  }}
+                  onDragLeave={() => setSobre((x) => (x === sub.id ? null : x))}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    soltarSub(u.id, t.id, sub.id)
+                  }}
+                  className={`rounded-md border transition ${
+                    sobre === sub.id && arrastrando?.nivel === 'sub'
+                      ? 'border-marca-400 ring-2 ring-marca-100'
+                      : 'border-transparent'
+                  } ${arrastrando?.id === sub.id ? 'opacity-50' : ''}`}
+                >
                   <div className="flex items-center gap-1">
-                    <span className="text-slate-300">·</span>
-                    {inputTitulo(sub.titulo, sub.id, (v) => setTitulo(3, [u.id, t.id, sub.id], v), `Título del ${N3}`, 'flex-1 text-slate-600')}
+                    {asaArrastre({ nivel: 'sub', uId: u.id, tId: t.id, id: sub.id }, `este ${N3}`)}
+                    {inputTitulo(sub.titulo, sub.id, (v) => setTitulo(3, [u.id, t.id, sub.id], v), `Título del ${N3}`, 'flex-1 text-slate-700')}
                     <button
                       onClick={() => pedirQuitarSub(u.id, t.id, sub)}
                       title={`Quitar ${N3}`}
-                      className="shrink-0 rounded-md px-2 py-0.5 text-xs text-slate-300 transition hover:bg-red-50 hover:text-red-600"
+                      className="shrink-0 rounded-md px-2 py-1 text-xs text-slate-500 transition hover:bg-red-50 hover:text-red-600"
                     >
                       ✕
                     </button>
@@ -472,7 +592,10 @@ export function EditorContenido({
                   {/* Conceptos del subtema: el material también se engancha
                       en el nivel más fino, no sólo en el intermedio. */}
                   {subReal && (
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5 pl-4">
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5 pl-6">
+                      <span className="w-16 shrink-0 text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                        Conceptos
+                      </span>
                       {subReal.conceptos.map((cid) => (
                         <ChipConcepto
                           key={cid}
@@ -487,7 +610,7 @@ export function EditorContenido({
                       <span className="relative">
                         <button
                           onClick={() => setTemaBuscador((a) => (a === sub.id ? null : sub.id))}
-                          className="rounded-full border border-dashed border-slate-300 px-2.5 py-0.5 text-[11px] text-slate-500 hover:border-marca-300 hover:text-marca-700"
+className="rounded-full border border-dashed border-slate-400 px-2.5 py-0.5 text-xs text-slate-600 transition hover:border-marca-400 hover:bg-marca-50 hover:text-marca-700"
                         >
                           + Vincular concepto
                         </button>
@@ -552,36 +675,54 @@ export function EditorContenido({
         // Aplanado: el espacio YA ES el tema que se quiere aprender, así que sus
         // temas cuelgan directos. El contenedor de la capa curricular sigue
         // existiendo por debajo (una unidad implícita), pero no se pide ni se ve.
-        <ul className="space-y-3">{arbol.flatMap((u) => u.temas.map((t) => filaTema(u, t)))}</ul>
+        <ul className="space-y-2">{arbol.flatMap((u) => u.temas.map((t) => filaTema(u, t)))}</ul>
       ) : (
         arbol.map((u) => (
-        <div key={u.id} className="rounded-xl border border-slate-200 p-4">
+        <div
+          key={u.id}
+          onDragOver={(e) => {
+            if (arrastrando?.nivel !== 'unidad') return
+            e.preventDefault()
+            setSobre(u.id)
+          }}
+          onDragLeave={() => setSobre((x) => (x === u.id ? null : x))}
+          onDrop={(e) => {
+            e.preventDefault()
+            soltarUnidad(u.id)
+          }}
+          className={`rounded-xl border p-4 transition ${
+            sobre === u.id && arrastrando?.nivel === 'unidad'
+              ? 'border-marca-400 ring-2 ring-marca-100'
+              : 'border-slate-200'
+          } ${arrastrando?.id === u.id ? 'opacity-50' : ''}`}
+        >
           <div className="mb-2 flex items-center gap-1">
+            {asaArrastre({ nivel: 'unidad', uId: u.id, id: u.id }, `esta ${N1}`)}
             <button
               onClick={() => alternarPlegado(u.id)}
               title={plegado(u.id) ? `Desplegar ${N1}` : `Plegar ${N1}`}
               aria-expanded={!plegado(u.id)}
-              className="shrink-0 rounded px-1 text-slate-400 transition hover:text-slate-700"
+              className="shrink-0 rounded px-1 text-slate-500 transition hover:text-slate-800"
             >
               {plegado(u.id) ? '▸' : '▾'}
             </button>
             {inputTitulo(u.titulo, u.id, (v) => setTitulo(1, [u.id], v), `Título del ${N1} (ej. Fundamentos)`, 'flex-1 font-medium text-slate-800')}
             {plegado(u.id) && (
               // Plegada, el recuento es lo único que dice qué hay dentro.
-              <span className="shrink-0 px-1 text-xs text-slate-400">
+              <span className="shrink-0 px-1 text-xs text-slate-500">
                 {u.temas.length} {u.temas.length === 1 ? N2.toLowerCase() : `${N2.toLowerCase()}s`}
               </span>
             )}
             <button
               onClick={() => pedirQuitarUnidad(u)}
               title={`Quitar ${N1}`}
-              className="shrink-0 rounded-md px-2 py-1 text-xs text-slate-300 transition hover:bg-red-50 hover:text-red-600"
+              className="shrink-0 rounded-md px-2 py-1 text-xs text-slate-500 transition hover:bg-red-50 hover:text-red-600"
             >
               ✕
             </button>
           </div>
 
-          <ul className={`space-y-3 pl-3 ${plegado(u.id) ? 'hidden' : ''}`}>
+          <ul className={`space-y-2 pl-3 ${plegado(u.id) ? 'hidden' : ''}`}>
             {u.temas.map((t) => filaTema(u, t))}
           </ul>
 
