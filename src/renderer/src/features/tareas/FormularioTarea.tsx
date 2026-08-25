@@ -334,7 +334,9 @@ export function FormularioTarea({
                     : 'Escribe o PEGA desde Word/web: títulos, párrafos, listas, tablas y rúbrica se convierten a formato automáticamente. Los enlaces también.'
                 }
                 rows={10}
-                className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm outline-none focus:border-marca-500 focus:ring-2 focus:ring-marca-100"
+                // Estirable, como la nota del concepto: es el mismo editor y se
+                // queda igual de corto en cuanto las instrucciones crecen.
+                className="min-h-[12rem] w-full resize-y rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm outline-none focus:border-marca-500 focus:ring-2 focus:ring-marca-100"
               />
               <p className="mt-1 text-xs text-slate-400">
                 {formato === 'html'

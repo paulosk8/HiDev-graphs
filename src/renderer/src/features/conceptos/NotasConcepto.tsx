@@ -187,7 +187,10 @@ export function NotasConcepto({
                     ? 'Escribe o pega HTML (tablas incluidas). Pega desde Word/web y se conserva el formato.'
                     : 'Escribe en Markdown. Pega desde Word/web (tablas e imágenes) y se convierte solo.'
               }
-              className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm outline-none focus:border-marca-500 focus:ring-2 focus:ring-marca-100"
+              // Estirable a lo alto: ocho filas se quedan cortas en cuanto la
+              // nota pasa de un par de párrafos, y no hay motivo para obligar a
+              // escribir por una mirilla. El mínimo evita encogerlo a nada.
+              className="min-h-[10rem] w-full resize-y rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm outline-none focus:border-marca-500 focus:ring-2 focus:ring-marca-100"
             />
             {/* Teclear `[[` ofrece los conceptos existentes (o crear uno). */}
             <SugerenciasEnlace areaRef={areaRef} texto={contenido} onCambiar={setContenido} />
