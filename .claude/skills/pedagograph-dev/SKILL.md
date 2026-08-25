@@ -37,6 +37,17 @@ src/
   mcp/               # servidor MCP en Node puro (copiloto IA), independiente de Electron
 ```
 
+**Dos trampas del renderer que ya han mordido** (detalle en [`estado.md`](./estado.md)):
+- **El tamaño de la interfaz se aplica con `documentElement.style.zoom`.** Eso
+  parte las coordenadas en dos espacios: lo que se MIDE (ratón,
+  `getBoundingClientRect`) ya viene multiplicado por el zoom, y un `left`/`top`
+  escrito en CSS se multiplica OTRA VEZ al pintarlo. Todo lo que coloque un
+  elemento a partir de la posición del puntero tiene que dividir por el zoom.
+- **Los nodos del grafo llevan prefijo de tipo** (`c:` conceptos, `a:`
+  asignaturas, `t:` tareas). Todo lo que sale del grafo —abrir una ficha,
+  llamar al IPC— necesita el id real: usa `idReal(...)`, no un `.slice(2)`
+  suelto.
+
 **Reglas invariantes:**
 - El renderer **solo** habla por IPC (`window.api`). Nada de fs/SQLite/dominio en el renderer.
 - Fuente de verdad = **vault YAML** en `~/Documents/PedagoGraph/` (`conceptos/`, `asignaturas/`, `tareas/`, `.index/`). El SQLite (`.index/index.db`) es **derivado y reconstruible**; sincronización **unidireccional** `fs → índice`.
@@ -82,6 +93,11 @@ npx esbuild smoke.ts --bundle --platform=node --format=cjs \
 ELECTRON_RUN_AS_NODE=1 npx electron .smoke.cjs
 ```
 
+El `.cjs` tiene que quedar **dentro del repo**: los módulos que se dejan
+externos se resuelven desde su carpeta, y bundleado en el scratchpad falla con
+`Cannot find module 'js-yaml'`. Si el smoke vive fuera del repo, impórtale el
+código por ruta absoluta y saca el `--outfile` a la raíz.
+
 **B) Render / GUI** → Electron normal con `app.whenReady()` + `BrowserWindow({ show:false })`
 + `webContents.executeJavaScript(...)` para consultar el DOM. Bundlear igual pero **sin**
 `ELECTRON_RUN_AS_NODE`, y cargar `out/preload/index.js` + `out/renderer/index.html` (requiere
@@ -96,7 +112,39 @@ ELECTRON_RUN_AS_NODE=1 npx electron .smoke.cjs
 - **Drag & drop HTML5 no se simula con `dragstart` sintético** (el `setData` no persiste): fija `dt.setData('text/plain', id)` a mano y despacha un `new DragEvent('drop',{dataTransfer:dt,bubbles:true})` sobre un elemento DENTRO de la zona de destino (no un div padre — el evento no baja).
 - Pegar: `new DataTransfer()` + `new ClipboardEvent('paste',{clipboardData})`; imagen: `dt.items.add(new File(...))`.
 - `cy.zoom(n)` (Cytoscape) devuelve el Core, no clonable por `executeJavaScript` → envuélvelo en una IIFE que retorne un bool.
-- **Cuidado con los falsos verdes.** Dos que ya han pasado, y los dos hacían pasar el test sin que la app hiciera nada: (1) las cabeceras van en MAYÚSCULAS por CSS, así que `textContent` devuelve `"Lecturas"`, no `"LECTURAS"`; (2) la ficha del concepto envuelve TODO el material en su propio `<section>`, que va **primero** en el DOM — buscar la sección destino por texto la encontraba a ella y el `drop` caía en la raíz. Localiza el destino por un elemento inequívoco (`[title^="Opciones de la carpeta"]`) y sube con `closest('section')`. **Comprueba el resultado contra el vault, no contra el DOM.**
+- **Comprueba SIEMPRE la prueba en los dos sentidos.** Un smoke en verde no
+  dice nada hasta que lo has visto en rojo: ejecútalo también con el arreglo
+  quitado (`git stash push -- src`, o deshaciendo la línea) y confirma que
+  falla. Ya han pasado cuatro falsos verdes; dos de ellos verdes **con el bug
+  puesto**, que es el caso peligroso.
+- **Cuidado con los falsos verdes.** Los que ya han pasado, y todos hacían pasar el test sin que la app hiciera nada: (1) las cabeceras van en MAYÚSCULAS por CSS, así que `textContent` devuelve `"Lecturas"`, no `"LECTURAS"`; (2) la ficha del concepto envuelve TODO el material en su propio `<section>`, que va **primero** en el DOM — buscar la sección destino por texto la encontraba a ella y el `drop` caía en la raíz. Localiza el destino por un elemento inequívoco (`[title^="Opciones de la carpeta"]`) y sube con `closest('section')`; (3) el clic sintético sobre una sugerencia de etiqueta pasaba con el bug puesto, porque sin foco real no hay `blur`; (4) un selector por `placeholder` dejaba de encontrar el campo justo después de la acción y daba un rojo falso. **Comprueba el resultado contra el vault, no contra el DOM**, siempre que puedas.
+- **Un `.click()` sintético NO reproduce nada que dependa del foco.** Llega con
+  `clientX/clientY = 0` y, sobre todo, no mueve el foco, así que no dispara
+  `blur`. Para eso hace falta `webContents.sendInputEvent` (`mouseMove` →
+  `mouseDown` → `mouseUp` en el centro del `getBoundingClientRect`) **y la
+  ventana `show: true` + `ventana.focus()`**: con la ventana oculta el clic se
+  entrega pero Blink no mueve el foco y el fallo no aparece.
+- **Los menús y modales viven en un portal que React monta en el tick
+  siguiente.** Pulsar y leer el DOM en el mismo `executeJavaScript` da «no hay
+  menú». Pulsa, `await esperar(300)`, y entonces lee.
+- **Localiza por algo estable, no por el `placeholder`**: el del campo de
+  etiquetas desaparece en cuanto hay una puesta. Sirve mejor `maxlength`, un
+  `title^=`, o un `aria-label`.
+- **La barra lateral tiene DOS «Conceptos», «Mapa» y «Lienzos»** (Docencia y
+  Aprendizaje) y las listas filtran por contexto: coger el último deja la lista
+  vacía. Para navegar, el PRIMERO. Y para pulsar una tarjeta, el elemento MÁS
+  PROFUNDO que contiene el texto: el `<li>` envuelve al `<button>` que navega y
+  va antes en el orden del documento.
+- **Un concepto sin vincular no está en la lista**: vive dentro del desplegable
+  «Todavía sin usar», colapsado. Ábrelo antes de buscarlo.
+- El grafo se alcanza por el contenedor: `[...document.querySelectorAll('div')]
+  .find((d) => d._cyreg?.cy)` da el `cy` para leer estilos reales
+  (`e.style('line-style')`). La leyenda da `#94a3b8` y cytoscape
+  `rgb(148,163,184)`: normaliza antes de compararlos.
+- `capturePage()` funciona con la ventana oculta, pero el `backgroundColor` de
+  la `BrowserWindow` se transparenta: en tema claro el `body` no pinta fondo
+  propio, así que una ventana con fondo oscuro sale con la mitad en negro y
+  parece un fallo de la app. Usa `#ffffff`.
 - Para saltarte la bienvenida: `guardarConfigApp({ ...leerConfigApp(), configurado: true })` en el main, y en el renderer pulsa «Docencia y Aprendizaje» (el paso de capas sí reaparece al limpiar `localStorage`). Registra también `registrarHandlersAlmacenamiento`, o la app se queda en la pantalla de bienvenida.
 
 Limpia el `.smoke*.cjs` y los vaults temporales al terminar.
@@ -129,6 +177,8 @@ Repo: `https://github.com/paulosk8/HiDev-graphs` (remoto `origin`, base `main`).
 - **Fase 1 (MVP) y Fase 2 completas**; copiloto IA por MCP (consultar grafo, leer material, crear/propagar tareas) + terminal embebida. Workspaces de aprendizaje, tareas ricas (Markdown/HTML/Moodle), planificación por período, respaldo **y restauración**. Ver [`estado.md`](./estado.md) para el detalle.
 - **Almacenamiento en nube, modelo Obsidian** (sustituye al backend propio): el material vive en una carpeta de **Google Drive / OneDrive** que el cliente de escritorio ya sincroniza — **sin login, sin backend y sincronizando también los archivos**. Se **eliminó Supabase** (auth con Google, sync de metadatos, conflictos); su historia queda en git. Bienvenida de primer arranque (dónde guardar + qué capas ver) e **historial de versiones** local por equipo con restaurar.
 - **Lienzos** (mapa conceptual libre, formato `.canvas` de Obsidian), **etiquetas**, **enlaces `[[...]]`** con panel lateral, **carpetas de material**, **papelera de eliminados**, **temas accesibles** y **mover con clic derecho**. Ver [`estado.md`](./estado.md).
+- **El material admite CUALQUIER formato de archivo** (lo único que no entra son carpetas). El «formato» es sencillamente la extensión; lo que sí es una lista cerrada es lo que la app sabe previsualizar por dentro (PDF, HTML, imágenes, Markdown y texto plano), y es una lista **permisiva** —añade el botón «Ver»—, no una puerta.
 - **El material de un concepto son archivos Y enlaces web**, en una sola lista y con carpetas que se pueden renombrar y quitar (quitarlas nunca borra material). Se llega a él **desde el tema de la asignatura**, sin salir de ella: el chip del concepto abre el panel lateral. Regla de UX que salió de aquí: **ninguna acción vive solo en el clic derecho** — siempre hay un `⋯` visible. Ver [`estado.md`](./estado.md).
 - **Identidad**: logo propio (`resources/icon.svg` → `npm run iconos`) y **barra de menú en español**; `npm run marca-dev` pone nombre e icono al Electron de desarrollo (si no, el dock dice "Electron").
-- **Pendiente**: empaquetado/instaladores (electron-builder mac local + Windows por CI, por better-sqlite3). Fase 3: exportar tareas a Moodle/GIFT. La resolución de conflictos de archivo la delega ahora el cliente de nube (Drive/OneDrive renombran); el "deshacer" propio es el historial de versiones. Versión web más adelante.
+- **El plan de contenido de una asignatura o espacio se lee como un documento**: rejilla de canaleta + contenido (todo en la misma vertical), una sola línea de vínculos por tema y las acciones al pasar el ratón. Ver [`estado.md`](./estado.md).
+- **Pendiente**: el tirador del panel del grafo (`GrafoPage.tsx:766`) usa deltas de `clientY` sin dividir por el zoom, así que al 120 % arrastra un 20 % más rápido que el ratón; y el campo «Descripción» del concepto sigue sin poder estirarse. Además: empaquetado/instaladores (electron-builder mac local + Windows por CI, por better-sqlite3). Fase 3: exportar tareas a Moodle/GIFT. La resolución de conflictos de archivo la delega ahora el cliente de nube (Drive/OneDrive renombran); el "deshacer" propio es el historial de versiones. Versión web más adelante.

@@ -547,6 +547,104 @@ abiertos, para no deshacer la pila uno a uno.
   de práctica saltaba de `amber-50` a `amber-100`, que en oscuro es de marrón a
   marrón—. Contrastes medidos en los cuatro temas: lo peor queda en 4,55:1.
 
+## El plan de contenido (pestaña «Contenido» de una asignatura o espacio)
+
+`features/asignaturas/EditorContenido.tsx` pinta las DOS capas (Docencia:
+Tema › Subtema › Sub-subtema; Aprendizaje: el nivel superior aplanado). Se
+rediseñó porque pedía toda la atención a la vez: cada título era un `<input>`
+gris a todo el ancho —parecía un formulario, no un plan de estudios—, cada tema
+una caja dentro de otra caja, las etiquetas `CONCEPTOS` y `PRÁCTICAS` se
+repetían en cada fila (con `w-16`, que ni siquiera daba para la palabra: se
+pegaba al chip) y cuatro botones punteados competían con el contenido.
+
+- **Rejilla de dos columnas, canaleta + contenido.** El título, sus conceptos,
+  sus prácticas y sus subtemas caen en la MISMA vertical; el asa de arrastre y
+  el plegado viven en la canaleta, fuera de ella. La jerarquía la marcan la
+  sangría y un riel, no cajas anidadas.
+- **Una sola línea de vínculos por tema.** Conceptos y prácticas cuelgan
+  juntos, distinguidos por forma y color (rombo índigo con la cuenta de
+  material; lápiz neutro), sin etiqueta repetida. Un `＋` abre vincular / nueva
+  práctica / agregar subtema; el `⋯` trae además mover y eliminar — nada vive
+  solo en el clic derecho.
+- **Las acciones aparecen al pasar el ratón** (y con `group-focus-within`, al
+  llegar con el teclado). En reposo la pantalla es contenido. Ojo: reservan su
+  sitio con `opacity-0`, no con `hidden`, para que nada salte; un botón
+  invisible que ocupa una línea propia deja un hueco muerto bajo cada fila (por
+  eso «+ subtema» se movió al menú).
+- **El ámbar vuelve a significar «atiéndeme»**: la cuenta de material va
+  apagada, y solo cuando es cero aparece un punto ámbar. Antes era una insignia
+  naranja encendida siempre.
+- Las clases de hover van **escritas enteras** (`AL_PASAR`): Tailwind busca las
+  clases como texto en el fuente y no vería `group-hover/${x}:opacity-100`.
+- El aspecto del título en línea vive en `.titulo-inline` (main.css) y no en
+  utilidades, porque el modo oscuro pinta el fondo de TODOS los inputs con una
+  regla de más especificidad.
+
+## Material: cualquier formato
+
+El «formato» de un recurso es **su extensión en minúsculas, la que sea**
+(`FormatoRecurso = string`); un archivo sin extensión se guarda como `archivo`.
+Antes era una unión cerrada y `formatoDesdeNombreArchivo` devolvía `null` para
+lo demás; ese `null` disparaba cuatro rechazos (dos descartes en aplicación y
+dos `throw` en infraestructura). El docente tiene hojas de cálculo, fotos de la
+pizarra, audio de una clase y `.zip` con el código: la app no necesita entender
+un archivo para guardarlo junto a su concepto.
+
+- Lo único que se rechaza es **lo que no es un archivo**: una carpeta. Antes se
+  descartaba sola porque no tiene extensión; sin ese filtro llegaba a
+  `copyFileSync` y reventaba con `EISDIR`. Ahora se comprueba de frente
+  (`esArchivoCopiable`, en `AgregarMaterial.ts`, que reutiliza `Tareas.ts`).
+- `FORMATOS_TEXTO`, `FORMATOS_IMAGEN` y `PREVISUALIZABLES` siguen siendo listas
+  cerradas, pero son **permisivas**: añaden el botón «Ver». Lo que no está se
+  guarda igual y se abre con la aplicación del sistema.
+- Sin migración: el YAML nunca validó el formato al leerlo (cae al literal con
+  un `as`) y la columna de SQLite no tiene `CHECK`.
+- **Si tocas esto, recuerda que las listas estaban desincronizadas**: el dominio
+  ya aceptaba once formatos mientras los `accept=`, los avisos y la
+  documentación decían seis, así que un `.txt` entraba arrastrado pero no
+  aparecía al elegirlo con el botón. El `accept` del diálogo y lo que acepta el
+  arrastre tienen que decir lo mismo.
+
+## Tipos de conexión del mapa
+
+Se distinguen por **forma antes que por color**: la paleta ya tiene cian,
+violeta, rosa e índigo en los nodos y rojo, verde y ámbar en las líneas, y el
+trazo se lee igual en claro, en oscuro y sin distinguir colores.
+
+- «Se usa en la asignatura / el espacio» es la única que **no une dos
+  conceptos** (cuelga del nodo de la asignatura): punteada y fina, del gris de
+  ese nodo, para que se lea como el andamiaje que es.
+- «Relacionado» sí une dos conceptos, como «se aprende antes» y «profundiza»;
+  lo que la distingue es no tener dirección: continua y más gruesa.
+- El tipo de arista lleva su `grosor` y lo usan **la leyenda y el lienzo**. La
+  leyenda dibujaba todas las muestras con un grosor fijo: si diferencias por
+  grosor y no lo propagas, la leyenda enseña algo distinto de lo que se pinta.
+
+## Trampas de la interfaz que ya han mordido
+
+**El tamaño de la interfaz se aplica con `documentElement.style.zoom`**
+(`App.tsx`), y eso parte las coordenadas en dos espacios: lo que se MIDE (el
+ratón, `getBoundingClientRect`) ya viene multiplicado por el zoom, mientras que
+un `left`/`top` escrito en CSS se multiplica OTRA VEZ al pintarlo. `MenuContextual`
+colocaba el menú en `cursor × zoom`: al 120 % se iba más de cien píxeles por
+debajo del botón, y el recorte contra los bordes tampoco salvaba nada porque
+comparaba unidades de un espacio con las del otro. Se recoloca entero en el
+espacio visual y **solo al final se divide por `factorZoom()`**. Sigue con el
+mismo defecto el tirador del panel del grafo (`GrafoPage.tsx:766`), que suma
+deltas de `clientY` sin dividir.
+
+**Los nodos del grafo llevan prefijo de tipo** (`c:`, `a:`, `t:`) para que sus
+ids no choquen. Todo lo que SALE del grafo tiene que quitarlo. Cuando era un
+`.slice(2)` suelto repetido por quince sitios, uno se lo saltó y el panel
+lateral abría «No encontrado» sobre un concepto que existía. Ahora la operación
+tiene nombre: `idReal(...)`.
+
+**El `onBlur` que confirma se come el clic siguiente.** En `CampoEtiquetas`, el
+campo confirma lo escrito al perder el foco; pulsar una sugerencia disparaba el
+`mousedown` → `blur` → se creaba lo tecleado, la lista se recalculaba y el
+botón desaparecía antes de recibir el `click`. Cualquier control que actúe
+sobre un campo con `onBlur` necesita `onMouseDown={(e) => e.preventDefault()}`.
+
 ## Trampas del vault que ya han mordido
 
 `RespaldarVault`, `RestaurarVault` y `MoverAlmacenamiento` llevan **su lista de
