@@ -160,6 +160,17 @@ const DOMINIO_INFO: { color: string; etiqueta: string; ayuda: string }[] = [
   { color: '#22c55e', etiqueta: 'Dominado', ayuda: 'Lo dominas.' }
 ]
 
+/**
+ * Id real del concepto a partir del id del nodo del grafo.
+ *
+ * En el grafo los nodos van con prefijo de tipo (`c:` conceptos, `a:`
+ * asignaturas, `t:` tareas) para que no choquen entre sí. Todo lo que SALE del
+ * grafo —abrir la ficha, vincular por IPC— necesita el id de verdad. Se le pone
+ * nombre a propósito: cuando esto era un `.slice(2)` suelto, un solo sitio que
+ * se lo saltara abría el panel lateral con «No encontrado».
+ */
+const idReal = (idNodo: string): string => idNodo.slice(2)
+
 /** Clasifica cada concepto por su rol en la secuencia de prerequisitos (por id sin prefijo). */
 function rolesDeConceptos(grafo: GrafoDTO): Map<string, RolConcepto> {
   const salida = new Map<string, number>() // es prerequisito de N (out)
@@ -562,8 +573,8 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
     cyRef.current = cy
     window.__cy = cy
 
-    cy.on('tap', 'node[tipo="concepto"]', (evt) => setSeleccionado(evt.target.id().slice(2)))
-    cy.on('dbltap', 'node[tipo="concepto"]', (evt) => abrirVistazo(evt.target.id().slice(2)))
+    cy.on('tap', 'node[tipo="concepto"]', (evt) => setSeleccionado(idReal(evt.target.id())))
+    cy.on('dbltap', 'node[tipo="concepto"]', (evt) => abrirVistazo(idReal(evt.target.id())))
     // Clic en una tarea: añádela/quítala de la selección para combinar.
     // Doble clic: ir a su asignatura para ver la ficha.
     cy.on('tap', 'node[tipo="tarea"]', (evt) => {
@@ -802,7 +813,7 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
     const key = `${origen}|${destino}`
     setVinculando(key)
     try {
-      await api.vincularConceptos(origen.slice(2), destino.slice(2), tipo)
+      await api.vincularConceptos(idReal(origen), idReal(destino), tipo)
       setGrafo(await api.obtenerGrafo()) // refresca para que aparezca la nueva arista
       notificar({ tipo: 'exito', mensaje: 'Conceptos vinculados.' })
     } catch (error) {
@@ -1131,7 +1142,7 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
             </button>
             <div className="flex min-h-0 flex-1 flex-col items-center gap-2 overflow-y-auto">
               {conceptos.map((c) => {
-                const id = c.id.slice(2)
+                const id = idReal(c.id)
                 const activo = id === seleccionado
                 return (
                   <button
@@ -1184,7 +1195,7 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
             </div>
             <ul className="space-y-0.5">
               {conceptos.map((c) => {
-                const id = c.id.slice(2)
+                const id = idReal(c.id)
                 const activo = id === seleccionado
                 return (
                   <li key={c.id}>
@@ -1292,7 +1303,7 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
                       {analisis.aislados.map((c) => (
                         <li key={c.id}>
                           <button
-                            onClick={() => abrirVistazo(c.id)}
+                            onClick={() => abrirVistazo(idReal(c.id))}
                             className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600 hover:bg-slate-200"
                           >
                             {c.nombre}
