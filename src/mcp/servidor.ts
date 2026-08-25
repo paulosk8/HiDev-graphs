@@ -107,7 +107,7 @@ server.registerTool(
   'leer_material',
   {
     description:
-      'Extrae el TEXTO del material de un concepto (PDF, Word, PowerPoint, Markdown, HTML, XML) para razonar sobre su contenido y, p. ej., generar tareas. Si se indica `archivo`, solo ese; si no, todo el material del concepto.',
+      'Extrae el TEXTO del material de un concepto (de los formatos de los que se puede extraer: PDF, Word, PowerPoint, Markdown, HTML, XML y texto plano) para razonar sobre su contenido y, p. ej., generar tareas. Si se indica `archivo`, solo ese; si no, todo el material del concepto.',
     inputSchema: {
       conceptoId: z.string().describe('Id (slug) del concepto'),
       archivo: z.string().optional().describe('Nombre de archivo concreto (opcional)')

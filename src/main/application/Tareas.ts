@@ -15,8 +15,8 @@ import type { Asignatura } from '../domain/Asignatura'
 import { ErrorDeDominio } from '../domain/errores'
 import { crearRecurso } from '../domain/Recurso'
 import { agregarAdjunto, crearTarea as nuevaTarea, quitarAdjunto } from '../domain/Tarea'
-import { formatoDesdeNombreArchivo } from '../domain/tipos'
 import { slugUnico } from '../domain/slug'
+import { esArchivoCopiable } from './AgregarMaterial'
 import type { Servicios } from '../servicios'
 import { aResumenTareaDTO, aTareaDTO } from './mapeadores'
 
@@ -160,7 +160,9 @@ export function agregarAdjuntoTarea(
   let agregados = 0
 
   for (const ruta of rutas) {
-    if (formatoDesdeNombreArchivo(ruta) === null) {
+    // Mismo criterio que el material del concepto: vale cualquier formato, y
+    // solo se descarta lo que no es un archivo (ver `esArchivoCopiable`).
+    if (!esArchivoCopiable(ruta)) {
       ignorados.push(basename(ruta))
       continue
     }

@@ -31,45 +31,39 @@ export type FormatoInstrucciones = 'markdown' | 'html' | 'codigo'
  */
 export type TipoAsignatura = 'docencia' | 'aprendizaje'
 
-export type FormatoRecurso =
-  | 'pptx'
-  | 'pdf'
-  | 'md'
-  | 'html'
-  | 'docx'
-  | 'xml'
-  | 'txt'
-  | 'css'
-  | 'js'
-  | 'json'
-  | 'csv'
-
-export const FORMATOS_SOPORTADOS: readonly FormatoRecurso[] = [
-  'pptx',
-  'pdf',
-  'md',
-  'html',
-  'docx',
-  'xml',
-  'txt',
-  'css',
-  'js',
-  'json',
-  'csv'
-]
+/**
+ * Formato de un material: simplemente su extensión en minúsculas.
+ *
+ * Antes era una lista cerrada, y todo lo que no estuviera en ella se
+ * rechazaba. Eso no era una decisión de producto sino una limitación: el
+ * docente tiene hojas de cálculo, imágenes de la pizarra, audio de una clase,
+ * un `.zip` con el código de la práctica… y todo eso es material. La app no
+ * necesita entender un archivo para guardarlo junto a su concepto.
+ *
+ * Lo que sí sigue siendo una lista es lo que la app sabe PINTAR por dentro
+ * (`FORMATOS_TEXTO`, `PREVISUALIZABLES` en la vista previa). Esas son listas
+ * permisivas —añaden un botón «Ver»— y no puertas: lo que no está en ellas se
+ * abre igual con la aplicación del sistema.
+ */
+export type FormatoRecurso = string
 
 /** Formatos basados en texto que se pueden previsualizar como texto plano. */
-export const FORMATOS_TEXTO: readonly FormatoRecurso[] = ['md', 'xml', 'txt', 'css', 'js', 'json', 'csv']
+export const FORMATOS_TEXTO: readonly string[] = ['md', 'xml', 'txt', 'css', 'js', 'json', 'csv']
+
+/** Imágenes que el visor pinta directamente (el esquema recurso:// las sirve). */
+export const FORMATOS_IMAGEN: readonly string[] = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'avif']
+
+/** Lo que se guarda cuando el archivo no tiene extensión. */
+export const FORMATO_DESCONOCIDO = 'archivo'
 
 /**
- * Deduce el formato de un recurso a partir del nombre de archivo.
- * Devuelve `null` si la extensión no está soportada.
+ * Deduce el formato de un material a partir del nombre de archivo. Nunca
+ * falla: cualquier extensión vale, y un archivo sin extensión se marca como
+ * «archivo». Devolver `null` era lo que disparaba todos los rechazos.
  */
-export function formatoDesdeNombreArchivo(nombreArchivo: string): FormatoRecurso | null {
+export function formatoDesdeNombreArchivo(nombreArchivo: string): FormatoRecurso {
   const punto = nombreArchivo.lastIndexOf('.')
-  if (punto < 0) return null
-  const extension = nombreArchivo.slice(punto + 1).toLowerCase()
-  return (FORMATOS_SOPORTADOS as readonly string[]).includes(extension)
-    ? (extension as FormatoRecurso)
-    : null
+  if (punto < 0) return FORMATO_DESCONOCIDO
+  const extension = nombreArchivo.slice(punto + 1).toLowerCase().trim()
+  return extension || FORMATO_DESCONOCIDO
 }

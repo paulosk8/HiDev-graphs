@@ -35,7 +35,7 @@ Repositorio: https://github.com/paulosk8/HiDev-graphs
 
 ### Capa de conocimiento (transversal, estable)
 - **Conceptos** reutilizables (p. ej. "Recursividad", "Divide y vencerás") con CRUD por formularios.
-- **Material** por concepto: se agrega **arrastrando archivos** (o con selector nativo). La app copia el archivo a su almacén y lo clasifica por extensión. Formatos: `pptx, pdf, md, html, docx, xml`.
+- **Material** por concepto: se agrega **arrastrando archivos** (o con selector nativo). La app copia el archivo a su almacén y lo clasifica por extensión. **Cualquier formato** (lo único que no se admite son carpetas); dentro de la app se previsualizan PDF, HTML, imágenes, Markdown y texto plano, y el resto se abre con la aplicación del sistema.
 - **Relaciones tipadas** entre conceptos: `prerequisito_de`, `relacionado_con`, `profundiza`.
 - **Ficha de concepto**: muestra su material y **en qué asignaturas / unidades / temas se usa**.
 - **Búsqueda** de conceptos por nombre, descripción y tema.
@@ -246,7 +246,7 @@ erDiagram
         string id
         string nombre
         string archivo
-        string formato "pptx|pdf|md|html|docx|xml"
+        string formato "extensión del archivo"
     }
     RELACION {
         string destino "id de concepto"

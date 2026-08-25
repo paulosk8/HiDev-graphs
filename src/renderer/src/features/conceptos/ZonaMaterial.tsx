@@ -19,8 +19,6 @@ import {
 import { DialogoEnlace } from './DialogoEnlace'
 import { PREVISUALIZABLES, VistaPreviaMaterial } from './VistaPreviaMaterial'
 
-const FORMATOS_ACEPTADOS = '.pdf,.pptx,.docx,.md,.html,.xml'
-
 /** Clave de la sección "sin carpeta", que siempre va primero. */
 const RAIZ = ''
 
@@ -367,7 +365,9 @@ export function ZonaMaterial({
         ref={inputRef}
         type="file"
         multiple
-        accept={FORMATOS_ACEPTADOS}
+        // Sin `accept`: vale cualquier archivo. Además, el diálogo y el
+        // arrastre deben aceptar LO MISMO; con la lista puesta, un .txt entraba
+        // arrastrado pero no aparecía al elegirlo por el botón.
         className="hidden"
         onChange={(e) => {
           void procesarArchivos(e.target.files, destinoRef.current)
@@ -394,7 +394,8 @@ export function ZonaMaterial({
             {arrastrando !== null ? 'Suelta para agregar' : 'Arrastra tus archivos aquí'}
           </p>
           <p className="mt-1 text-xs text-slate-400">
-            PDF, PowerPoint, Word, Markdown, HTML o XML — o guarda un enlace a una página web
+            Cualquier archivo: PDF, diapositivas, Word, hojas de cálculo, imágenes,
+            audio o vídeo — o guarda un enlace a una página web
           </p>
           <div className="mt-4 flex flex-wrap justify-center gap-2">
             <Boton variante="secundario" onClick={() => elegirArchivos(RAIZ)} disabled={ocupado}>

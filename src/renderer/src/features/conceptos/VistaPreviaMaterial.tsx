@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { marked } from 'marked'
-import { FORMATOS_TEXTO, type RecursoDTO } from '@shared/dtos'
+import { FORMATOS_IMAGEN, FORMATOS_TEXTO, type RecursoDTO } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
 import { api } from '../../lib/api'
 import { useUiStore } from '../../stores/uiStore'
@@ -12,7 +12,17 @@ interface Props {
   onCerrar: () => void
 }
 
-const PREVISUALIZABLES = ['pdf', 'html', ...FORMATOS_TEXTO]
+/**
+ * Lo que la app sabe pintar por dentro. Es una lista PERMISIVA —añade el botón
+ * «Ver»—, no una puerta: cualquier otro archivo se guarda igual y se abre con
+ * la aplicación del sistema.
+ *
+ * Las imágenes entran aquí porque, en cuanto se admite cualquier formato, son
+ * lo primero que llega (la foto de la pizarra, el diagrama, la captura) y
+ * tener que salir de la app para verlas no tendría sentido. El esquema
+ * recurso:// ya las sirve con su tipo correcto.
+ */
+const PREVISUALIZABLES = ['pdf', 'html', ...FORMATOS_IMAGEN, ...FORMATOS_TEXTO]
 
 export function VistaPreviaMaterial({ conceptoId, recurso, onCerrar }: Props): JSX.Element {
   const [texto, setTexto] = useState<string | null>(null)
@@ -59,6 +69,13 @@ export function VistaPreviaMaterial({ conceptoId, recurso, onCerrar }: Props): J
         />
       )
     }
+    if (FORMATOS_IMAGEN.includes(recurso.formato)) {
+      return (
+        <div className="flex h-full items-center justify-center overflow-auto p-4">
+          <img src={url} alt={recurso.nombre} className="max-h-full max-w-full object-contain" />
+        </div>
+      )
+    }
     if (cargando) {
       return <p className="p-8 text-sm text-slate-400">Cargando…</p>
     }
@@ -78,7 +95,8 @@ export function VistaPreviaMaterial({ conceptoId, recurso, onCerrar }: Props): J
         </pre>
       )
     }
-    // docx, pptx: sin previsualización embebida.
+    // Todo lo demás (docx, pptx, hojas de cálculo, audio, vídeo, zip…): se
+    // guarda igual, pero lo abre quien sabe abrirlo.
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
         <div className="text-4xl" aria-hidden>

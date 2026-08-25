@@ -220,8 +220,7 @@ export function FichaTarea({ tareaId, onCerrar, onCambiada }: Props): JSX.Elemen
                 ref={inputRef}
                 type="file"
                 multiple
-                accept=".pdf,.pptx,.docx,.md,.html,.xml"
-                className="hidden"
+                      className="hidden"
                 onChange={(e) => {
                   void procesarAdjuntos(e.target.files)
                   e.target.value = ''

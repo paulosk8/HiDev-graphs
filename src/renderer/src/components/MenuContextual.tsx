@@ -24,6 +24,19 @@ export interface OpcionMenu {
   motivo?: string
 }
 
+/**
+ * Factor del tamaño de la interfaz. La app lo aplica con `zoom` en la raíz
+ * (ver App.tsx), y eso parte las coordenadas en DOS espacios: lo que se mide
+ * —la posición del ratón, `getBoundingClientRect`— ya viene multiplicado por
+ * el zoom, mientras que un `left`/`top` escrito en CSS se vuelve a multiplicar
+ * al pintarlo. Sin dividir, el menú acababa en `cursor × zoom`: al 120 % se
+ * iba más de cien píxeles por debajo del botón que lo había abierto.
+ */
+function factorZoom(): number {
+  const z = parseFloat(getComputedStyle(document.documentElement).zoom)
+  return Number.isFinite(z) && z > 0 ? z : 1
+}
+
 export function MenuContextual({
   x,
   y,
@@ -45,10 +58,12 @@ export function MenuContextual({
     if (!el) return
     const caja = el.getBoundingClientRect()
     const margen = 8
-    setPos({
-      x: Math.min(x, window.innerWidth - caja.width - margen),
-      y: Math.min(y, window.innerHeight - caja.height - margen)
-    })
+    // Se recoloca en el espacio VISUAL —que es donde viven el ratón, la caja
+    // medida y la ventana— y solo al final se pasa al espacio del CSS.
+    const zoom = factorZoom()
+    const visX = Math.max(margen, Math.min(x, window.innerWidth - caja.width - margen))
+    const visY = Math.max(margen, Math.min(y, window.innerHeight - caja.height - margen))
+    setPos({ x: visX / zoom, y: visY / zoom })
   }, [x, y])
 
   useEffect(() => {

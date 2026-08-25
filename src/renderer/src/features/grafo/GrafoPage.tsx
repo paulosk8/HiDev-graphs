@@ -28,17 +28,29 @@ interface TipoArista {
   etiqueta: string
   color: string
   estilo: EstiloLinea
+  /** Grosor en el lienzo. La leyenda lo respeta: si no, enseñaría otra cosa. */
+  grosor: number
   /** true si la línea lleva flecha (relación con dirección/orden). */
   flecha: boolean
   ayuda: string
 }
 
 const TIPOS_ARISTA: TipoArista[] = [
+  // «Se usa en» y «Relacionado» eran dos grises contiguos de la misma escala,
+  // los dos continuos y sin flecha: en el lienzo no había manera de saber cuál
+  // era cuál. Se separan por FORMA (punteada y fina contra continua y gruesa) y
+  // no por matiz, porque la paleta ya tiene cian, violeta, rosa, índigo, rojo,
+  // verde y ámbar ocupados, y porque así se distinguen igual en claro que en
+  // oscuro y también sin distinguir colores.
   {
     tipo: 'usado_en',
+    // Es la única que NO une dos conceptos: cuelga de la asignatura o el
+    // espacio. Va punteada y fina, del gris de ese nodo, para que se lea como
+    // el andamiaje que es y deje el primer plano a las relaciones.
     etiqueta: 'Se usa en la asignatura',
     color: '#94a3b8',
-    estilo: 'solid',
+    estilo: 'dotted',
+    grosor: 1,
     flecha: false,
     ayuda: 'El concepto forma parte de esa asignatura.'
   },
@@ -47,6 +59,7 @@ const TIPOS_ARISTA: TipoArista[] = [
     etiqueta: 'Se aprende antes',
     color: '#ef4444',
     estilo: 'solid',
+    grosor: 1.5,
     flecha: true,
     ayuda: 'Conviene dominar un concepto antes que el otro (la flecha marca el orden).'
   },
@@ -55,14 +68,18 @@ const TIPOS_ARISTA: TipoArista[] = [
     etiqueta: 'Profundiza en',
     color: '#10b981',
     estilo: 'solid',
+    grosor: 1.5,
     flecha: true,
     ayuda: 'Un concepto amplía o profundiza en el otro (la flecha marca hacia dónde).'
   },
   {
     tipo: 'relacionado_con',
+    // Sí une dos conceptos, como «se aprende antes» y «profundiza»; lo que la
+    // distingue de ellas es que no tiene dirección. Línea continua y gruesa.
     etiqueta: 'Relacionado',
     color: '#64748b',
     estilo: 'solid',
+    grosor: 2,
     flecha: false,
     ayuda: 'Conceptos vinculados, sin un orden ni jerarquía.'
   },
@@ -71,6 +88,7 @@ const TIPOS_ARISTA: TipoArista[] = [
     etiqueta: 'Se enseñan juntos',
     color: '#818cf8',
     estilo: 'dashed',
+    grosor: 1.5,
     flecha: false,
     ayuda: 'Aparecen en el mismo tema (relación sugerida por la app).'
   }
@@ -82,10 +100,13 @@ const COLOR_TAREA = '#f59e0b'
 function MuestraLinea({
   color,
   estilo,
+  grosor = 1.5,
   flecha
 }: {
   color: string
   estilo: EstiloLinea
+  /** El mismo grosor que en el lienzo, a escala de la muestra. */
+  grosor?: number
   flecha: boolean
 }): JSX.Element {
   const dash = estilo === 'dashed' ? '5,3' : estilo === 'dotted' ? '1.5,3' : undefined
@@ -97,7 +118,7 @@ function MuestraLinea({
         x2={flecha ? 23 : 30}
         y2="6"
         stroke={color}
-        strokeWidth="2.2"
+        strokeWidth={grosor * 1.5}
         strokeDasharray={dash}
         strokeLinecap="round"
       />
@@ -138,6 +159,17 @@ const DOMINIO_INFO: { color: string; etiqueta: string; ayuda: string }[] = [
   { color: '#f59e0b', etiqueta: 'A profundizar', ayuda: 'Lo sabes a medias.' },
   { color: '#22c55e', etiqueta: 'Dominado', ayuda: 'Lo dominas.' }
 ]
+
+/**
+ * Id real del concepto a partir del id del nodo del grafo.
+ *
+ * En el grafo los nodos van con prefijo de tipo (`c:` conceptos, `a:`
+ * asignaturas, `t:` tareas) para que no choquen entre sí. Todo lo que SALE del
+ * grafo —abrir la ficha, vincular por IPC— necesita el id de verdad. Se le pone
+ * nombre a propósito: cuando esto era un `.slice(2)` suelto, un solo sitio que
+ * se lo saltara abría el panel lateral con «No encontrado».
+ */
+const idReal = (idNodo: string): string => idNodo.slice(2)
 
 /** Clasifica cada concepto por su rol en la secuencia de prerequisitos (por id sin prefijo). */
 function rolesDeConceptos(grafo: GrafoDTO): Map<string, RolConcepto> {
@@ -210,7 +242,8 @@ const ESTILO: cytoscape.StylesheetStyle[] = [
   { selector: 'edge[tipo="coocurre"]', style: { 'line-color': '#818cf8', 'line-style': 'dashed' } },
   { selector: 'edge[tipo="tarea_concepto"]', style: { 'line-color': '#f59e0b', 'line-style': 'dotted', width: 1 } },
   { selector: 'edge[tipo="prerequisito_de"]', style: { 'line-color': '#ef4444', 'target-arrow-shape': 'triangle', 'target-arrow-color': '#ef4444' } },
-  { selector: 'edge[tipo="relacionado_con"]', style: { 'line-color': '#64748b' } },
+  { selector: 'edge[tipo="usado_en"]', style: { 'line-color': '#94a3b8', 'line-style': 'dotted', width: 1 } },
+  { selector: 'edge[tipo="relacionado_con"]', style: { 'line-color': '#64748b', width: 2 } },
   { selector: 'edge[tipo="profundiza"]', style: { 'line-color': '#10b981', 'target-arrow-shape': 'triangle', 'target-arrow-color': '#10b981' } },
   { selector: '.atenuado', style: { opacity: 0.1 } },
   { selector: 'node.foco', style: { 'border-width': 3, 'border-color': '#4338ca' } },
@@ -540,8 +573,8 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
     cyRef.current = cy
     window.__cy = cy
 
-    cy.on('tap', 'node[tipo="concepto"]', (evt) => setSeleccionado(evt.target.id().slice(2)))
-    cy.on('dbltap', 'node[tipo="concepto"]', (evt) => abrirVistazo(evt.target.id().slice(2)))
+    cy.on('tap', 'node[tipo="concepto"]', (evt) => setSeleccionado(idReal(evt.target.id())))
+    cy.on('dbltap', 'node[tipo="concepto"]', (evt) => abrirVistazo(idReal(evt.target.id())))
     // Clic en una tarea: añádela/quítala de la selección para combinar.
     // Doble clic: ir a su asignatura para ver la ficha.
     cy.on('tap', 'node[tipo="tarea"]', (evt) => {
@@ -780,7 +813,7 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
     const key = `${origen}|${destino}`
     setVinculando(key)
     try {
-      await api.vincularConceptos(origen.slice(2), destino.slice(2), tipo)
+      await api.vincularConceptos(idReal(origen), idReal(destino), tipo)
       setGrafo(await api.obtenerGrafo()) // refresca para que aparezca la nueva arista
       notificar({ tipo: 'exito', mensaje: 'Conceptos vinculados.' })
     } catch (error) {
@@ -1000,7 +1033,7 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
                           }`}
                         >
                           <span className="mt-0.5">
-                            <MuestraLinea color={t.color} estilo={t.estilo} flecha={t.flecha} />
+                            <MuestraLinea color={t.color} estilo={t.estilo} grosor={t.grosor} flecha={t.flecha} />
                           </span>
                           <span className="min-w-0">
                             <span className="block text-xs font-medium text-slate-700">{etiquetaArista(t)}</span>
@@ -1018,7 +1051,7 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
                         }`}
                       >
                         <span className="mt-0.5">
-                          <MuestraLinea color={COLOR_TAREA} estilo="dotted" flecha={false} />
+                          <MuestraLinea color={COLOR_TAREA} estilo="dotted" grosor={1} flecha={false} />
                         </span>
                         <span className="min-w-0">
                           <span className="block text-xs font-medium text-slate-700">Tareas</span>
@@ -1109,7 +1142,7 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
             </button>
             <div className="flex min-h-0 flex-1 flex-col items-center gap-2 overflow-y-auto">
               {conceptos.map((c) => {
-                const id = c.id.slice(2)
+                const id = idReal(c.id)
                 const activo = id === seleccionado
                 return (
                   <button
@@ -1162,7 +1195,7 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
             </div>
             <ul className="space-y-0.5">
               {conceptos.map((c) => {
-                const id = c.id.slice(2)
+                const id = idReal(c.id)
                 const activo = id === seleccionado
                 return (
                   <li key={c.id}>
@@ -1270,7 +1303,7 @@ export function GrafoPage({ contexto }: Props): JSX.Element {
                       {analisis.aislados.map((c) => (
                         <li key={c.id}>
                           <button
-                            onClick={() => abrirVistazo(c.id)}
+                            onClick={() => abrirVistazo(idReal(c.id))}
                             className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600 hover:bg-slate-200"
                           >
                             {c.nombre}
