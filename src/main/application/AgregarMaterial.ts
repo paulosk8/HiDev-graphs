@@ -1,20 +1,35 @@
 import { randomUUID } from 'node:crypto'
+import { statSync } from 'node:fs'
 import { basename, extname } from 'node:path'
 
 import type { ResultadoMaterialDTO } from '../../shared/dtos'
 import { agregarRecurso, type Concepto } from '../domain/Concepto'
 import { crearRecurso } from '../domain/Recurso'
 import { ErrorDeDominio } from '../domain/errores'
-import { formatoDesdeNombreArchivo } from '../domain/tipos'
 import type { Servicios } from '../servicios'
 import { aConceptoDTO } from './mapeadores'
 
 /**
  * Agrega material a un concepto a partir de rutas de archivo (soltadas o
  * elegidas por el docente). Copia cada archivo al vault y lo clasifica por
- * extensión. Los formatos no soportados se ignoran y se informan (nunca
+ * extensión. Vale CUALQUIER formato: lo único que se ignora es lo que no es un
+ * archivo (una carpeta) o lo que no se puede leer, y se informa de ello (nunca
  * falla en silencio).
  */
+  /**
+   * Lo que ya no se puede agregar. Antes el filtro por extensión descartaba de
+   * paso lo que no era un archivo suelto —una CARPETA arrastrada no tiene
+   * extensión— y eso lo tapaba. Sin ese filtro hay que mirarlo de frente: sobre
+   * un directorio, `copyFileSync` revienta con EISDIR.
+   */
+export function esArchivoCopiable(ruta: string): boolean {
+  try {
+    return statSync(ruta).isFile()
+  } catch {
+    return false
+  }
+}
+
 export function agregarMaterial(
   servicios: Servicios,
   conceptoId: string,
@@ -33,7 +48,7 @@ export function agregarMaterial(
   let agregados = 0
 
   for (const ruta of rutas) {
-    if (formatoDesdeNombreArchivo(ruta) === null) {
+    if (!esArchivoCopiable(ruta)) {
       ignorados.push(basename(ruta))
       continue
     }

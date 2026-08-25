@@ -20,7 +20,13 @@ El usuario objetivo **no es técnico**. Nunca ve archivos, YAML, rutas, ni jerga
 - **Concepto**: unidad de conocimiento reutilizable (ej. "Divide y vencerás").
   - Tiene **relaciones tipadas** con otros conceptos: `prerequisito_de`, `relacionado_con`, `profundiza`.
   - Posee **Recursos** y **Enlaces** (el material). El material pertenece **al concepto, jamás a una asignatura**: es lo que permite reutilizarlo entre asignaturas y períodos sin duplicarlo.
-- **Recurso**: archivo de material. Formatos: `pptx, pdf, md, html, docx, xml`. Se clasifica por extensión.
+- **Recurso**: archivo de material. **Cualquier formato**: el docente tiene diapositivas, hojas de
+  cálculo, imágenes de la pizarra, audio de una clase o un `.zip` con el código de la práctica, y
+  todo eso es material. La app no necesita entender un archivo para guardarlo junto a su concepto.
+  Se clasifica por su extensión, que es lo único que se guarda como «formato». Lo que sí es una
+  lista cerrada es lo que la app sabe **previsualizar** por dentro (PDF, HTML, imágenes, Markdown y
+  texto plano); el resto se abre con la aplicación del sistema. Lo único que no se admite son
+  carpetas.
 - **Enlace**: material que vive en la web (una página, un vídeo, un simulador). Para el docente es material igual que un PDF, así que se lista **junto a los recursos** y no en una sección aparte; por dentro es solo una dirección guardada en `concepto.yaml`, sin archivo que copiar.
 - **Carpetas de material**: un solo nivel, **reales en disco** (`conceptos/<slug>/Lecturas/x.pdf`) para que el docente vea la misma organización desde su nube o el Finder. Se pueden renombrar y quitar; quitar una carpeta **nunca borra material** (lo deja suelto en el concepto).
 

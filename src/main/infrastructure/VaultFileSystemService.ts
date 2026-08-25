@@ -252,9 +252,6 @@ export class VaultFileSystemService {
     carpeta = ''
   ): { archivo: string; formato: FormatoRecurso } {
     const formato = formatoDesdeNombreArchivo(rutaOrigen)
-    if (formato === null) {
-      throw new Error(`Formato de material no soportado: ${extname(rutaOrigen) || '(sin extensión)'}`)
-    }
     // La carpeta es real en disco: el docente la ve igual desde su nube.
     const segura = nombreCarpetaSeguro(carpeta)
     const destino = segura
@@ -697,9 +694,6 @@ export class VaultFileSystemService {
   /** Copia un adjunto dentro de la carpeta de la tarea. */
   copiarAdjuntoTarea(tareaId: string, rutaOrigen: string): { archivo: string; formato: FormatoRecurso } {
     const formato = formatoDesdeNombreArchivo(rutaOrigen)
-    if (formato === null) {
-      throw new Error(`Formato de adjunto no soportado: ${extname(rutaOrigen) || '(sin extensión)'}`)
-    }
     mkdirSync(this.carpetaTarea(tareaId), { recursive: true })
     const archivo = this.nombreLibreEn(this.carpetaTarea(tareaId), basename(rutaOrigen))
     copyFileSync(rutaOrigen, join(this.carpetaTarea(tareaId), archivo))

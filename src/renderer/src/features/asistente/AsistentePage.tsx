@@ -12,7 +12,7 @@ const HERRAMIENTAS = [
   ['usos_de_concepto', 'Dónde se usa un concepto.'],
   ['relaciones_de_concepto', 'Conceptos relacionados (tipados y co-ocurrentes).'],
   ['cruces_entre_asignaturas', 'Conceptos/temas que conectan dos asignaturas.'],
-  ['leer_material', 'Extrae el texto del material (PDF/Word/PPT/MD…) de un concepto.'],
+  ['leer_material', 'Extrae el texto del material de un concepto.'],
   ['listar_tareas', 'Tareas de una asignatura.'],
   ['crear_tarea', 'Crea una tarea (temas + instrucciones + componente).'],
   ['duplicar_tarea', 'Propaga una tarea a otra asignatura relacionada.']

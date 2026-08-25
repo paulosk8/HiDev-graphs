@@ -131,7 +131,7 @@ export const useConceptosStore = create<ConceptosState>((set) => ({
         ui().notificar({
           tipo: 'error',
           mensaje: `No se pudo agregar: ${ignorados.join(', ')}.`,
-          sugerencia: 'Formatos aceptados: PDF, PowerPoint, Word, Markdown, HTML y XML.'
+          sugerencia: 'Se admite cualquier archivo, pero no carpetas: ábrela y arrastra lo que hay dentro.'
         })
       }
       return concepto

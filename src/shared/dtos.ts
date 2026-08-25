@@ -11,21 +11,19 @@ export type TipoRelacion = 'prerequisito_de' | 'relacionado_con' | 'profundiza'
 /** Un espacio es de DOCENCIA (asignatura) o de APRENDIZAJE (workspace para aprender). */
 export type TipoAsignatura = 'docencia' | 'aprendizaje'
 
-export type FormatoRecurso =
-  | 'pptx'
-  | 'pdf'
-  | 'md'
-  | 'html'
-  | 'docx'
-  | 'xml'
-  | 'txt'
-  | 'css'
-  | 'js'
-  | 'json'
-  | 'csv'
+/**
+ * Formato de un material: su extensión en minúsculas, la que sea. Se admite
+ * cualquier archivo; ver `FormatoRecurso` en main/domain/tipos.ts para el
+ * porqué. Las listas de abajo dicen qué sabe pintar la app por dentro, no qué
+ * se puede guardar.
+ */
+export type FormatoRecurso = string
 
 /** Formatos basados en texto que se pueden previsualizar como texto plano. */
-export const FORMATOS_TEXTO: readonly FormatoRecurso[] = ['md', 'xml', 'txt', 'css', 'js', 'json', 'csv']
+export const FORMATOS_TEXTO: readonly string[] = ['md', 'xml', 'txt', 'css', 'js', 'json', 'csv']
+
+/** Imágenes que el visor pinta directamente. */
+export const FORMATOS_IMAGEN: readonly string[] = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'avif']
 
 // --- Lecturas (proyecciones para listados y fichas) ---
 
