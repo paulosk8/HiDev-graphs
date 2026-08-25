@@ -529,6 +529,24 @@ abiertos, para no deshacer la pila uno a uno.
   el tope (757 de 891) sin salirse. El `Modal` común ya lo hacía así; era la
   ficha de tarea la que iba por su cuenta.
 
+- **El contenido se reordena arrastrando**, en los tres niveles (unidad, tema y
+  subtema) y por tanto en las dos capas: `EditorContenido` es el mismo componente
+  en Asignaturas y en Espacios. El `draggable` va en un **asa (⠿)** y no en la
+  fila entera: con la fila arrastrable no se puede seleccionar el título con el
+  ratón. Solo se suelta dentro de la MISMA lista (el estado guarda de qué lista
+  salió), y el destino se marca con un anillo antes de soltar. El orden se
+  persiste solo: `aDTO` respeta el orden del array y `EditarAsignatura` asigna
+  `orden` por índice, así que no hizo falta tocar el modelo.
+- **El bloque de un tema, rediseñado.** Estaba sin jerarquía: el tema era un
+  input con un filete a la izquierda, sus conceptos y sus prácticas colgaban con
+  sangrías distintas y sin rótulo comparable, y había tres gramáticas de color
+  compitiendo (chips índigo, chips ámbar y botones punteados que al pasar
+  cambiaban cada uno a un color distinto). Ahora el tema es una tarjeta, sus dos
+  filas llevan el mismo rótulo alineado («Conceptos» / «Prácticas»), los chips
+  comparten geometría y **el hover cambia el borde, no el fondo entero** —el chip
+  de práctica saltaba de `amber-50` a `amber-100`, que en oscuro es de marrón a
+  marrón—. Contrastes medidos en los cuatro temas: lo peor queda en 4,55:1.
+
 ## Trampas del vault que ya han mordido
 
 `RespaldarVault`, `RestaurarVault` y `MoverAlmacenamiento` llevan **su lista de
