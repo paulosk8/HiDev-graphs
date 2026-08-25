@@ -88,12 +88,87 @@ body,
 .dark .focus\:ring-marca-100:focus { --tw-ring-color: #3730a3; }
 .dark .placeholder\:text-slate-400::placeholder { color: #64748b; }
 
-/* Campos de formulario (por si no traen fondo explícito) */
-.dark input:not([type='checkbox']):not([type='radio']):not([type='color']),
+/* Campos de formulario (por si no traen fondo explícito). Se excluye el título
+   en línea del plan de contenido: ese se lee como texto, no como campo. */
+.dark input:not([type='checkbox']):not([type='radio']):not([type='color']):not(.titulo-inline),
 .dark textarea,
 .dark select {
   background-color: #1e293b;
   color: #e2e8f0;
+}
+
+/* Remapeos del plan de contenido (bordes suaves que en claro son casi blancos) */
+.dark .hover\:border-slate-300:hover { border-color: #475569; }
+.dark .hover\:bg-slate-50\/70:hover { background-color: #1e293b; }
+
+/* =========================================================================
+   CHIPS DEL PLAN DE CONTENIDO
+   Lo que cuelga de un tema: los conceptos (lo que se enseña, con su material)
+   y las prácticas o tareas (lo que se pide). Van en la misma línea, así que
+   deben pesar lo MISMO: el concepto lleva el color de marca y un rombo; la
+   práctica, neutro y un lápiz. Los colores se fijan aquí y no con utilidades
+   porque el modo oscuro necesita rellenos mucho más apagados que el simple
+   remapeo de `bg-marca-50`, que en una fila de chips se leía como un bloque.
+   ========================================================================= */
+.chip-concepto {
+  background-color: #eef2ff;
+  border-color: #e0e7ff;
+  color: #4338ca;
+}
+.dark .chip-concepto {
+  background-color: #1e1b4b;
+  border-color: #312e81;
+  color: #a5b4fc;
+}
+.chip-tarea {
+  background-color: #f8fafc;
+  border-color: #e2e8f0;
+  color: #475569;
+}
+.chip-tarea:hover {
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+.dark .chip-tarea {
+  background-color: #1e293b;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+.dark .chip-tarea:hover {
+  border-color: #475569;
+  color: #f1f5f9;
+}
+
+/* =========================================================================
+   TÍTULO EN LÍNEA (plan de contenido de una asignatura o espacio)
+   Un plan de estudios es un documento, no un formulario: una columna de cajas
+   grises lo hacía parecer lo segundo. El título se lee como texto y solo
+   revela el campo al pasar el ratón o al enfocarlo.
+   ========================================================================= */
+.titulo-inline {
+  background-color: transparent;
+  border-color: transparent;
+}
+.titulo-inline:hover {
+  background-color: #ffffff;
+  border-color: #e2e8f0;
+}
+.titulo-inline:focus {
+  background-color: #ffffff;
+  border-color: #818cf8;
+}
+.dark .titulo-inline {
+  background-color: transparent;
+  color: #e2e8f0;
+}
+.dark .titulo-inline::placeholder { color: #64748b; }
+.dark .titulo-inline:hover {
+  background-color: #1e293b;
+  border-color: #334155;
+}
+.dark .titulo-inline:focus {
+  background-color: #1e293b;
+  border-color: #6366f1;
 }
 
 /* Estilos del Markdown previsualizado (sin plugin de tipografía). */

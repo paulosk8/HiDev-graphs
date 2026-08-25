@@ -46,6 +46,20 @@ interface Pendiente {
  */
 const UNIDAD_IMPLICITA = 'Contenido'
 
+/**
+ * Acciones que solo aparecen al pasar el ratón por su fila (o al llegar a
+ * ellas con el teclado). En reposo la pantalla es contenido; las herramientas
+ * salen cuando se van a usar.
+ *
+ * Van escritas enteras y no compuestas con plantillas: Tailwind busca las
+ * clases como texto en el fuente y no vería `group-hover/${x}:opacity-100`.
+ */
+const AL_PASAR = {
+  uni: 'opacity-0 transition focus:opacity-100 group-hover/uni:opacity-100 group-focus-within/uni:opacity-100',
+  tema: 'opacity-0 transition focus:opacity-100 group-hover/tema:opacity-100 group-focus-within/tema:opacity-100',
+  sub: 'opacity-0 transition focus:opacity-100 group-hover/sub:opacity-100 group-focus-within/sub:opacity-100'
+} as const
+
 let seq = 0
 const tmpId = (): string => `tmp-${++seq}`
 const esTmp = (id: string): boolean => id.startsWith('tmp-')
@@ -129,6 +143,17 @@ export function EditorContenido({
     unidadId: string
     tema: TemaN
   }>()
+  /**
+   * Menús de la unidad y del botón «＋» de un tema. Van aparte del de arriba
+   * porque cada uno lleva un dato distinto, y porque el «＋» es el camino
+   * rápido (vincular / crear práctica) mientras que el «⋯» es el completo.
+   */
+  const { menu: menuUni, abrir: abrirMenuUni, cerrar: cerrarMenuUni } = useMenuContextual<UniN>()
+  const {
+    menu: menuMas,
+    abrir: abrirMenuMas,
+    cerrar: cerrarMenuMas
+  } = useMenuContextual<{ unidadId: string; temaId: string }>()
   const [moviendo, setMoviendo] = useState<{ unidadId: string; tema: TemaN } | null>(null)
   /**
    * Reordenar arrastrando. Se guarda QUÉ se arrastra (y de qué lista) para no
@@ -358,7 +383,7 @@ export function EditorContenido({
       .find((s) => s.id === sId)
 
   // --- Confirmación de borrado (no se elimina directo si hay contenido) ---
-  const plural = (n: number, palabra: string): string => `${n} ${palabra}${n > 1 ? 's' : ''}`
+  const plural = (n: number, palabra: string): string => `${n} ${palabra}${n === 1 ? '' : 's'}`
 
   const pedirQuitarUnidad = (u: UniN): void => {
     const hijos = u.temas.filter((t) => t.titulo.trim()).length
@@ -415,6 +440,14 @@ export function EditorContenido({
     setAEliminar(null)
   }
 
+  /**
+   * Título editable. Se lee como TEXTO, no como campo: un plan de estudios es
+   * un documento, y una columna de cajas grises a todo el ancho lo hacía
+   * parecer un formulario. El recuadro aparece al pasar el ratón y al
+   * enfocarlo, que es cuando de verdad se va a escribir. El aspecto vive en
+   * `.titulo-inline` (main.css) porque el modo oscuro pinta el fondo de todos
+   * los inputs y aquí hay que dejarlo transparente.
+   */
   const inputTitulo = (
     valor: string,
     id: string,
@@ -431,17 +464,130 @@ export function EditorContenido({
         if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
       }}
       placeholder={placeholder}
-      className={`rounded-md border border-transparent px-2 py-1 outline-none transition hover:border-slate-200 focus:border-marca-400 focus:bg-white focus:ring-2 focus:ring-marca-100 ${clase}`}
+      className={`titulo-inline min-w-0 rounded-md border px-1.5 py-0.5 outline-none transition focus:ring-2 focus:ring-marca-100 ${clase}`}
     />
   )
+
+  /** Qué hay dentro de un tema plegado: sin esto, plegarlo lo deja mudo. */
+  const resumenTema = (t: TemaN, nConceptos: number, nTareas: number): string =>
+    [
+      t.subtemas.length ? plural(t.subtemas.length, N3) : '',
+      nConceptos ? plural(nConceptos, 'concepto') : '',
+      nTareas ? plural(nTareas, esAprendizaje ? 'práctica' : 'tarea') : ''
+    ]
+      .filter(Boolean)
+      .join(' · ')
+
+  /**
+   * Fila del tercer nivel. Cuelga del riel de su tema, con canaleta propia
+   * para el asa: así su título cae en una vertical distinta de la del tema y
+   * la jerarquía se lee sin necesidad de cajas anidadas.
+   */
+  const filaSub = (u: UniN, t: TemaN, sub: SubN): JSX.Element => {
+    const subReal = subtemaReal(sub.id)
+    const sinConceptos = !subReal || subReal.conceptos.length === 0
+    return (
+      <li
+        key={sub.id}
+        onDragOver={(e) => {
+          if (arrastrando?.nivel !== 'sub' || arrastrando.tId !== t.id) return
+          e.preventDefault()
+          setSobre(sub.id)
+        }}
+        onDragLeave={() => setSobre((x) => (x === sub.id ? null : x))}
+        onDrop={(e) => {
+          e.preventDefault()
+          soltarSub(u.id, t.id, sub.id)
+        }}
+        className={`group/sub grid grid-cols-[1.75rem_minmax(0,1fr)] rounded-md py-0.5 transition ${
+          sobre === sub.id && arrastrando?.nivel === 'sub' ? 'bg-marca-50 ring-1 ring-marca-400' : ''
+        } ${arrastrando?.id === sub.id ? 'opacity-50' : ''}`}
+      >
+        <div className="col-start-1 row-start-1 flex items-center justify-end pr-1">
+          <span className={AL_PASAR.sub}>
+            {asaArrastre({ nivel: 'sub', uId: u.id, tId: t.id, id: sub.id }, `este ${N3}`)}
+          </span>
+        </div>
+
+        <div className="col-start-2 row-start-1 flex min-w-0 items-center gap-1">
+          {inputTitulo(
+            sub.titulo,
+            sub.id,
+            (v) => setTitulo(3, [u.id, t.id, sub.id], v),
+            `Título del ${N3}`,
+            'flex-1 text-[13.5px] text-slate-700'
+          )}
+          <button
+            onClick={() => pedirQuitarSub(u.id, t.id, sub)}
+            title={`Quitar ${N3}`}
+            aria-label={`Quitar ${sub.titulo || `este ${N3}`}`}
+            className={`shrink-0 rounded-md px-1.5 py-0.5 text-xs text-slate-400 hover:bg-red-50 hover:text-red-600 ${AL_PASAR.sub}`}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Conceptos del subtema: el material también se engancha en el nivel
+            más fino, no sólo en el intermedio. */}
+        {subReal && (
+          <div className="col-start-2 row-start-2 flex flex-wrap items-center gap-1.5 pl-1.5">
+            {subReal.conceptos.map((cid) => (
+              <ChipConcepto
+                key={cid}
+                concepto={conceptoPorId.get(cid)}
+                conceptoId={cid}
+                onAbrir={() => abrirVistazo(cid)}
+                onQuitar={() => onDesvincular(sub.id, cid)}
+                onCrearTarea={() => onCrearTarea(t.id, cid)}
+                etiquetaTarea={esAprendizaje ? 'Nueva práctica' : 'Nueva tarea'}
+              />
+            ))}
+            <span className="relative">
+              <button
+                onClick={() => setTemaBuscador((a) => (a === sub.id ? null : sub.id))}
+                title="Vincular un concepto"
+                aria-label={`Vincular un concepto a ${sub.titulo || `este ${N3}`}`}
+                className={
+                  sinConceptos
+                    ? 'rounded-md px-1.5 py-0.5 text-xs text-marca-600 transition hover:bg-marca-50 hover:text-marca-700'
+                    : `rounded-md px-1.5 py-0.5 text-xs text-slate-400 hover:bg-slate-100 hover:text-slate-700 ${AL_PASAR.sub}`
+                }
+              >
+                {sinConceptos ? '+ Vincular concepto' : '＋'}
+              </button>
+              {temaBuscador === sub.id && (
+                <BuscadorConceptos
+                  excluir={subReal.conceptos}
+                  onSeleccionar={(cid) => {
+                    onVincular(sub.id, cid)
+                    setTemaBuscador(null)
+                  }}
+                  onCerrar={() => setTemaBuscador(null)}
+                />
+              )}
+            </span>
+          </div>
+        )}
+      </li>
+    )
+  }
 
   /**
    * Fila de un tema. Vive dentro de su unidad en Docencia y suelta en la
    * lista aplanada de Aprendizaje, así que se pinta desde una función.
+   *
+   * La rejilla de dos columnas —canaleta + contenido— es lo que ordena la
+   * pantalla: el título, sus conceptos, sus prácticas y sus subtemas caen
+   * todos en la MISMA vertical, y las herramientas (asa, plegar, opciones)
+   * viven fuera de ella. Antes cada tema era una caja gris dentro de otra caja
+   * y la jerarquía había que adivinarla.
    */
   const filaTema = (u: UniN, t: TemaN): JSX.Element => {
     const real = temaReal(t.id)
     const tareasTema = tareas.filter((x) => x.temas.includes(t.id))
+    const nConceptos = real?.conceptos.length ?? 0
+    const sinVinculos = nConceptos === 0 && tareasTema.length === 0
+    const resumen = resumenTema(t, nConceptos, tareasTema.length)
     return (
       <li
         key={t.id}
@@ -456,206 +602,130 @@ export function EditorContenido({
           e.preventDefault()
           soltarTema(u.id, t.id)
         }}
-        className={`rounded-lg border bg-slate-50 p-2.5 text-sm transition ${
+        className={`group/tema grid grid-cols-[2.25rem_minmax(0,1fr)] rounded-lg py-1.5 transition ${
           sobre === t.id && arrastrando?.nivel === 'tema'
-            ? 'border-marca-400 ring-2 ring-marca-100'
-            : 'border-slate-200'
+            ? 'bg-marca-50 ring-1 ring-marca-400'
+            : 'hover:bg-slate-50'
         } ${arrastrando?.id === t.id ? 'opacity-50' : ''}`}
       >
-        <div className="flex items-center gap-1">
-          {asaArrastre({ nivel: 'tema', uId: u.id, id: t.id }, `este ${N2}`)}
+        {/* Canaleta: reordenar y plegar. El triángulo se queda a la vista
+            cuando el tema está plegado; si no, no habría cómo abrirlo. */}
+        <div className="col-start-1 row-start-1 flex items-center justify-end gap-0.5 pr-1">
+          <span className={AL_PASAR.tema}>
+            {asaArrastre({ nivel: 'tema', uId: u.id, id: t.id }, `este ${N2}`)}
+          </span>
           <button
             onClick={() => alternarPlegado(t.id)}
             title={plegado(t.id) ? `Desplegar ${N2}` : `Plegar ${N2}`}
             aria-expanded={!plegado(t.id)}
-            className="shrink-0 rounded px-1 text-slate-500 transition hover:text-slate-800"
+            className={`shrink-0 rounded text-[9px] text-slate-400 transition hover:text-slate-800 ${
+              plegado(t.id) ? '' : AL_PASAR.tema
+            }`}
           >
-            {plegado(t.id) ? '▸' : '▾'}
-          </button>
-          {inputTitulo(t.titulo, t.id, (v) => setTitulo(2, [u.id, t.id], v), `Título del ${N2}`, 'flex-1 font-medium text-slate-800')}
-          {plegado(t.id) && t.subtemas.length > 0 && (
-            <span className="shrink-0 px-1 text-xs text-slate-500">
-              {t.subtemas.length}
-            </span>
-          )}
-          <button
-            onClick={() => pedirQuitarTema(u.id, t)}
-            title={`Quitar ${N2}`}
-            className="shrink-0 rounded-md px-2 py-1 text-xs text-slate-500 transition hover:bg-red-50 hover:text-red-600"
-          >
-            ✕
+            {plegado(t.id) ? '▶' : '▼'}
           </button>
         </div>
 
-        <div className={plegado(t.id) ? 'hidden' : ''}>
-        {/* Conceptos vinculados (puente), solo para temas existentes */}
-        {real && (
-          <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-6">
-            <span className="w-16 shrink-0 text-[11px] font-medium uppercase tracking-wide text-slate-500">
-              Conceptos
-            </span>
-            {real.conceptos.map((cid) => (
-              <ChipConcepto
-                key={cid}
-                concepto={conceptoPorId.get(cid)}
-                conceptoId={cid}
-                onAbrir={() => abrirVistazo(cid)}
-                onQuitar={() => onDesvincular(t.id, cid)}
-                onCrearTarea={() => onCrearTarea(t.id, cid)}
-                etiquetaTarea={esAprendizaje ? 'Nueva práctica' : 'Nueva tarea'}
-              />
-            ))}
-            <span className="relative">
-              <button
-                onClick={() => setTemaBuscador((a) => (a === t.id ? null : t.id))}
-className="rounded-full border border-dashed border-slate-400 px-2.5 py-0.5 text-xs text-slate-600 transition hover:border-marca-400 hover:bg-marca-50 hover:text-marca-700"
-              >
-                + Vincular concepto
-              </button>
-              {temaBuscador === t.id && (
-                <BuscadorConceptos
-                  excluir={real.conceptos}
-                  onSeleccionar={(cid) => {
-                    onVincular(t.id, cid)
-                    setTemaBuscador(null)
-                  }}
-                  onCerrar={() => setTemaBuscador(null)}
+        <div className="col-start-2 row-start-1 flex min-w-0 items-center gap-1">
+          {inputTitulo(
+            t.titulo,
+            t.id,
+            (v) => setTitulo(2, [u.id, t.id], v),
+            `Título del ${N2}`,
+            'flex-1 text-[15px] font-medium text-slate-800'
+          )}
+          {plegado(t.id) && resumen && (
+            <span className="shrink-0 whitespace-nowrap px-1 text-xs text-slate-400">{resumen}</span>
+          )}
+          <button
+            onClick={(e) => abrirMenu(e, { unidadId: u.id, tema: t })}
+            title={`Opciones de este ${N2}`}
+            aria-label={`Opciones de ${t.titulo || `este ${N2}`}`}
+            className={`shrink-0 rounded-md px-1.5 py-0.5 leading-none text-slate-400 hover:bg-slate-100 hover:text-slate-700 ${AL_PASAR.tema}`}
+          >
+            ⋯
+          </button>
+        </div>
+
+        <div className={`col-start-2 row-start-2 ${plegado(t.id) ? 'hidden' : ''}`}>
+          {/* Todo lo que cuelga del tema, en UNA línea: los conceptos (lo que
+              se enseña, con su material) y las prácticas (lo que se pide). Se
+              distinguen por forma y color, no por una etiqueta repetida en
+              cada fila. Solo para temas guardados: uno recién escrito todavía
+              no tiene id al que colgar nada. */}
+          {real && (
+            <div className="mt-0.5 flex flex-wrap items-center gap-1.5 pl-1.5">
+              {real.conceptos.map((cid) => (
+                <ChipConcepto
+                  key={cid}
+                  concepto={conceptoPorId.get(cid)}
+                  conceptoId={cid}
+                  onAbrir={() => abrirVistazo(cid)}
+                  onQuitar={() => onDesvincular(t.id, cid)}
+                  onCrearTarea={() => onCrearTarea(t.id, cid)}
+                  etiquetaTarea={esAprendizaje ? 'Nueva práctica' : 'Nueva tarea'}
                 />
-              )}
-            </span>
-          </div>
-        )}
+              ))}
+              {tareasTema.map((x) => (
+                <ChipTarea key={x.id} titulo={x.titulo} onAbrir={() => onAbrirTarea(x.id)} />
+              ))}
+              <span className="relative">
+                {/* Con el tema vacío el camino se enseña escrito —vincular un
+                    concepto es lo primero que hay que hacer—; una vez hay algo,
+                    basta un «＋» que no compita con lo que ya cuelga. */}
+                {sinVinculos ? (
+                  <button
+                    onClick={() => setTemaBuscador((a) => (a === t.id ? null : t.id))}
+                    className="rounded-md px-1.5 py-0.5 text-xs text-marca-600 transition hover:bg-marca-50 hover:text-marca-700"
+                  >
+                    + Vincular concepto
+                  </button>
+                ) : (
+                  <button
+                    onClick={(e) => abrirMenuMas(e, { unidadId: u.id, temaId: t.id })}
+                    title={`Agregar a este ${N2}`}
+                    aria-label={`Agregar a ${t.titulo || `este ${N2}`}`}
+                    className={`rounded-md px-1.5 py-0.5 text-xs text-slate-400 hover:bg-slate-100 hover:text-slate-700 ${AL_PASAR.tema}`}
+                  >
+                    ＋
+                  </button>
+                )}
+                {temaBuscador === t.id && (
+                  <BuscadorConceptos
+                    excluir={real.conceptos}
+                    onSeleccionar={(cid) => {
+                      onVincular(t.id, cid)
+                      setTemaBuscador(null)
+                    }}
+                    onCerrar={() => setTemaBuscador(null)}
+                  />
+                )}
+              </span>
+            </div>
+          )}
 
-        {/* Tareas del tema. La fila se pinta aunque no haya ninguna: es desde
-            donde se crean, ya asociadas a este tema. Solo para temas guardados:
-            uno recién escrito todavía no tiene id al que colgarlas. */}
-        {real && (
-          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 pl-6">
-            <span className="w-16 shrink-0 text-[11px] font-medium uppercase tracking-wide text-slate-500">
-              {esAprendizaje ? 'Prácticas' : 'Tareas'}
-            </span>
-            {tareasTema.map((x) => (
-              <button
-                key={x.id}
-                onClick={() => onAbrirTarea(x.id)}
-                title={`Abrir «${x.titulo}»`}
-                className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs text-amber-800 transition hover:border-amber-400"
-              >
-                {x.titulo}
-              </button>
-            ))}
-            <button
-              onClick={() => onCrearTarea(t.id)}
-className="rounded-full border border-dashed border-slate-400 px-2.5 py-0.5 text-xs text-slate-600 transition hover:border-marca-400 hover:bg-marca-50 hover:text-marca-700"
-            >
-              + {esAprendizaje ? 'Nueva práctica' : 'Nueva tarea'}
-            </button>
-          </div>
-        )}
-
-        {/* Sub-subtemas (3er nivel) */}
-        {t.subtemas.length > 0 && (
-          <ul className="mt-2 space-y-0.5 pl-6">
-            {t.subtemas.map((sub) => {
-              const subReal = subtemaReal(sub.id)
-              return (
-                <li
-                  key={sub.id}
-                  onDragOver={(e) => {
-                    if (arrastrando?.nivel !== 'sub' || arrastrando.tId !== t.id) return
-                    e.preventDefault()
-                    setSobre(sub.id)
-                  }}
-                  onDragLeave={() => setSobre((x) => (x === sub.id ? null : x))}
-                  onDrop={(e) => {
-                    e.preventDefault()
-                    soltarSub(u.id, t.id, sub.id)
-                  }}
-                  className={`rounded-md border transition ${
-                    sobre === sub.id && arrastrando?.nivel === 'sub'
-                      ? 'border-marca-400 ring-2 ring-marca-100'
-                      : 'border-transparent'
-                  } ${arrastrando?.id === sub.id ? 'opacity-50' : ''}`}
-                >
-                  <div className="flex items-center gap-1">
-                    {asaArrastre({ nivel: 'sub', uId: u.id, tId: t.id, id: sub.id }, `este ${N3}`)}
-                    {inputTitulo(sub.titulo, sub.id, (v) => setTitulo(3, [u.id, t.id, sub.id], v), `Título del ${N3}`, 'flex-1 text-slate-700')}
-                    <button
-                      onClick={() => pedirQuitarSub(u.id, t.id, sub)}
-                      title={`Quitar ${N3}`}
-                      className="shrink-0 rounded-md px-2 py-1 text-xs text-slate-500 transition hover:bg-red-50 hover:text-red-600"
-                    >
-                      ✕
-                    </button>
-                  </div>
-
-                  {/* Conceptos del subtema: el material también se engancha
-                      en el nivel más fino, no sólo en el intermedio. */}
-                  {subReal && (
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5 pl-6">
-                      <span className="w-16 shrink-0 text-[11px] font-medium uppercase tracking-wide text-slate-500">
-                        Conceptos
-                      </span>
-                      {subReal.conceptos.map((cid) => (
-                        <ChipConcepto
-                          key={cid}
-                          concepto={conceptoPorId.get(cid)}
-                          conceptoId={cid}
-                          onAbrir={() => abrirVistazo(cid)}
-                          onQuitar={() => onDesvincular(sub.id, cid)}
-                          onCrearTarea={() => onCrearTarea(t.id, cid)}
-                          etiquetaTarea={esAprendizaje ? 'Nueva práctica' : 'Nueva tarea'}
-                        />
-                      ))}
-                      <span className="relative">
-                        <button
-                          onClick={() => setTemaBuscador((a) => (a === sub.id ? null : sub.id))}
-className="rounded-full border border-dashed border-slate-400 px-2.5 py-0.5 text-xs text-slate-600 transition hover:border-marca-400 hover:bg-marca-50 hover:text-marca-700"
-                        >
-                          + Vincular concepto
-                        </button>
-                        {temaBuscador === sub.id && (
-                          <BuscadorConceptos
-                            excluir={subReal.conceptos}
-                            onSeleccionar={(cid) => {
-                              onVincular(sub.id, cid)
-                              setTemaBuscador(null)
-                            }}
-                            onCerrar={() => setTemaBuscador(null)}
-                          />
-                        )}
-                      </span>
-                    </div>
-                  )}
-                </li>
-              )
-            })}
-          </ul>
-        )}
-
-        <button onClick={() => addSub(u.id, t.id)} className="mt-1.5 pl-2 text-xs text-marca-600 hover:text-marca-700">
-          + Agregar {N3}
-        </button>
+          {t.subtemas.length > 0 && (
+            <ul className="ml-1.5 mt-0.5 border-l border-slate-200">
+              {t.subtemas.map((sub) => filaSub(u, t, sub))}
+            </ul>
+          )}
         </div>
       </li>
     )
   }
 
   return (
-    <div className="space-y-4">
-      {/* Estado del autosave (aparece solo al guardar; sin avisos intrusivos). */}
-      <div className="flex h-4 items-center justify-end text-xs">
+    <div className="space-y-5">
+      {/* Barra de la vista: el aviso de guardado y el plegado de conjunto, en
+          una sola línea (antes eran dos, alineadas a la derecha, y parecían un
+          error de maquetación). */}
+      <div className="flex h-5 items-center justify-end gap-4 text-xs">
         {guardando ? (
           <span className="text-slate-400">Guardando…</span>
         ) : guardado ? (
           <span className="text-emerald-600">✓ Guardado</span>
         ) : null}
-      </div>
-
-      {/* Con muchas unidades y temas la lista se hace larguísima; esto da una
-          vista de conjunto de un clic. */}
-      {arbol.length > 0 && (
-        <div className="flex justify-end">
+        {arbol.length > 0 && (
           <button
             onClick={() =>
               setCerrados((s) =>
@@ -664,21 +734,21 @@ className="rounded-full border border-dashed border-slate-400 px-2.5 py-0.5 text
                   : new Set(arbol.flatMap((u) => [u.id, ...u.temas.map((x) => x.id)]))
               )
             }
-            className="text-xs text-slate-500 underline-offset-2 hover:text-slate-800 hover:underline"
+            className="text-slate-400 underline-offset-2 transition hover:text-slate-700 hover:underline"
           >
             {cerrados.size > 0 ? 'Desplegar todo' : 'Plegar todo'}
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {esAprendizaje ? (
         // Aplanado: el espacio YA ES el tema que se quiere aprender, así que sus
         // temas cuelgan directos. El contenedor de la capa curricular sigue
         // existiendo por debajo (una unidad implícita), pero no se pide ni se ve.
-        <ul className="space-y-2">{arbol.flatMap((u) => u.temas.map((t) => filaTema(u, t)))}</ul>
+        <ul>{arbol.flatMap((u) => u.temas.map((t) => filaTema(u, t)))}</ul>
       ) : (
-        arbol.map((u) => (
-        <div
+        arbol.map((u, iU) => (
+        <section
           key={u.id}
           onDragOver={(e) => {
             if (arrastrando?.nivel !== 'unidad') return
@@ -690,52 +760,67 @@ className="rounded-full border border-dashed border-slate-400 px-2.5 py-0.5 text
             e.preventDefault()
             soltarUnidad(u.id)
           }}
-          className={`rounded-xl border p-4 transition ${
-            sobre === u.id && arrastrando?.nivel === 'unidad'
-              ? 'border-marca-400 ring-2 ring-marca-100'
-              : 'border-slate-200'
+          className={`group/uni rounded-lg px-1 pb-1 transition ${
+            sobre === u.id && arrastrando?.nivel === 'unidad' ? 'bg-marca-50 ring-1 ring-marca-400' : ''
           } ${arrastrando?.id === u.id ? 'opacity-50' : ''}`}
         >
-          <div className="mb-2 flex items-center gap-1">
-            {asaArrastre({ nivel: 'unidad', uId: u.id, id: u.id }, `esta ${N1}`)}
+          {/* Cabecera de sección: número, título y qué contiene. La regla de
+              abajo es lo único que la separa de sus temas; sin caja, la
+              jerarquía la marcan el peso tipográfico y el riel. */}
+          <header className="flex items-center gap-1.5 border-b border-slate-200 pb-1.5">
+            <span className={`flex shrink-0 items-center ${AL_PASAR.uni}`}>
+              {asaArrastre({ nivel: 'unidad', uId: u.id, id: u.id }, `esta ${N1}`)}
+            </span>
             <button
               onClick={() => alternarPlegado(u.id)}
               title={plegado(u.id) ? `Desplegar ${N1}` : `Plegar ${N1}`}
               aria-expanded={!plegado(u.id)}
-              className="shrink-0 rounded px-1 text-slate-500 transition hover:text-slate-800"
+              className="shrink-0 rounded text-[9px] text-slate-400 transition hover:text-slate-800"
             >
-              {plegado(u.id) ? '▸' : '▾'}
+              {plegado(u.id) ? '▶' : '▼'}
             </button>
-            {inputTitulo(u.titulo, u.id, (v) => setTitulo(1, [u.id], v), `Título del ${N1} (ej. Fundamentos)`, 'flex-1 font-medium text-slate-800')}
-            {plegado(u.id) && (
-              // Plegada, el recuento es lo único que dice qué hay dentro.
-              <span className="shrink-0 px-1 text-xs text-slate-500">
-                {u.temas.length} {u.temas.length === 1 ? N2.toLowerCase() : `${N2.toLowerCase()}s`}
-              </span>
+            <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+              {N1} {iU + 1}
+            </span>
+            {inputTitulo(
+              u.titulo,
+              u.id,
+              (v) => setTitulo(1, [u.id], v),
+              `Título del ${N1} (ej. Fundamentos)`,
+              'flex-1 text-[15px] font-semibold text-slate-900'
             )}
+            <span className="shrink-0 whitespace-nowrap text-xs text-slate-400">
+              {plural(u.temas.length, N2)}
+            </span>
             <button
-              onClick={() => pedirQuitarUnidad(u)}
-              title={`Quitar ${N1}`}
-              className="shrink-0 rounded-md px-2 py-1 text-xs text-slate-500 transition hover:bg-red-50 hover:text-red-600"
+              onClick={(e) => abrirMenuUni(e, u)}
+              title={`Opciones de esta ${N1}`}
+              aria-label={`Opciones de ${u.titulo || `esta ${N1}`}`}
+              className={`shrink-0 rounded-md px-1.5 py-0.5 leading-none text-slate-400 hover:bg-slate-100 hover:text-slate-700 ${AL_PASAR.uni}`}
             >
-              ✕
+              ⋯
             </button>
-          </div>
+          </header>
 
-          <ul className={`space-y-2 pl-3 ${plegado(u.id) ? 'hidden' : ''}`}>
+          <ul className={`ml-2 mt-1 border-l border-slate-200 ${plegado(u.id) ? 'hidden' : ''}`}>
             {u.temas.map((t) => filaTema(u, t))}
           </ul>
 
-          <button onClick={() => addTema(u.id)} className="mt-3 pl-3 text-sm text-marca-600 hover:text-marca-700">
-            + Agregar {N2}
+          <button
+            onClick={() => addTema(u.id)}
+            className={`ml-2 rounded px-2 py-1 text-xs text-slate-400 transition hover:text-marca-700 ${
+              plegado(u.id) ? 'hidden' : ''
+            }`}
+          >
+            + {N2}
           </button>
-        </div>
+        </section>
         ))
       )}
 
       <button
         onClick={esAprendizaje ? addTemaSuelto : addUnidad}
-        className="w-full rounded-xl border border-dashed border-slate-300 py-2.5 text-sm text-slate-500 hover:border-marca-300 hover:text-marca-700"
+        className="w-full rounded-lg border border-dashed border-slate-200 py-2 text-sm text-slate-400 transition hover:border-marca-300 hover:text-marca-700"
       >
         + Agregar {esAprendizaje ? N2 : N1}
       </button>
@@ -746,6 +831,28 @@ className="rounded-full border border-dashed border-slate-400 px-2.5 py-0.5 text
           y={menu.y}
           onCerrar={cerrarMenu}
           opciones={[
+            // El menú completo del tema: nada vive solo en el clic derecho, y
+            // nada de lo que se puede hacer desaparece al esconder las
+            // acciones de la fila.
+            {
+              etiqueta: 'Vincular concepto…',
+              icono: '◆',
+              deshabilitada: esTmp(menu.dato.tema.id),
+              motivo: 'Escribe el título y sal del campo para guardarlo.',
+              onElegir: () => setTemaBuscador(menu.dato.tema.id)
+            },
+            {
+              etiqueta: esAprendizaje ? 'Nueva práctica…' : 'Nueva tarea…',
+              icono: '✎',
+              deshabilitada: esTmp(menu.dato.tema.id),
+              motivo: 'Escribe el título y sal del campo para guardarlo.',
+              onElegir: () => onCrearTarea(menu.dato.tema.id)
+            },
+            {
+              etiqueta: `Agregar ${N3}`,
+              icono: '＋',
+              onElegir: () => addSub(menu.dato.unidadId, menu.dato.tema.id)
+            },
             // Sin nivel superior visible no hay "otra unidad" a la que mover.
             ...(esAprendizaje
               ? []
@@ -766,6 +873,52 @@ className="rounded-full border border-dashed border-slate-400 px-2.5 py-0.5 text
               icono: '✕',
               destructiva: true,
               onElegir: () => pedirQuitarTema(menu.dato.unidadId, menu.dato.tema)
+            }
+          ]}
+        />
+      )}
+
+      {menuUni && (
+        <MenuContextual
+          x={menuUni.x}
+          y={menuUni.y}
+          onCerrar={cerrarMenuUni}
+          opciones={[
+            {
+              etiqueta: `Agregar ${N2}`,
+              icono: '＋',
+              onElegir: () => addTema(menuUni.dato.id)
+            },
+            {
+              etiqueta: 'Eliminar',
+              icono: '✕',
+              destructiva: true,
+              onElegir: () => pedirQuitarUnidad(menuUni.dato)
+            }
+          ]}
+        />
+      )}
+
+      {menuMas && (
+        <MenuContextual
+          x={menuMas.x}
+          y={menuMas.y}
+          onCerrar={cerrarMenuMas}
+          opciones={[
+            {
+              etiqueta: 'Vincular concepto…',
+              icono: '◆',
+              onElegir: () => setTemaBuscador(menuMas.dato.temaId)
+            },
+            {
+              etiqueta: esAprendizaje ? 'Nueva práctica…' : 'Nueva tarea…',
+              icono: '✎',
+              onElegir: () => onCrearTarea(menuMas.dato.temaId)
+            },
+            {
+              etiqueta: `Agregar ${N3}`,
+              icono: '＋',
+              onElegir: () => addSub(menuMas.dato.unidadId, menuMas.dato.temaId)
             }
           ]}
         />
@@ -817,8 +970,10 @@ className="rounded-full border border-dashed border-slate-400 px-2.5 py-0.5 text
  * guardar un enlace— se hace sin abandonar la asignatura, y el material sigue
  * viviendo en el concepto, que es lo que permite reutilizarlo.
  *
- * El contador dice cuánto material tiene (archivos + enlaces). En ámbar cuando
- * está a cero: es justo el tema al que hay que ponerle algo antes de la clase.
+ * Cuánto material tiene se dice con el mínimo de tinta: un número apagado si
+ * lo hay, y un punto ámbar si NO lo hay, que es el único caso que pide hacer
+ * algo. Antes la cuenta iba en una insignia naranja con un clip, encendida
+ * incluso cuando no había nada que atender, y competía con el propio nombre.
  */
 function ChipConcepto({
   concepto,
@@ -844,41 +999,70 @@ function ChipConcepto({
   const nombre = concepto?.nombre ?? conceptoId
   const total = concepto ? concepto.totalRecursos + concepto.totalEnlaces : 0
   return (
-    <span className="flex items-center gap-1 rounded-full bg-marca-50 py-0.5 pl-2.5 pr-1 text-xs text-marca-700">
+    <span className="chip-concepto group/chip flex max-w-full items-center gap-1 rounded-md border py-0.5 pl-2 pr-1 text-xs">
       <button
         onClick={onAbrir}
-        title={`Ver el material de «${nombre}»`}
-        className="flex items-center gap-1.5 rounded-full transition hover:underline"
+        title={
+          total === 0
+            ? `«${nombre}» todavía no tiene material. Ábrelo para agregarlo.`
+            : `${total} materiales en «${nombre}». Ábrelo para verlos.`
+        }
+        className="flex min-w-0 items-center gap-1.5 transition hover:underline"
       >
-        {nombre}
-        <span
-          aria-label={
-            total === 0 ? 'Sin material todavía' : `${total} materiales`
-          }
-          className={`rounded-full px-1.5 text-[10px] font-semibold ${
-            total === 0 ? 'bg-amber-100 text-amber-800' : 'bg-marca-100 text-marca-700'
-          }`}
-        >
-          📎 {total}
-        </span>
+        <span aria-hidden className="h-1.5 w-1.5 shrink-0 rotate-45 rounded-[1px] bg-current opacity-60" />
+        <span className="truncate">{nombre}</span>
+        {total === 0 ? (
+          <span
+            aria-label="Sin material todavía"
+            className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400"
+          />
+        ) : (
+          <span aria-label={`${total} materiales`} className="shrink-0 text-[10px] opacity-60">
+            {total}
+          </span>
+        )}
       </button>
+      {/* Las dos acciones del chip ocupan su sitio siempre (así nada se mueve
+          al pasar por encima) pero solo se ven cuando el ratón está en él. */}
       {onCrearTarea && (
         <button
           onClick={onCrearTarea}
           title={`${etiquetaTarea} de «${nombre}»`}
           aria-label={`${etiquetaTarea} de ${nombre}`}
-          className="text-marca-400 transition hover:text-marca-700"
+          className="shrink-0 opacity-0 transition focus:opacity-100 group-hover/chip:opacity-100"
         >
           ＋
         </button>
       )}
       <button
         onClick={onQuitar}
-        className="text-marca-400 hover:text-red-600"
+        className="shrink-0 opacity-0 transition hover:text-red-600 focus:opacity-100 group-hover/chip:opacity-100"
         aria-label={`Desvincular ${nombre}`}
       >
         ✕
       </button>
     </span>
+  )
+}
+
+/**
+ * Práctica o tarea colgada de un tema. Va en la misma línea que los conceptos
+ * —es lo otro que cuelga del tema— pero en neutro y con un lápiz por delante:
+ * el concepto es lo que se enseña y lleva el color de marca; la práctica es
+ * algo que tú escribiste. En ámbar competía con el aviso de «sin material»,
+ * que es el único sitio donde ese color debe significar «atiéndeme».
+ */
+function ChipTarea({ titulo, onAbrir }: { titulo: string; onAbrir: () => void }): JSX.Element {
+  return (
+    <button
+      onClick={onAbrir}
+      title={`Abrir «${titulo}»`}
+      className="chip-tarea flex max-w-full items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs transition"
+    >
+      <span aria-hidden className="shrink-0 opacity-60">
+        ✎
+      </span>
+      <span className="truncate">{titulo}</span>
+    </button>
   )
 }
