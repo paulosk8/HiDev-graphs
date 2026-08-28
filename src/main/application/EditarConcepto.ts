@@ -27,6 +27,9 @@ export function editarConcepto(
     descripcion: datos.descripcion,
     relaciones: actual.relaciones,
     recursos: actual.recursos,
+    // Los enlaces web son material igual que los archivos: guardar una nota o
+    // renombrar el concepto no puede llevárselos por delante.
+    enlaces: actual.enlaces,
     // Conserva las notas y el repaso salvo que la edición traiga notas nuevas.
     notas: datos.notas ?? actual.notas,
     // Igual que las notas: si la edición no las trae, se conservan.
