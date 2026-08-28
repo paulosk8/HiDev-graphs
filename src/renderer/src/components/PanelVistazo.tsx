@@ -4,6 +4,7 @@ import { api } from '../lib/api'
 import { useAsignaturasStore } from '../stores/asignaturasStore'
 import { EtiquetasConcepto } from '../features/conceptos/EtiquetasConcepto'
 import { NotasConcepto } from '../features/conceptos/NotasConcepto'
+import { PracticasConcepto } from '../features/conceptos/PracticasConcepto'
 import { TerminosConcepto } from '../features/conceptos/TerminosConcepto'
 import { ZonaMaterial } from '../features/conceptos/ZonaMaterial'
 import { useUiStore } from '../stores/uiStore'
@@ -272,6 +273,12 @@ export function PanelVistazo(): JSX.Element | null {
             <div className="mt-5">
               <NotasConcepto concepto={concepto} onGuardado={() => void cargar()} />
             </div>
+
+            {/* Lo que se pide con el concepto, en la misma columna donde se
+                acaba de dejar su material. El «＋» del chip solo está a mano si
+                vienes de la asignatura; aquí se llega también desde un enlace
+                de una nota o desde el lienzo. */}
+            <PracticasConcepto concepto={concepto} usos={usos} compacto />
           </>
         )}
       </div>
