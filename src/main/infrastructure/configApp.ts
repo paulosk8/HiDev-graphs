@@ -40,6 +40,13 @@ export interface ConfigApp {
    * (por defecto, recuperable) o borrarlo definitivamente.
    */
   modoEliminacion: ModoEliminacion
+  /**
+   * Ubicaciones que el docente ha quitado de la lista al elegir dónde guardar.
+   * Son carpetas que el equipo detecta (una cuenta de nube que ya no usa) pero
+   * que él no quiere ver cada vez. No se borra nada del disco: solo dejan de
+   * ofrecerse, y puede volver a mostrarlas.
+   */
+  ubicacionesOcultas?: string[]
 }
 
 const CONFIG_POR_DEFECTO: ConfigApp = {
@@ -71,7 +78,10 @@ export function leerConfigApp(): ConfigApp {
       rutaContenedorNube:
         typeof o.rutaContenedorNube === 'string' ? o.rutaContenedorNube : undefined,
       // Configs anteriores no tenían el campo: se asume la opción segura.
-      modoEliminacion: modoEliminacionDesde(o.modoEliminacion)
+      modoEliminacion: modoEliminacionDesde(o.modoEliminacion),
+      ubicacionesOcultas: Array.isArray(o.ubicacionesOcultas)
+        ? o.ubicacionesOcultas.filter((r): r is string => typeof r === 'string')
+        : []
     }
   } catch {
     return { ...CONFIG_POR_DEFECTO }

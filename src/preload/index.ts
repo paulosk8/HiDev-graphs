@@ -108,8 +108,13 @@ const api: PedagoGraphApi = {
   estadoAlmacenamiento: () => ipcRenderer.invoke(CANALES.almacenamientoEstado),
   detectarCarpetasNube: () => ipcRenderer.invoke(CANALES.almacenamientoCarpetasNube),
   elegirCarpetaAlmacenamiento: () => ipcRenderer.invoke(CANALES.almacenamientoElegirCarpeta),
-  usarAlmacenamientoNube: (rutaContenedor, nombreCarpeta) =>
-    ipcRenderer.invoke(CANALES.almacenamientoUsarNube, rutaContenedor, nombreCarpeta),
+  inspeccionarCarpetaMaterial: (rutaContenedor, nombreCarpeta) =>
+    ipcRenderer.invoke(CANALES.almacenamientoInspeccionar, rutaContenedor, nombreCarpeta),
+  usarAlmacenamientoNube: (rutaContenedor, nombreCarpeta, accion) =>
+    ipcRenderer.invoke(CANALES.almacenamientoUsarNube, rutaContenedor, nombreCarpeta, accion),
+  ocultarUbicacion: (ruta, oculta) =>
+    ipcRenderer.invoke(CANALES.almacenamientoOcultarUbicacion, ruta, oculta),
+  buscarMaterialExistente: () => ipcRenderer.invoke(CANALES.almacenamientoBuscarMaterial),
   usarAlmacenamientoLocal: () => ipcRenderer.invoke(CANALES.almacenamientoUsarLocal),
 
   estadoLectura: () => ipcRenderer.invoke(CANALES.lecturaEstado),

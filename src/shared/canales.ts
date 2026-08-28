@@ -93,6 +93,9 @@ export const CANALES = {
   almacenamientoEstado: 'almacenamiento:estado',
   almacenamientoCarpetasNube: 'almacenamiento:carpetas-nube',
   almacenamientoElegirCarpeta: 'almacenamiento:elegir-carpeta',
+  almacenamientoInspeccionar: 'almacenamiento:inspeccionar',
+  almacenamientoOcultarUbicacion: 'almacenamiento:ocultar-ubicacion',
+  almacenamientoBuscarMaterial: 'almacenamiento:buscar-material',
   almacenamientoUsarNube: 'almacenamiento:usar-nube',
   almacenamientoUsarLocal: 'almacenamiento:usar-local',
 

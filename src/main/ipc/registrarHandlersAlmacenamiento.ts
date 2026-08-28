@@ -1,14 +1,26 @@
-import { BrowserWindow, dialog, ipcMain, type OpenDialogOptions } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, type OpenDialogOptions } from 'electron'
+import { dirname } from 'node:path'
 
 import { CANALES } from '../../shared/canales'
 import type {
   AlmacenamientoDTO,
   CarpetaNubeDTO,
+  MaterialEnCarpetaDTO,
+  MaterialEncontradoDTO,
   ResultadoAlmacenamientoDTO
 } from '../../shared/dtos'
 import { moverAlmacenamiento, type ResultadoMover } from '../application/MoverAlmacenamiento'
-import { leerConfigApp, resolverRutaVault, type ConfigApp } from '../infrastructure/configApp'
-import { detectarCarpetasNube } from '../infrastructure/DeteccionNube'
+import {
+  guardarConfigApp,
+  leerConfigApp,
+  resolverRutaVault,
+  type ConfigApp
+} from '../infrastructure/configApp'
+import {
+  buscarMaterialExistente,
+  detectarCarpetasNube,
+  inspeccionarCarpetaMaterial
+} from '../infrastructure/DeteccionNube'
 import { envolver } from './registrarHandlers'
 
 /**
@@ -26,7 +38,18 @@ export function nombreVisibleDe(config: ConfigApp): string {
 }
 
 function aResultadoDTO(r: ResultadoMover, nombreVisible: string): ResultadoAlmacenamientoDTO {
-  return { modo: r.modo, nombreVisible, adoptado: r.adoptado, sinCambios: r.sinCambios }
+  return {
+    modo: r.modo,
+    nombreVisible,
+    adoptado: r.adoptado,
+    sinCambios: r.sinCambios,
+    abierto: r.abierto
+  }
+}
+
+/** Comparación de rutas tolerante a mayúsculas (macOS y Windows no distinguen). */
+function mismaRuta(a: string, b: string): boolean {
+  return a.toLowerCase() === b.toLowerCase()
 }
 
 /**
@@ -53,8 +76,52 @@ export function registrarHandlersAlmacenamiento(aplicar: () => Promise<void>): v
       detectarCarpetasNube().map((c) => ({
         proveedor: c.proveedor,
         etiqueta: c.etiqueta,
-        ruta: c.ruta
+        ruta: c.ruta,
+        rutaVisible: c.rutaVisible,
+        oculta: (leerConfigApp().ubicacionesOcultas ?? []).some((r) => mismaRuta(r, c.ruta))
       }))
+    )
+  )
+
+  ipcMain.handle(
+    CANALES.almacenamientoInspeccionar,
+    (_evento, rutaContenedor: string, nombreCarpeta: string) =>
+      envolver<MaterialEnCarpetaDTO>(() =>
+        inspeccionarCarpetaMaterial(rutaContenedor, nombreCarpeta)
+      )
+  )
+
+  /**
+   * Quita una ubicación de la lista, o la devuelve. Solo afecta a lo que se
+   * ofrece al elegir dónde guardar: en el disco no se toca nada.
+   */
+  ipcMain.handle(
+    CANALES.almacenamientoOcultarUbicacion,
+    (_evento, ruta: string, oculta: boolean) =>
+      envolver<void>(() => {
+        const config = leerConfigApp()
+        const actuales = (config.ubicacionesOcultas ?? []).filter((r) => !mismaRuta(r, ruta))
+        guardarConfigApp({
+          ...config,
+          ubicacionesOcultas: oculta ? [...actuales, ruta] : actuales
+        })
+      })
+  )
+
+  /**
+   * Busca material ya existente en las nubes del equipo y en Documentos. Es lo
+   * que evita que el docente tenga que recordar en qué subcarpeta lo dejó y
+   * llegar hasta ella con el explorador de archivos.
+   */
+  ipcMain.handle(CANALES.almacenamientoBuscarMaterial, () =>
+    envolver<MaterialEncontradoDTO[]>(() =>
+      buscarMaterialExistente([
+        ...detectarCarpetasNube().map((c) => c.ruta),
+        // El sitio por defecto en este equipo y la carpeta que contiene el
+        // vault de ahora: material que estuvo ahí sigue estando.
+        app.getPath('documents'),
+        dirname(resolverRutaVault())
+      ])
     )
   )
 
@@ -76,9 +143,9 @@ export function registrarHandlersAlmacenamiento(aplicar: () => Promise<void>): v
 
   ipcMain.handle(
     CANALES.almacenamientoUsarNube,
-    (_evento, rutaContenedor: string, nombreCarpeta: string) =>
+    (_evento, rutaContenedor: string, nombreCarpeta: string, accion?: 'mover' | 'abrir') =>
       envolver<ResultadoAlmacenamientoDTO>(() => {
-        const r = moverAlmacenamiento({ modo: 'nube', rutaContenedor, nombreCarpeta })
+        const r = moverAlmacenamiento({ modo: 'nube', rutaContenedor, nombreCarpeta, accion })
         const dto = aResultadoDTO(r, nombreVisibleDe(leerConfigApp()))
         // Aplica en caliente tras responder al renderer (recarga la ventana).
         if (!r.sinCambios) setTimeout(() => void aplicar(), 150)

@@ -153,8 +153,16 @@ export const api = {
   estadoAlmacenamiento: () => desenvolver(window.api.estadoAlmacenamiento()),
   detectarCarpetasNube: () => desenvolver(window.api.detectarCarpetasNube()),
   elegirCarpetaAlmacenamiento: () => desenvolver(window.api.elegirCarpetaAlmacenamiento()),
-  usarAlmacenamientoNube: (rutaContenedor: string, nombreCarpeta: string) =>
-    desenvolver(window.api.usarAlmacenamientoNube(rutaContenedor, nombreCarpeta)),
+  inspeccionarCarpetaMaterial: (rutaContenedor: string, nombreCarpeta: string) =>
+    desenvolver(window.api.inspeccionarCarpetaMaterial(rutaContenedor, nombreCarpeta)),
+  usarAlmacenamientoNube: (
+    rutaContenedor: string,
+    nombreCarpeta: string,
+    accion?: 'mover' | 'abrir'
+  ) => desenvolver(window.api.usarAlmacenamientoNube(rutaContenedor, nombreCarpeta, accion)),
+  ocultarUbicacion: (ruta: string, oculta: boolean) =>
+    desenvolver(window.api.ocultarUbicacion(ruta, oculta)),
+  buscarMaterialExistente: () => desenvolver(window.api.buscarMaterialExistente()),
   usarAlmacenamientoLocal: () => desenvolver(window.api.usarAlmacenamientoLocal()),
 
   estadoLectura: () => desenvolver(window.api.estadoLectura()),
