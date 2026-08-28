@@ -158,9 +158,13 @@ Repo: `https://github.com/paulosk8/HiDev-graphs` (remoto `origin`, base `main`).
 - **Una rama por unidad de trabajo**: `feat/<algo>`, `fix/<algo>`, `chore/<algo>`. `main` siempre desplegable.
 - **Commits semánticos (Conventional Commits) en español**: `feat(ámbito): descripción en imperativo`.
   Ámbitos frecuentes: `conceptos`, `asignaturas`, `vault`, `indice`, `material`, `vinculos`, `ipc`, `ui`, `tareas`, `grafo`.
-- Terminar cada commit con el trailer: `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`.
+- Terminar cada commit con el trailer `Co-Authored-By:` del modelo que hizo el trabajo
+  (p. ej. `Claude Opus 5 (1M context) <noreply@anthropic.com>`) y el `Claude-Session:` de la sesión.
 - **Integración a `main`**: el stack es lineal, así que se hace `git merge --ff-only <rama>` a `main` + `git push origin main`. (`gh` CLI **no está instalado** → no se crean PRs por CLI.)
 - Compilar + typecheck + smoke **antes** de commitear.
+- **El proyecto no usa prettier ni eslint**: no hay configuración y el estilo (sin punto y coma,
+  comillas simples, ancho ~100) se mantiene a mano. Ejecutar `npx prettier --write` reformatea
+  el archivo entero con los valores por defecto y ensucia el diff. No lo hagas.
 
 ---
 
