@@ -26,6 +26,24 @@ interface LecturaState {
   ocultar: () => void
 }
 
+/**
+ * ¿Se puede trabajar con el material ahora mismo?
+ *
+ * false cuando no hay carpeta que leer: la ubicación configurada ya no existe,
+ * o no se pudo listar ni una sola carpeta del material. En ese estado no hay
+ * proyecto abierto, así que las operaciones que actúan SOBRE el material
+ * (copia de seguridad, historial, reindexar, eliminados) no tienen objeto —y
+ * algunas harían daño: respaldar guardaría un archivo vacío y reindexar
+ * borraría el índice de lo que no se ve.
+ *
+ * Mientras no se sabe (arranque), se asume que sí: es preferible a que las
+ * opciones parpadeen al abrir la configuración.
+ */
+export function hayMaterialDisponible(estado: EstadoLecturaDTO | null): boolean {
+  if (!estado) return true
+  return estado.causa !== 'ubicacion' && !estado.carpetaCompleta
+}
+
 /** ¿Hay algo que avisar? Falta al menos un elemento, o una carpeta entera. */
 export function hayMaterialSinLeer(estado: EstadoLecturaDTO | null): boolean {
   return estado !== null && (estado.total > 0 || estado.carpetaCompleta)

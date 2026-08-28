@@ -145,7 +145,10 @@ app.whenReady().then(() => {
   habilitarProtocoloRecurso(servicios.vault)
   // Barra de menú en español (la carpeta del material puede cambiar en caliente,
   // por eso se pasa como función).
-  instalarMenu(() => resolverRutaVault())
+  instalarMenu(
+    () => resolverRutaVault(),
+    () => lecturasFallidas.hayMaterialDisponible()
+  )
 
   // En macOS el icono del dock durante el desarrollo es el de Electron; ya
   // empaquetada, la app lo toma de su propio paquete.
@@ -161,6 +164,12 @@ app.whenReady().then(() => {
     if (ventanaPrincipal && !ventanaPrincipal.isDestroyed()) {
       ventanaPrincipal.webContents.send(CANALES.lecturaCambiada, estadoLectura())
     }
+    // El menú del sistema es estático: para que sus opciones se apaguen (y se
+    // vuelvan a encender) hay que reconstruirlo cuando cambia la situación.
+    instalarMenu(
+      () => resolverRutaVault(),
+      () => lecturasFallidas.hayMaterialDisponible()
+    )
   })
 
   iniciarObservadorVault()

@@ -247,6 +247,19 @@ class RegistroLecturasFallidas {
     return this.listar().some((i) => i.id === CARPETA_COMPLETA)
   }
 
+  /**
+   * ¿Se puede trabajar con el material ahora mismo?
+   *
+   * false cuando no hay carpeta que leer: la ubicación configurada ya no
+   * existe, o no se pudo listar ni una sola carpeta del material. En ese
+   * estado, lo que actúa SOBRE el material no tiene objeto y además hace daño:
+   * respaldar guardaría un archivo vacío haciendo creer que hay copia, y crear
+   * algo volvería a fabricar la carpeta fantasma que se acaba de detectar.
+   */
+  hayMaterialDisponible(): boolean {
+    return this.causaPrincipal() !== 'ubicacion' && !this.hayCarpetaInaccesible()
+  }
+
   /** Causa predominante, para redactar el aviso con una sola explicación. */
   causaPrincipal(): CausaLectura {
     const presentes = new Set(this.listar().map((i) => i.causa))
