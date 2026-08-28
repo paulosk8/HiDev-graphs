@@ -98,6 +98,17 @@ externos se resuelven desde su carpeta, y bundleado en el scratchpad falla con
 `Cannot find module 'js-yaml'`. Si el smoke vive fuera del repo, impórtale el
 código por ruta absoluta y saca el `--outfile` a la raíz.
 
+**A bis) Lógica que toca `app.getPath` (config, userData)** → Electron normal (SIN
+`ELECTRON_RUN_AS_NODE`) con `app.whenReady()`, pero **sin abrir ventana**. Obligatorio:
+**`app.setPath('userData', <carpeta temporal>)` antes de `whenReady`**, o el smoke escribe
+sobre el `config.json` real del docente y le cambia dónde vive su material.
+
+**Parchear `fs` dentro de un smoke bundleado**: `import { readFileSync }` no se puede
+reasignar (esbuild falla con "Cannot assign to import"). Hay que tomar el módulo por
+`require`: `declare const require: (m: string) => typeof import('node:fs')` y luego
+`const fs = require('node:fs')`. El código bajo prueba lee la propiedad en cada llamada, así
+que ve el parche. Es la forma de simular un `ETIMEDOUT` de nube sin tener la nube caída.
+
 **B) Render / GUI** → Electron normal con `app.whenReady()` + `BrowserWindow({ show:false })`
 + `webContents.executeJavaScript(...)` para consultar el DOM. Bundlear igual pero **sin**
 `ELECTRON_RUN_AS_NODE`, y cargar `out/preload/index.js` + `out/renderer/index.html` (requiere
@@ -162,6 +173,12 @@ Repo: `https://github.com/paulosk8/HiDev-graphs` (remoto `origin`, base `main`).
   (p. ej. `Claude Opus 5 (1M context) <noreply@anthropic.com>`) y el `Claude-Session:` de la sesión.
 - **Integración a `main`**: el stack es lineal, así que se hace `git merge --ff-only <rama>` a `main` + `git push origin main`. (`gh` CLI **no está instalado** → no se crean PRs por CLI.)
 - Compilar + typecheck + smoke **antes** de commitear.
+- **Repartir trabajo grande en varios commits**: los archivos de contrato (`shared/dtos.ts`,
+  `shared/canales.ts`, `shared/api.ts`, `preload/`) acumulan cambios de temas distintos
+  **dentro del mismo hunk**, así que `git apply --cached` por hunks no basta. Lo que funciona:
+  escribir la versión intermedia del archivo, `git add`, y devolver la final al árbol. Y
+  después **comprobar que cada commit compila por separado** (worktree temporal + typecheck),
+  no solo el estado final: es justo lo que un reparto así se carga sin avisar.
 - **El proyecto no usa prettier ni eslint**: no hay configuración y el estilo (sin punto y coma,
   comillas simples, ancho ~100) se mantiene a mano. Ejecutar `npx prettier --write` reformatea
   el archivo entero con los valores por defecto y ensucia el diff. No lo hagas.
@@ -185,4 +202,11 @@ Repo: `https://github.com/paulosk8/HiDev-graphs` (remoto `origin`, base `main`).
 - **El material de un concepto son archivos Y enlaces web**, en una sola lista y con carpetas que se pueden renombrar y quitar (quitarlas nunca borra material). Se llega a él **desde el tema de la asignatura**, sin salir de ella: el chip del concepto abre el panel lateral. Regla de UX que salió de aquí: **ninguna acción vive solo en el clic derecho** — siempre hay un `⋯` visible. Ver [`estado.md`](./estado.md).
 - **Identidad**: logo propio (`resources/icon.svg` → `npm run iconos`) y **barra de menú en español**; `npm run marca-dev` pone nombre e icono al Electron de desarrollo (si no, el dock dice "Electron").
 - **El plan de contenido de una asignatura o espacio se lee como un documento**: rejilla de canaleta + contenido (todo en la misma vertical), una sola línea de vínculos por tema y las acciones al pasar el ratón. Ver [`estado.md`](./estado.md).
+- **El material en la nube ya no se pierde en silencio** (rama `fix/material-en-la-nube`):
+  aviso de lo que no se pudo leer con "Reintentar", corte tras 3 `ETIMEDOUT` seguidos (si no,
+  minutos de app colgada), **no se fabrica un vault vacío** cuando la carpeta de nube
+  configurada desaparece, el selector de carpeta enseña ruta y cuánto material hay en cada
+  candidata, **abrir material existente ya no es moverlo encima**, y sin material disponible
+  ni Configuración ni el menú ofrecen lo que actuaría sobre él. Ver [`estado.md`](./estado.md)
+  ("Material que no se pudo leer" y "Trampas de las carpetas de nube").
 - **Pendiente**: el tirador del panel del grafo (`GrafoPage.tsx:766`) usa deltas de `clientY` sin dividir por el zoom, así que al 120 % arrastra un 20 % más rápido que el ratón; y el campo «Descripción» del concepto sigue sin poder estirarse. Además: empaquetado/instaladores (electron-builder mac local + Windows por CI, por better-sqlite3). Fase 3: exportar tareas a Moodle/GIFT. La resolución de conflictos de archivo la delega ahora el cliente de nube (Drive/OneDrive renombran); el "deshacer" propio es el historial de versiones. Versión web más adelante.
