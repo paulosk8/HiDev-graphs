@@ -16,7 +16,7 @@ import { envolver } from './registrarHandlers'
  * ruta (no de re-detectar la nube), así siempre es estable aunque el cliente de
  * nube no esté respondiendo en ese instante.
  */
-function nombreVisibleDe(config: ConfigApp): string {
+export function nombreVisibleDe(config: ConfigApp): string {
   if (config.modoAlmacenamiento !== 'nube') return 'Este equipo'
   const ruta = (config.rutaVaultNube ?? config.rutaContenedorNube ?? '').toLowerCase()
   if (!ruta) return 'tu nube'

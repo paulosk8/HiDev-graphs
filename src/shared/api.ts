@@ -9,6 +9,7 @@ import type {
   ResumenMencionDTO,
   ResultadoAlmacenamientoDTO,
   EliminacionDTO,
+  EstadoLecturaDTO,
   ModoEliminacion,
   AsignaturaDTO,
   MaterialConceptoDTO,
@@ -246,6 +247,15 @@ export interface PedagoGraphApi {
   /** Vuelve a guardar el material en este equipo (carpeta Documentos). */
   usarAlmacenamientoLocal(): Promise<Resultado<ResultadoAlmacenamientoDTO>>
 
+  // --- Material que no se pudo leer ---
+  /** Qué falta ahora mismo y por qué (0 elementos = todo se leyó bien). */
+  estadoLectura(): Promise<Resultado<EstadoLecturaDTO>>
+  /**
+   * Vuelve a leer el material desde cero y devuelve el estado resultante.
+   * Es lo que hay detrás del botón "Reintentar" del aviso.
+   */
+  reintentarLectura(): Promise<Resultado<EstadoLecturaDTO>>
+
   // --- Qué pasa al eliminar ---
   /** Preferencia actual + dónde está la carpeta de eliminados y si tiene algo. */
   estadoEliminacion(): Promise<Resultado<EliminacionDTO>>
@@ -274,6 +284,13 @@ export interface PedagoGraphApi {
    * Devuelve una función para cancelar la suscripción.
    */
   onVaultCambiado(callback: () => void): () => void
+
+  /**
+   * Se suscribe a los cambios en el material que no se pudo leer (p. ej. la
+   * nube vuelve y deja de faltar, o se cae y empieza a faltar).
+   * Devuelve una función para cancelar la suscripción.
+   */
+  onLecturaCambiada(callback: (estado: EstadoLecturaDTO) => void): () => void
 
   /**
    * Se suscribe a las acciones elegidas en la barra de menú del sistema.

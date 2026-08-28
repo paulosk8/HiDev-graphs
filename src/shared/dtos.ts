@@ -524,6 +524,48 @@ export interface ResultadoAlmacenamientoDTO {
   sinCambios: boolean
 }
 
+// --- Material que no se pudo leer (nube sin sesión, sin internet, archivo dañado) ---
+
+/** Qué clase de elemento no se pudo abrir. */
+export type TipoElementoLectura = 'concepto' | 'asignatura' | 'tarea' | 'lienzo'
+
+/**
+ * Por qué no se pudo leer:
+ *  - `nube`      → está en OneDrive / Google Drive y ahora no se puede descargar.
+ *  - `permisos`  → el sistema no deja abrirlo.
+ *  - `dañado`    → se abrió, pero su contenido no se entiende.
+ *  - `ubicacion` → la carpeta elegida ya no está en este equipo.
+ *  - `desconocida` → cualquier otra cosa.
+ */
+export type CausaLectura = 'nube' | 'permisos' | 'dañado' | 'ubicacion' | 'desconocida'
+
+/** Un elemento que falta ahora mismo, con el último nombre que se le conoció. */
+export interface ElementoNoLeidoDTO {
+  tipo: TipoElementoLectura
+  /** Nombre visible; vacío si nunca llegó a indexarse (la UI dirá "Sin nombre"). */
+  nombre: string
+}
+
+/** Estado de la última lectura del material, para avisar en la interfaz. */
+export interface EstadoLecturaDTO {
+  /**
+   * Cuántos elementos no se pudieron leer. 0 con `carpetaCompleta` en false
+   * significa que todo se leyó bien.
+   */
+  total: number
+  causa: CausaLectura
+  /** true si ni siquiera se pudo listar una carpeta entera del material. */
+  carpetaCompleta: boolean
+  /** ¿Guarda el docente su material en una carpeta de nube? */
+  enNube: boolean
+  /** Dónde se guarda, en lenguaje humano: "OneDrive", "Este equipo"… */
+  nombreAlmacenamiento: string
+  /** ¿Tiene este equipo conexión a internet ahora mismo? */
+  hayConexion: boolean
+  /** Los primeros elementos que faltan, para nombrarlos en el aviso. */
+  elementos: ElementoNoLeidoDTO[]
+}
+
 // --- Qué pasa al eliminar ---
 
 /**

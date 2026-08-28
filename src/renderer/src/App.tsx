@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from './lib/api'
 import { Avisos } from './components/Avisos'
+import { AvisoMaterialNoLeido } from './components/AvisoMaterialNoLeido'
 import { Sidebar } from './components/Sidebar'
 import { PanelVistazo } from './components/PanelVistazo'
 import { Bienvenida } from './features/bienvenida/Bienvenida'
@@ -23,6 +24,7 @@ import { TerminalPage } from './features/terminal/TerminalPage'
 import { useAsignaturasStore } from './stores/asignaturasStore'
 import { useConceptosStore } from './stores/conceptosStore'
 import { useEliminacionStore } from './stores/eliminacionStore'
+import { useLecturaStore } from './stores/lecturaStore'
 import { TEMAS_OSCUROS, useLayoutStore } from './stores/layoutStore'
 import { useUiStore } from './stores/uiStore'
 
@@ -141,6 +143,7 @@ function App(): JSX.Element {
   const cargarConceptos = useConceptosStore((s) => s.cargar)
   const cargarAsignaturas = useAsignaturasStore((s) => s.cargar)
   const cargarEliminacion = useEliminacionStore((s) => s.cargar)
+  const cargarLectura = useLecturaStore((s) => s.cargar)
   const tema = useLayoutStore((s) => s.tema)
   const zoomPorcentaje = useLayoutStore((s) => s.zoomPorcentaje)
   const capasElegidas = useLayoutStore((s) => s.capasElegidas)
@@ -177,7 +180,15 @@ function App(): JSX.Element {
     void cargarAsignaturas()
     // Para que los avisos de "¿seguro que quieres eliminar?" digan la verdad.
     void cargarEliminacion()
-  }, [cargarConceptos, cargarAsignaturas, cargarEliminacion])
+    // ¿Quedó material sin leer al arrancar? (nube sin sesión, sin conexión…)
+    void cargarLectura()
+  }, [cargarConceptos, cargarAsignaturas, cargarEliminacion, cargarLectura])
+
+  useEffect(() => {
+    // El proceso principal avisa cuando algo deja de leerse —o vuelve a
+    // leerse— mientras la app está abierta: el aviso aparece y se va solo.
+    return api.onLecturaCambiada((estado) => useLecturaStore.getState().recibir(estado))
+  }, [])
 
   useEffect(() => {
     // Refresca las vistas cuando el material cambia en segundo plano (p. ej. tu
@@ -225,12 +236,17 @@ function App(): JSX.Element {
   }
 
   return (
-    <div className="flex h-full text-slate-800">
-      <Sidebar />
-      <main className="min-w-0 flex-1 overflow-auto">
-        <Contenido />
-      </main>
-      <PanelVistazo />
+    <div className="flex h-full flex-col text-slate-800">
+      {/* Si falta material, el listado que se está mirando está incompleto:
+          el aviso va arriba del todo y se queda mientras dure el problema. */}
+      <AvisoMaterialNoLeido />
+      <div className="flex min-h-0 flex-1">
+        <Sidebar />
+        <main className="min-w-0 flex-1 overflow-auto">
+          <Contenido />
+        </main>
+        <PanelVistazo />
+      </div>
       <Avisos />
     </div>
   )

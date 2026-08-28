@@ -10,6 +10,7 @@ import type {
   DatosTerminoDTO,
   DatosTareaDTO,
   DuplicarTareaDTO,
+  EstadoLecturaDTO,
   LienzoDTO,
   ModoEliminacion,
   SemanaPlanDTO,
@@ -156,6 +157,9 @@ export const api = {
     desenvolver(window.api.usarAlmacenamientoNube(rutaContenedor, nombreCarpeta)),
   usarAlmacenamientoLocal: () => desenvolver(window.api.usarAlmacenamientoLocal()),
 
+  estadoLectura: () => desenvolver(window.api.estadoLectura()),
+  reintentarLectura: () => desenvolver(window.api.reintentarLectura()),
+
   estadoEliminacion: () => desenvolver(window.api.estadoEliminacion()),
   fijarModoEliminacion: (modo: ModoEliminacion) =>
     desenvolver(window.api.fijarModoEliminacion(modo)),
@@ -173,6 +177,8 @@ export const api = {
   respaldar: () => desenvolver(window.api.respaldar()),
   restaurar: () => desenvolver(window.api.restaurar()),
   onVaultCambiado: (callback: () => void): (() => void) => window.api.onVaultCambiado(callback),
+  onLecturaCambiada: (callback: (estado: EstadoLecturaDTO) => void): (() => void) =>
+    window.api.onLecturaCambiada(callback),
   onAccionMenu: (callback: (accion: AccionMenu) => void): (() => void) =>
     window.api.onAccionMenu(callback)
 }
