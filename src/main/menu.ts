@@ -24,9 +24,10 @@ function enviar(accion: AccionMenu): void {
 function item(
   label: string,
   accion: AccionMenu,
-  accelerator?: string
+  accelerator?: string,
+  habilitado = true
 ): MenuItemConstructorOptions {
-  return { label, accelerator, click: () => enviar(accion) }
+  return { label, accelerator, enabled: habilitado, click: () => enviar(accion) }
 }
 
 function mostrarAcercaDe(rutaVault: string): void {
@@ -46,9 +47,16 @@ function mostrarAcercaDe(rutaVault: string): void {
 /**
  * Construye e instala la barra de menú. `rutaVault` es una función porque la
  * carpeta del material puede cambiar en caliente (al pasarla a la nube).
+ *
+ * `hayMaterial` decide si se ofrecen las opciones que actúan SOBRE el material.
+ * Sin carpeta que leer, "Guardar copia de seguridad" produciría un archivo
+ * vacío —y el docente creería que tiene copia— y "Nuevo concepto" volvería a
+ * crear la carpeta fantasma que la app acaba de detectar. Se instala de nuevo
+ * cuando ese estado cambia, porque un menú de Electron es estático.
  */
-export function instalarMenu(rutaVault: () => string): void {
+export function instalarMenu(rutaVault: () => string, hayMaterial: () => boolean): void {
   const esMac = process.platform === 'darwin'
+  const conMaterial = hayMaterial()
 
   const menuApp: MenuItemConstructorOptions[] = esMac
     ? [
@@ -76,11 +84,11 @@ export function instalarMenu(rutaVault: () => string): void {
     {
       label: 'Archivo',
       submenu: [
-        item('Nuevo concepto…', 'nuevo-concepto', 'CmdOrCtrl+N'),
-        item('Nueva asignatura…', 'nueva-asignatura', 'CmdOrCtrl+Shift+N'),
+        item('Nuevo concepto…', 'nuevo-concepto', 'CmdOrCtrl+N', conMaterial),
+        item('Nueva asignatura…', 'nueva-asignatura', 'CmdOrCtrl+Shift+N', conMaterial),
         { type: 'separator' },
-        item('Guardar copia de seguridad…', 'respaldar', 'CmdOrCtrl+Shift+S'),
-        item('Restaurar copia…', 'restaurar'),
+        item('Guardar copia de seguridad…', 'respaldar', 'CmdOrCtrl+Shift+S', conMaterial),
+        item('Restaurar copia…', 'restaurar', undefined, conMaterial),
         ...(esMac
           ? []
           : ([
@@ -124,9 +132,10 @@ export function instalarMenu(rutaVault: () => string): void {
     {
       label: 'Herramientas',
       submenu: [
-        item('Actualizar mi material', 'actualizar-material', 'CmdOrCtrl+R'),
+        item('Actualizar mi material', 'actualizar-material', 'CmdOrCtrl+R', conMaterial),
         {
           label: 'Abrir la carpeta de mi material',
+          enabled: conMaterial,
           click: () => {
             void shell.openPath(rutaVault())
           }

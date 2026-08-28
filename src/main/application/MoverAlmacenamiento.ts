@@ -28,6 +28,18 @@ export type DestinoAlmacenamiento =
       rutaContenedor: string
       /** Nombre de la carpeta a crear dentro (el "vault"). */
       nombreCarpeta: string
+      /**
+       * Qué se quiere hacer con esa carpeta:
+       *  - `mover` (por defecto) → llevar allí el material de ahora. Es lo que
+       *    se hace al estrenar una ubicación o al pasar de una nube a otra.
+       *  - `abrir`  → esa carpeta YA tiene material (la sincronizó otro equipo,
+       *    o es la de siempre y solo se había perdido el rastro) y se quiere
+       *    trabajar con ella tal cual, sin copiarle nada encima.
+       *
+       * La diferencia importa: "abrir" con la semántica de "mover" mezclaría
+       * dos materiales distintos en una sola carpeta, y eso no se deshace.
+       */
+      accion?: 'mover' | 'abrir'
     }
 
 export interface ResultadoMover {
@@ -38,6 +50,8 @@ export interface ResultadoMover {
   adoptado: boolean
   /** true si no había nada que mover (ya estaba en ese sitio). */
   sinCambios: boolean
+  /** true si se abrió material existente sin copiarle nada encima. */
+  abierto: boolean
 }
 
 /**
@@ -129,10 +143,35 @@ export function moverAlmacenamiento(destino: DestinoAlmacenamiento): ResultadoMo
   // Ya está en ese sitio: solo asegura la preferencia guardada.
   if (resolve(vaultDestino) === resolve(vaultActual)) {
     guardarConfigApp(config)
-    return { modo: destino.modo, rutaVault: vaultDestino, adoptado: false, sinCambios: true }
+    return {
+      modo: destino.modo,
+      rutaVault: vaultDestino,
+      adoptado: false,
+      sinCambios: true,
+      abierto: false
+    }
   }
 
   const adoptado = tieneMaterial(vaultDestino)
+
+  // Abrir material existente: NO se copia nada. El material de ahora se queda
+  // donde está, intacto; simplemente se deja de mirar esa carpeta y se mira
+  // esta. Es la operación que pide "tengo mi material ahí, ábrelo".
+  if (destino.modo === 'nube' && destino.accion === 'abrir') {
+    exigir(
+      adoptado,
+      'Esa carpeta no tiene material de PedagoGraph.',
+      'Elige la carpeta donde ya guardabas tu material, o usa “Mover aquí” para llevar el actual.'
+    )
+    guardarConfigApp(config)
+    return {
+      modo: destino.modo,
+      rutaVault: vaultDestino,
+      adoptado: true,
+      sinCambios: false,
+      abierto: true
+    }
+  }
 
   // Copia el material del vault actual al destino (sin sobrescribir ni borrar).
   try {
@@ -148,5 +187,5 @@ export function moverAlmacenamiento(destino: DestinoAlmacenamiento): ResultadoMo
   }
 
   guardarConfigApp(config)
-  return { modo: destino.modo, rutaVault: vaultDestino, adoptado, sinCambios: false }
+  return { modo: destino.modo, rutaVault: vaultDestino, adoptado, sinCambios: false, abierto: false }
 }

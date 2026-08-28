@@ -4,6 +4,7 @@ import { DialogoConfirmacion } from '../../components/DialogoConfirmacion'
 import { TEMAS, useLayoutStore, ZOOM_MAX, ZOOM_MIN, type Tema } from '../../stores/layoutStore'
 import { AsistentePage } from '../asistente/AsistentePage'
 import { actualizarMaterial, respaldarMaterial, restaurarMaterial } from './accionesDatos'
+import { hayMaterialDisponible, useLecturaStore } from '../../stores/lecturaStore'
 import { AlmacenamientoNube } from './AlmacenamientoNube'
 import { Eliminacion } from './Eliminacion'
 import { HistorialCambios } from './HistorialCambios'
@@ -288,6 +289,9 @@ function BotonZoom({
 // --- Datos y copias ---
 
 function DatosYCopias(): JSX.Element {
+  // Sin material que leer no hay proyecto abierto: solo tiene sentido elegir
+  // dónde está. Lo demás actúa sobre un material que no existe.
+  const hayMaterial = useLecturaStore((s) => hayMaterialDisponible(s.estado))
   const [actualizando, setActualizando] = useState(false)
   const [respaldando, setRespaldando] = useState(false)
   const [restaurando, setRestaurando] = useState(false)
@@ -328,55 +332,78 @@ function DatosYCopias(): JSX.Element {
         </p>
         <AlmacenamientoNube />
       </div>
-      <div className="mb-8">
-        <h2 className="mb-1 text-sm font-semibold text-slate-700">Cuando elimino algo</h2>
-        <p className="mb-3 text-xs text-slate-500">
-          Decide qué pasa con los conceptos, asignaturas, tareas y archivos que elimines.
+      {!hayMaterial && (
+        <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-600">
+          Elige arriba dónde está tu material. En cuanto la app pueda leerlo aparecerán aquí el
+          historial de cambios, las copias de seguridad y qué hacer con lo que elimines.
         </p>
-        <Eliminacion />
-      </div>
-      <div className="space-y-3">
-        <Fila
-          icono="🕘"
-          titulo="Historial de cambios"
-          descripcion="Revisa las modificaciones de tu material y vuelve a una versión anterior."
-          boton={
-            <Boton variante="secundario" onClick={() => setMostrarHistorial(true)}>
-              Ver historial
-            </Boton>
-          }
-        />
-        <Fila
-          icono="↻"
-          titulo="Actualizar"
-          descripcion="Vuelve a leer tu material y asignaturas desde el disco (reindexa)."
-          boton={
-            <Boton variante="secundario" onClick={() => void actualizar()} disabled={actualizando}>
-              {actualizando ? 'Actualizando…' : 'Actualizar'}
-            </Boton>
-          }
-        />
-        <Fila
-          icono="💾"
-          titulo="Copia de seguridad"
-          descripcion="Guarda todo tu material y asignaturas en un solo archivo, por seguridad."
-          boton={
-            <Boton variante="secundario" onClick={() => void respaldar()} disabled={respaldando}>
-              {respaldando ? 'Guardando…' : 'Guardar copia'}
-            </Boton>
-          }
-        />
-        <Fila
-          icono="♻️"
-          titulo="Restaurar copia"
-          descripcion="Recupera tu material y asignaturas desde un archivo de copia de seguridad."
-          boton={
-            <Boton variante="secundario" onClick={() => setConfirmandoRestaurar(true)} disabled={restaurando}>
-              {restaurando ? 'Restaurando…' : 'Restaurar'}
-            </Boton>
-          }
-        />
-      </div>
+      )}
+
+      {hayMaterial && (
+        <>
+          <div className="mb-8">
+            <h2 className="mb-1 text-sm font-semibold text-slate-700">Cuando elimino algo</h2>
+            <p className="mb-3 text-xs text-slate-500">
+              Decide qué pasa con los conceptos, asignaturas, tareas y archivos que elimines.
+            </p>
+            <Eliminacion />
+          </div>
+          <div className="space-y-3">
+            <Fila
+              icono="🕘"
+              titulo="Historial de cambios"
+              descripcion="Revisa las modificaciones de tu material y vuelve a una versión anterior."
+              boton={
+                <Boton variante="secundario" onClick={() => setMostrarHistorial(true)}>
+                  Ver historial
+                </Boton>
+              }
+            />
+            <Fila
+              icono="↻"
+              titulo="Actualizar"
+              descripcion="Vuelve a leer tu material y asignaturas desde el disco (reindexa)."
+              boton={
+                <Boton
+                  variante="secundario"
+                  onClick={() => void actualizar()}
+                  disabled={actualizando}
+                >
+                  {actualizando ? 'Actualizando…' : 'Actualizar'}
+                </Boton>
+              }
+            />
+            <Fila
+              icono="💾"
+              titulo="Copia de seguridad"
+              descripcion="Guarda todo tu material y asignaturas en un solo archivo, por seguridad."
+              boton={
+                <Boton
+                  variante="secundario"
+                  onClick={() => void respaldar()}
+                  disabled={respaldando}
+                >
+                  {respaldando ? 'Guardando…' : 'Guardar copia'}
+                </Boton>
+              }
+            />
+            <Fila
+              icono="♻️"
+              titulo="Restaurar copia"
+              descripcion="Recupera tu material y asignaturas desde un archivo de copia de seguridad."
+              boton={
+                <Boton
+                  variante="secundario"
+                  onClick={() => setConfirmandoRestaurar(true)}
+                  disabled={restaurando}
+                >
+                  {restaurando ? 'Restaurando…' : 'Restaurar'}
+                </Boton>
+              }
+            />
+          </div>
+        </>
+      )}
 
       {confirmandoRestaurar && (
         <DialogoConfirmacion

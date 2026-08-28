@@ -10,6 +10,7 @@ import type {
   DatosTerminoDTO,
   DatosTareaDTO,
   DuplicarTareaDTO,
+  EstadoLecturaDTO,
   LienzoDTO,
   ModoEliminacion,
   SemanaPlanDTO,
@@ -152,9 +153,20 @@ export const api = {
   estadoAlmacenamiento: () => desenvolver(window.api.estadoAlmacenamiento()),
   detectarCarpetasNube: () => desenvolver(window.api.detectarCarpetasNube()),
   elegirCarpetaAlmacenamiento: () => desenvolver(window.api.elegirCarpetaAlmacenamiento()),
-  usarAlmacenamientoNube: (rutaContenedor: string, nombreCarpeta: string) =>
-    desenvolver(window.api.usarAlmacenamientoNube(rutaContenedor, nombreCarpeta)),
+  inspeccionarCarpetaMaterial: (rutaContenedor: string, nombreCarpeta: string) =>
+    desenvolver(window.api.inspeccionarCarpetaMaterial(rutaContenedor, nombreCarpeta)),
+  usarAlmacenamientoNube: (
+    rutaContenedor: string,
+    nombreCarpeta: string,
+    accion?: 'mover' | 'abrir'
+  ) => desenvolver(window.api.usarAlmacenamientoNube(rutaContenedor, nombreCarpeta, accion)),
+  ocultarUbicacion: (ruta: string, oculta: boolean) =>
+    desenvolver(window.api.ocultarUbicacion(ruta, oculta)),
+  buscarMaterialExistente: () => desenvolver(window.api.buscarMaterialExistente()),
   usarAlmacenamientoLocal: () => desenvolver(window.api.usarAlmacenamientoLocal()),
+
+  estadoLectura: () => desenvolver(window.api.estadoLectura()),
+  reintentarLectura: () => desenvolver(window.api.reintentarLectura()),
 
   estadoEliminacion: () => desenvolver(window.api.estadoEliminacion()),
   fijarModoEliminacion: (modo: ModoEliminacion) =>
@@ -173,6 +185,8 @@ export const api = {
   respaldar: () => desenvolver(window.api.respaldar()),
   restaurar: () => desenvolver(window.api.restaurar()),
   onVaultCambiado: (callback: () => void): (() => void) => window.api.onVaultCambiado(callback),
+  onLecturaCambiada: (callback: (estado: EstadoLecturaDTO) => void): (() => void) =>
+    window.api.onLecturaCambiada(callback),
   onAccionMenu: (callback: (accion: AccionMenu) => void): (() => void) =>
     window.api.onAccionMenu(callback)
 }

@@ -93,8 +93,15 @@ export const CANALES = {
   almacenamientoEstado: 'almacenamiento:estado',
   almacenamientoCarpetasNube: 'almacenamiento:carpetas-nube',
   almacenamientoElegirCarpeta: 'almacenamiento:elegir-carpeta',
+  almacenamientoInspeccionar: 'almacenamiento:inspeccionar',
+  almacenamientoOcultarUbicacion: 'almacenamiento:ocultar-ubicacion',
+  almacenamientoBuscarMaterial: 'almacenamiento:buscar-material',
   almacenamientoUsarNube: 'almacenamiento:usar-nube',
   almacenamientoUsarLocal: 'almacenamiento:usar-local',
+
+  // Material que no se pudo leer (nube sin sesión, sin conexión, archivo dañado)
+  lecturaEstado: 'lectura:estado',
+  lecturaReintentar: 'lectura:reintentar',
 
   // Qué pasa al eliminar (mover a "Eliminados" o borrar definitivamente).
   eliminacionEstado: 'eliminacion:estado',
@@ -115,6 +122,7 @@ export const CANALES = {
 
   // Eventos push (main -> renderer)
   vaultCambiado: 'vault:cambiado',
+  lecturaCambiada: 'lectura:cambiada',
   menuAccion: 'menu:accion',
   terminalDatos: 'terminal:datos',
   terminalSalida: 'terminal:salida'

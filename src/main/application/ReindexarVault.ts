@@ -1,4 +1,5 @@
 import type { IGraphRepository } from '../domain/IGraphRepository'
+import { lecturasFallidas } from '../infrastructure/IncidenciasLectura'
 import type { VaultFileSystemService } from '../infrastructure/VaultFileSystemService'
 
 export interface ResultadoReindexado {
@@ -19,6 +20,12 @@ export function reindexarVault(
 ): ResultadoReindexado {
   const conceptos = vault.leerTodosConceptos()
   const asignaturas = vault.leerTodasAsignaturas()
+
+  // Lo que no se pudo leer va a desaparecer del índice al vaciarlo, y con ello
+  // su nombre. Se rescata ANTES para poder nombrarlo en el aviso: el nombre
+  // vive dentro del archivo ilegible y el de la carpeta no se muestra jamás.
+  lecturasFallidas.recordarNombres('concepto', repositorio.listarConceptos())
+  lecturasFallidas.recordarNombres('asignatura', repositorio.listarAsignaturas())
 
   repositorio.vaciar()
   for (const concepto of conceptos) {

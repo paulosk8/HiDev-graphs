@@ -501,6 +501,56 @@ export interface CarpetaNubeDTO {
   etiqueta: string
   /** Carpeta contenedora donde vivirá el material (uso interno). */
   ruta: string
+  /** true si el docente la quitó de la lista (no se borra nada del disco). */
+  oculta: boolean
+  /**
+   * Dónde está esa carpeta, en corto y con `~` por la carpeta personal.
+   *
+   * Sí, es una ruta, y la regla general es no enseñarlas. Aquí es necesaria:
+   * dos carpetas de nube distintas pueden llamarse igual ("OneDrive · Personal"
+   * y "OneDrive · Personal(2)"), y sin verlas no hay forma de elegir bien. Solo
+   * aparece en este diálogo, como texto secundario.
+   */
+  rutaVisible: string
+}
+
+/**
+ * Una carpeta de material YA existente que la app encontró sola dentro de las
+ * nubes del equipo. Es lo que permite ofrecer "tu material está aquí" en vez de
+ * pedirle al docente que recuerde la subcarpeta y navegue hasta ella.
+ */
+export interface MaterialEncontradoDTO {
+  ruta: string
+  rutaVisible: string
+  /** Nombre de la carpeta: como el docente la reconoce. */
+  nombre: string
+  conceptos: number
+  asignaturas: number
+}
+
+/** Lo que se encontró en una carpeta concreta. */
+export interface ResumenCarpetaDTO {
+  /** true si la carpeta existe (aunque esté vacía). */
+  existe: boolean
+  conceptos: number
+  asignaturas: number
+  /** true si tiene material dentro: es una carpeta de PedagoGraph ya usada. */
+  esMaterial: boolean
+}
+
+/**
+ * Qué material hay ya en una carpeta candidata, para poder decírselo al docente
+ * ANTES de confirmar. Es lo que distingue "esta es mi carpeta de siempre" de
+ * "esta está vacía", que es justo lo que no se veía al elegir.
+ *
+ * Se miran DOS carpetas porque el docente puede señalar cualquiera de las dos y
+ * ambas son razonables: la que contiene su material, o el material mismo.
+ */
+export interface MaterialEnCarpetaDTO {
+  /** La carpeta señalada, tal cual. Si ya es material, se usa directamente. */
+  elegida: ResumenCarpetaDTO
+  /** `<elegida>/<nombre>`: lo que se crearía o abriría dentro de ella. */
+  dentro: ResumenCarpetaDTO
 }
 
 /** Estado actual del almacenamiento del material, para mostrarlo en Configuración. */
@@ -522,6 +572,50 @@ export interface ResultadoAlmacenamientoDTO {
   adoptado: boolean
   /** true si ya estaba en ese sitio (no hubo cambios). */
   sinCambios: boolean
+  /** true si se abrió material que ya existía, sin copiarle nada encima. */
+  abierto: boolean
+}
+
+// --- Material que no se pudo leer (nube sin sesión, sin internet, archivo dañado) ---
+
+/** Qué clase de elemento no se pudo abrir. */
+export type TipoElementoLectura = 'concepto' | 'asignatura' | 'tarea' | 'lienzo'
+
+/**
+ * Por qué no se pudo leer:
+ *  - `nube`      → está en OneDrive / Google Drive y ahora no se puede descargar.
+ *  - `permisos`  → el sistema no deja abrirlo.
+ *  - `dañado`    → se abrió, pero su contenido no se entiende.
+ *  - `ubicacion` → la carpeta elegida ya no está en este equipo.
+ *  - `desconocida` → cualquier otra cosa.
+ */
+export type CausaLectura = 'nube' | 'permisos' | 'dañado' | 'ubicacion' | 'desconocida'
+
+/** Un elemento que falta ahora mismo, con el último nombre que se le conoció. */
+export interface ElementoNoLeidoDTO {
+  tipo: TipoElementoLectura
+  /** Nombre visible; vacío si nunca llegó a indexarse (la UI dirá "Sin nombre"). */
+  nombre: string
+}
+
+/** Estado de la última lectura del material, para avisar en la interfaz. */
+export interface EstadoLecturaDTO {
+  /**
+   * Cuántos elementos no se pudieron leer. 0 con `carpetaCompleta` en false
+   * significa que todo se leyó bien.
+   */
+  total: number
+  causa: CausaLectura
+  /** true si ni siquiera se pudo listar una carpeta entera del material. */
+  carpetaCompleta: boolean
+  /** ¿Guarda el docente su material en una carpeta de nube? */
+  enNube: boolean
+  /** Dónde se guarda, en lenguaje humano: "OneDrive", "Este equipo"… */
+  nombreAlmacenamiento: string
+  /** ¿Tiene este equipo conexión a internet ahora mismo? */
+  hayConexion: boolean
+  /** Los primeros elementos que faltan, para nombrarlos en el aviso. */
+  elementos: ElementoNoLeidoDTO[]
 }
 
 // --- Qué pasa al eliminar ---

@@ -3,12 +3,15 @@ import type {
   ClienteMcpId,
   AlmacenamientoDTO,
   CarpetaNubeDTO,
+  MaterialEncontradoDTO,
+  MaterialEnCarpetaDTO,
   EtiquetaDTO,
   LienzoDTO,
   ResumenLienzoDTO,
   ResumenMencionDTO,
   ResultadoAlmacenamientoDTO,
   EliminacionDTO,
+  EstadoLecturaDTO,
   ModoEliminacion,
   AsignaturaDTO,
   MaterialConceptoDTO,
@@ -230,6 +233,15 @@ export interface PedagoGraphApi {
   estadoAlmacenamiento(): Promise<Resultado<AlmacenamientoDTO>>
   /** Carpetas de Google Drive / OneDrive detectadas en este equipo. */
   detectarCarpetasNube(): Promise<Resultado<CarpetaNubeDTO[]>>
+  /** Qué material hay ya en `<contenedor>/<nombre>`, antes de confirmar. */
+  inspeccionarCarpetaMaterial(
+    rutaContenedor: string,
+    nombreCarpeta: string
+  ): Promise<Resultado<MaterialEnCarpetaDTO>>
+  /** Quita (o devuelve) una ubicación de la lista al elegir dónde guardar. */
+  ocultarUbicacion(ruta: string, oculta: boolean): Promise<Resultado<void>>
+  /** Busca carpetas de material ya existentes en las nubes del equipo. */
+  buscarMaterialExistente(): Promise<Resultado<MaterialEncontradoDTO[]>>
   /**
    * Abre el selector nativo del sistema para elegir (o crear) una carpeta donde
    * guardar el material. Devuelve la ruta elegida, o null si se cancela.
@@ -241,10 +253,21 @@ export interface PedagoGraphApi {
    */
   usarAlmacenamientoNube(
     rutaContenedor: string,
-    nombreCarpeta: string
+    nombreCarpeta: string,
+    /** `abrir` usa el material que ya hay ahí; `mover` lleva el actual. */
+    accion?: 'mover' | 'abrir'
   ): Promise<Resultado<ResultadoAlmacenamientoDTO>>
   /** Vuelve a guardar el material en este equipo (carpeta Documentos). */
   usarAlmacenamientoLocal(): Promise<Resultado<ResultadoAlmacenamientoDTO>>
+
+  // --- Material que no se pudo leer ---
+  /** Qué falta ahora mismo y por qué (0 elementos = todo se leyó bien). */
+  estadoLectura(): Promise<Resultado<EstadoLecturaDTO>>
+  /**
+   * Vuelve a leer el material desde cero y devuelve el estado resultante.
+   * Es lo que hay detrás del botón "Reintentar" del aviso.
+   */
+  reintentarLectura(): Promise<Resultado<EstadoLecturaDTO>>
 
   // --- Qué pasa al eliminar ---
   /** Preferencia actual + dónde está la carpeta de eliminados y si tiene algo. */
@@ -274,6 +297,13 @@ export interface PedagoGraphApi {
    * Devuelve una función para cancelar la suscripción.
    */
   onVaultCambiado(callback: () => void): () => void
+
+  /**
+   * Se suscribe a los cambios en el material que no se pudo leer (p. ej. la
+   * nube vuelve y deja de faltar, o se cae y empieza a faltar).
+   * Devuelve una función para cancelar la suscripción.
+   */
+  onLecturaCambiada(callback: (estado: EstadoLecturaDTO) => void): () => void
 
   /**
    * Se suscribe a las acciones elegidas en la barra de menú del sistema.

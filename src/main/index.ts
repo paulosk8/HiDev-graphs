@@ -6,8 +6,10 @@ import { registrarHandlersIpc } from './ipc/registrarHandlers'
 import { registrarHandlersAlmacenamiento } from './ipc/registrarHandlersAlmacenamiento'
 import { registrarHandlersEliminacion } from './ipc/registrarHandlersEliminacion'
 import { registrarHandlersHistorial } from './ipc/registrarHandlersHistorial'
+import { estadoLectura, registrarHandlersLectura } from './ipc/registrarHandlersLectura'
 import { registrarHandlersTerminal, cerrarTerminal } from './ipc/terminal'
 import { IndexSyncService } from './infrastructure/IndexSyncService'
+import { lecturasFallidas } from './infrastructure/IncidenciasLectura'
 import { HistorialService } from './infrastructure/HistorialService'
 import { reindexarVault } from './application/ReindexarVault'
 import {
@@ -116,6 +118,9 @@ async function aplicarCambioAlmacenamiento(): Promise<void> {
   if (!servicios) return
   await sincronizador?.detener()
   servicios.vault.reapuntar(resolverRutaVault(), rutaIndicePorEquipo())
+  // El docente acaba de elegir dónde va su material: lo anotado sobre la
+  // ubicación anterior ya no describe nada.
+  lecturasFallidas.limpiar()
   servicios.vault.asegurarVault()
   servicios.repositorio.reabrir(servicios.vault.rutaBaseDatos)
   reindexarVault(servicios.vault, servicios.repositorio)
@@ -135,11 +140,15 @@ app.whenReady().then(() => {
   registrarHandlersAlmacenamiento(aplicarCambioAlmacenamiento)
   registrarHandlersEliminacion(servicios.vault)
   registrarHandlersHistorial(historial)
+  registrarHandlersLectura(servicios)
   registrarHandlersTerminal(servicios.vault.raiz)
   habilitarProtocoloRecurso(servicios.vault)
   // Barra de menú en español (la carpeta del material puede cambiar en caliente,
   // por eso se pasa como función).
-  instalarMenu(() => resolverRutaVault())
+  instalarMenu(
+    () => resolverRutaVault(),
+    () => lecturasFallidas.hayMaterialDisponible()
+  )
 
   // En macOS el icono del dock durante el desarrollo es el de Electron; ya
   // empaquetada, la app lo toma de su propio paquete.
@@ -147,6 +156,21 @@ app.whenReady().then(() => {
   if (process.platform === 'darwin' && icono) app.dock?.setIcon(icono)
 
   createWindow()
+
+  // Cuando algo del material deja de leerse (la nube se cae o cierra sesión) o
+  // vuelve a leerse, la ventana se entera sola: el aviso aparece y desaparece
+  // sin que el docente tenga que recargar nada.
+  lecturasFallidas.alCambiar(() => {
+    if (ventanaPrincipal && !ventanaPrincipal.isDestroyed()) {
+      ventanaPrincipal.webContents.send(CANALES.lecturaCambiada, estadoLectura())
+    }
+    // El menú del sistema es estático: para que sus opciones se apaguen (y se
+    // vuelvan a encender) hay que reconstruirlo cuando cambia la situación.
+    instalarMenu(
+      () => resolverRutaVault(),
+      () => lecturasFallidas.hayMaterialDisponible()
+    )
+  })
 
   iniciarObservadorVault()
 

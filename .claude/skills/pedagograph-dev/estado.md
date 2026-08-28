@@ -117,10 +117,57 @@ historial de git (rama `feat/almacenamiento-nube`, PR #18) por si hay que recupe
   cuando ya se usa una** (p. ej. Drive → OneDrive): "En mi nube" ofrece "Cambiar…" además de
   marcarse como actual, el diálogo preselecciona la ubicación de hoy ("Ahora aquí"), precarga
   el nombre y avisa de que la carpeta anterior se conserva.
+- **Elegir dónde está el material** (rediseño posterior, tras perderse un vault de verdad):
+  la lista ofrecía solo la **raíz** de cada nube con una etiqueta, y con dos cuentas montadas
+  ("OneDrive · Personal" y "OneDrive · Personal(2)") las filas se leían igual mientras el
+  material estaba dos carpetas más adentro de una de ellas. Ahora cada fila lleva su **ruta**
+  como texto secundario (sí, se enseña una ruta: es la excepción acotada sin la cual el
+  problema no se puede resolver) y, si esa carpeta ya tiene material, cuánto —"15 conceptos ·
+  3 asignaturas"—, que es la señal que un docente sí entiende. `buscarMaterialExistente()`
+  recorre las nubes y añade a la lista las carpetas de material que encuentra, por su nombre.
+  Las ubicaciones que no se usan se quitan con la ✕ (`ubicacionesOcultas` en la config); la
+  que se usa ahora **nunca** se puede quitar.
+- **Abrir ≠ mover** (`accion: 'mover' | 'abrir'` en `MoverAlmacenamiento`): si el destino ya
+  tiene material se abre tal cual, **sin copiar nada**; mover solo ocurre con una carpeta
+  vacía. Antes se copiaba siempre, así que abrir material existente mezclaba dos materiales en
+  una carpeta —y eso no se deshace—. `inspeccionarCarpetaMaterial` mira la carpeta señalada
+  **y** la que habría dentro, para que señalar el vault no acabe creando
+  `PedagoGraph/PedagoGraph`.
 - **Limitación heredada resuelta**: los archivos de material ahora sí llegan a los otros
   equipos (los sincroniza el cliente de nube, no la app). A cambio, la app **no controla** la
   resolución de conflictos: la delega en Drive/OneDrive (que renombran el archivo en
   conflicto). El deshacer propio es el historial de versiones (abajo).
+
+## Material que no se pudo leer (nube dormida, carpeta perdida)
+
+Vivir en OneDrive/Drive tiene un coste que no se ve hasta que muerde: los archivos existen en
+disco pero son marcadores, y abrirlos falla con `ETIMEDOUT` cuando el cliente de nube no ha
+iniciado sesión, está pausado o no hay internet. Antes eso era un `console.warn` y el elemento
+desaparecía del listado: para el docente, material perdido sin explicación.
+
+- **Registro de incidencias** (`infrastructure/IncidenciasLectura.ts`, memoria viva del proceso,
+  no se persiste): qué no se pudo leer, de qué tipo y por qué —`nube`, `permisos`, `dañado`,
+  `ubicacion`, `desconocida`—. `causaDeError` traduce el código del error; `ENOENT` cuenta como
+  `nube` (un archivo que estaba en el listado hace un instante y ya no se abre, en una carpeta
+  de nube, se está sincronizando).
+- **Corte tras 3 fallos de nube seguidos.** Cada lectura contra una nube dormida tarda ~60 s en
+  rendirse; sin corte son minutos de app colgada antes de poder decir nada. El resto se anota
+  con `omitir()` sin intentarlo. `lecturasFallidas.intentarTodo(fn)` desactiva el corte: lo usa
+  "Reintentar", donde el docente sí está esperando. `iniciarBarrido()` al empezar cada
+  `leerTodos*` para que un recorrido no arrastre el corte del anterior.
+- **Los nombres se rescatan del índice ANTES de reconstruirlo** (`recordarNombres`, desde
+  `ReindexarVault`): el nombre real vive dentro del archivo ilegible, y el de la carpeta no se
+  le enseña nunca al docente. Sin ese rescate el aviso solo puede decir "elemento sin nombre".
+- **Aviso** (`components/AvisoMaterialNoLeido.tsx` + `stores/lecturaStore.ts`): franja fija
+  arriba del todo, **no un toast** —mientras falte material el listado está incompleto y eso
+  tiene que verse todo el tiempo—. Se cierra a mano y reaparece si cambia la `huella`
+  (total + causa + carpetaCompleta). El main la empuja por `lectura:cambiada` al suscribirse a
+  `lecturasFallidas.alCambiar`, así aparece y desaparece sin recargar.
+- **`hayMaterialDisponible()`**: sin carpeta que leer no hay proyecto abierto. Configuración
+  esconde historial/copias/reindexar/eliminados y el menú los deshabilita (incluidos "Nuevo
+  concepto" y "Nueva asignatura"). No es estética: respaldar habría dado un `.zip` vacío
+  haciendo creer que había copia, y crear algo habría refabricado la carpeta fantasma. Que
+  falte un elemento suelto **no** las apaga: ahí sí hay proyecto.
 
 ## Bienvenida de primer arranque y capas
 
@@ -651,6 +698,29 @@ sobre un campo con `onBlur` necesita `onMouseDown={(e) => e.preventDefault()}`.
 carpetas escrita a mano**. Al añadir `lienzos/` nadie las actualizó y los
 lienzos se perdían al respaldar, restaurar o mover el material. **Si añades una
 carpeta nueva al vault, actualiza las tres.**
+
+## Trampas de las carpetas de nube que ya han mordido
+
+Tres cosas que costaron una sesión entera de material "perdido":
+
+1. **`readdir` sobre una carpeta de nube dormida cuelga el proceso principal.** Google Drive
+   materializa la carpeta en ese momento y puede tardar un minuto. Síncrono en el main = ventana
+   congelada (medido: >120 s sin terminar). Todo recorrido de nubes va **asíncrono, con plazo
+   por carpeta y total, y devolviendo lo encontrado al agotarse**. Además: recorrer **en
+   anchura** (el material está a uno o dos niveles) y **cada raíz por su cuenta**, porque con
+   una cola común un Drive dormido consume el plazo en *su* primer nivel y las demás nubes no
+   llegan a bajar. Y **una sola lectura por carpeta**: `stat` + 2 `readdir` por candidata agota
+   el plazo antes del nivel útil.
+2. **`~/Library/CloudStorage/<nube>(2)` se evapora.** macOS crea el sufijo `(2)` al re-vincular
+   una cuenta y lo retira después. Si la app guardó esa ruta y luego no la encuentra, **no debe
+   crear un vault nuevo ahí**: es empezar de cero encima de material que sigue existiendo en
+   otro sitio, y el docente lo vive como "se borró todo" (`comprobarUbicacionMaterial` en
+   `servicios.ts`). Ojo también con `~/OneDrive`, que puede ser un **enlace simbólico** a uno de
+   esos montajes: el dedup de `DeteccionNube` compara **rutas reales** (`realpathSync`), no
+   texto, o la misma carpeta sale dos veces con nombres distintos.
+3. `st_dev` **no** distingue un montaje de nube vivo de una carpeta local suelta (comprobado:
+   mismo device id). No sirve como heurística; lo que sí sirve es preguntar si la carpeta
+   configurada existe y si tiene material.
 
 ## Decisiones de producto registradas
 

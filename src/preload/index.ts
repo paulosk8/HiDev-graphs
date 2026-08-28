@@ -2,7 +2,7 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron'
 
 import { CANALES } from '../shared/canales'
 import type { PedagoGraphApi } from '../shared/api'
-import type { AccionMenu } from '../shared/dtos'
+import type { AccionMenu, EstadoLecturaDTO } from '../shared/dtos'
 
 /**
  * Implementación de la API expuesta al renderer. Cada método reenvía la llamada
@@ -108,9 +108,17 @@ const api: PedagoGraphApi = {
   estadoAlmacenamiento: () => ipcRenderer.invoke(CANALES.almacenamientoEstado),
   detectarCarpetasNube: () => ipcRenderer.invoke(CANALES.almacenamientoCarpetasNube),
   elegirCarpetaAlmacenamiento: () => ipcRenderer.invoke(CANALES.almacenamientoElegirCarpeta),
-  usarAlmacenamientoNube: (rutaContenedor, nombreCarpeta) =>
-    ipcRenderer.invoke(CANALES.almacenamientoUsarNube, rutaContenedor, nombreCarpeta),
+  inspeccionarCarpetaMaterial: (rutaContenedor, nombreCarpeta) =>
+    ipcRenderer.invoke(CANALES.almacenamientoInspeccionar, rutaContenedor, nombreCarpeta),
+  usarAlmacenamientoNube: (rutaContenedor, nombreCarpeta, accion) =>
+    ipcRenderer.invoke(CANALES.almacenamientoUsarNube, rutaContenedor, nombreCarpeta, accion),
+  ocultarUbicacion: (ruta, oculta) =>
+    ipcRenderer.invoke(CANALES.almacenamientoOcultarUbicacion, ruta, oculta),
+  buscarMaterialExistente: () => ipcRenderer.invoke(CANALES.almacenamientoBuscarMaterial),
   usarAlmacenamientoLocal: () => ipcRenderer.invoke(CANALES.almacenamientoUsarLocal),
+
+  estadoLectura: () => ipcRenderer.invoke(CANALES.lecturaEstado),
+  reintentarLectura: () => ipcRenderer.invoke(CANALES.lecturaReintentar),
 
   estadoEliminacion: () => ipcRenderer.invoke(CANALES.eliminacionEstado),
   fijarModoEliminacion: (modo) => ipcRenderer.invoke(CANALES.eliminacionFijarModo, modo),
@@ -127,6 +135,11 @@ const api: PedagoGraphApi = {
     const oyente = (): void => callback()
     ipcRenderer.on(CANALES.vaultCambiado, oyente)
     return () => ipcRenderer.removeListener(CANALES.vaultCambiado, oyente)
+  },
+  onLecturaCambiada: (callback) => {
+    const oyente = (_e: unknown, estado: EstadoLecturaDTO): void => callback(estado)
+    ipcRenderer.on(CANALES.lecturaCambiada, oyente)
+    return () => ipcRenderer.removeListener(CANALES.lecturaCambiada, oyente)
   },
   onAccionMenu: (callback) => {
     const oyente = (_evento: unknown, accion: AccionMenu): void => callback(accion)

@@ -25,6 +25,11 @@ import { crearEnlaceMaterial } from '../domain/EnlaceMaterial'
 import { repasoDesdePlano } from '../domain/Repaso'
 import { lienzoAPlano, lienzoDesdePlano, type Lienzo } from '../domain/Lienzo'
 import {
+  CARPETA_COMPLETA,
+  lecturasFallidas,
+  type TipoElementoLectura
+} from './IncidenciasLectura'
+import {
   eliminarRuta,
   NOMBRE_CARPETA_ELIMINADOS,
   type ModoEliminacion
@@ -149,6 +154,16 @@ export class VaultFileSystemService {
     mkdirSync(this.dirAsignaturas, { recursive: true })
     mkdirSync(this.dirTareas, { recursive: true })
     mkdirSync(this.dirLienzos, { recursive: true })
+    this.asegurarIndice()
+  }
+
+  /**
+   * Crea solo la carpeta del índice. Se separa de `asegurarVault` porque el
+   * índice vive fuera del material (por-equipo) y hace falta SIEMPRE para abrir
+   * SQLite, incluso cuando el material no está disponible y el vault no se debe
+   * crear.
+   */
+  asegurarIndice(): void {
     mkdirSync(this.dirIndice, { recursive: true })
   }
 
@@ -229,12 +244,15 @@ export class VaultFileSystemService {
   }
 
   listarIdsConceptos(): string[] {
-    return this.subcarpetasCon(this.dirConceptos, 'concepto.yaml')
+    return this.subcarpetasCon(this.dirConceptos, 'concepto.yaml', 'concepto')
   }
 
   leerTodosConceptos(): Concepto[] {
-    return this.listarIdsConceptos()
-      .map((id) => this.leerToleranteConcepto(id))
+    lecturasFallidas.iniciarBarrido()
+    const ids = this.listarIdsConceptos()
+    lecturasFallidas.conciliar('concepto', ids)
+    return ids
+      .map((id) => this.leerTolerante('concepto', id, () => this.leerConcepto(id)))
       .filter((c): c is Concepto => c !== null)
   }
 
@@ -448,10 +466,17 @@ export class VaultFileSystemService {
 
   listarIdsLienzos(): string[] {
     if (!existsSync(this.dirLienzos)) return []
-    return readdirSync(this.dirLienzos, { withFileTypes: true })
-      .filter((e) => e.isFile() && e.name.endsWith('.canvas'))
-      .map((e) => e.name.slice(0, -'.canvas'.length))
-      .sort((a, b) => a.localeCompare(b, 'es'))
+    try {
+      const ids = readdirSync(this.dirLienzos, { withFileTypes: true })
+        .filter((e) => e.isFile() && e.name.endsWith('.canvas'))
+        .map((e) => e.name.slice(0, -'.canvas'.length))
+        .sort((a, b) => a.localeCompare(b, 'es'))
+      lecturasFallidas.olvidar('lienzo', CARPETA_COMPLETA)
+      return ids
+    } catch (error) {
+      lecturasFallidas.registrar('lienzo', CARPETA_COMPLETA, error)
+      return []
+    }
   }
 
   leerLienzo(id: string): Lienzo {
@@ -484,23 +509,34 @@ export class VaultFileSystemService {
   }
 
   leerTodosLienzos(): Lienzo[] {
-    return this.listarIdsLienzos()
-      .map((id) => {
-        try {
-          return this.leerLienzo(id)
-        } catch (error) {
-          console.warn(`No se pudo leer el lienzo "${id}":`, error)
-          return null
-        }
-      })
+    lecturasFallidas.iniciarBarrido()
+    const ids = this.listarIdsLienzos()
+    lecturasFallidas.conciliar('lienzo', ids)
+    return ids
+      .map((id) => this.leerTolerante('lienzo', id, () => this.leerLienzo(id)))
       .filter((l): l is Lienzo => l !== null)
   }
 
-  private leerToleranteConcepto(id: string): Concepto | null {
+  /**
+   * Lee un elemento sin tumbar el listado si falla: anota la incidencia (para
+   * que la interfaz pueda explicar qué falta y por qué) y devuelve null.
+   *
+   * Si el almacenamiento ya se dio por caído en este recorrido, ni lo intenta:
+   * cada lectura contra una nube dormida tarda un minuto en rendirse, así que
+   * insistir con el resto solo alarga la espera. Se anota como no leído y el
+   * aviso ofrece "Reintentar", que sí recorre todo.
+   */
+  private leerTolerante<T>(tipo: TipoElementoLectura, id: string, leer: () => T): T | null {
+    if (lecturasFallidas.nubeCaida()) {
+      lecturasFallidas.omitir(tipo, id)
+      return null
+    }
     try {
-      return this.leerConcepto(id)
+      const elemento = leer()
+      lecturasFallidas.olvidar(tipo, id)
+      return elemento
     } catch (error) {
-      console.warn(`No se pudo leer el concepto "${id}":`, error)
+      lecturasFallidas.registrar(tipo, id, error)
       return null
     }
   }
@@ -572,26 +608,20 @@ export class VaultFileSystemService {
   }
 
   listarIdsAsignaturas(): string[] {
-    return this.subcarpetasCon(this.dirAsignaturas, 'pea.yaml')
+    return this.subcarpetasCon(this.dirAsignaturas, 'pea.yaml', 'asignatura')
   }
 
   leerTodasAsignaturas(): Asignatura[] {
-    return this.listarIdsAsignaturas()
-      .map((id) => this.leerToleranteAsignatura(id))
+    lecturasFallidas.iniciarBarrido()
+    const ids = this.listarIdsAsignaturas()
+    lecturasFallidas.conciliar('asignatura', ids)
+    return ids
+      .map((id) => this.leerTolerante('asignatura', id, () => this.leerAsignatura(id)))
       .filter((a): a is Asignatura => a !== null)
   }
 
   eliminarAsignatura(id: string): void {
     this.borrar(this.carpetaAsignatura(id), 'asignaturas')
-  }
-
-  private leerToleranteAsignatura(id: string): Asignatura | null {
-    try {
-      return this.leerAsignatura(id)
-    } catch (error) {
-      console.warn(`No se pudo leer la asignatura "${id}":`, error)
-      return null
-    }
   }
 
   // ---------------------------------------------------------------------------
@@ -671,19 +701,15 @@ export class VaultFileSystemService {
   }
 
   listarIdsTareas(): string[] {
-    return this.subcarpetasCon(this.dirTareas, 'tarea.yaml')
+    return this.subcarpetasCon(this.dirTareas, 'tarea.yaml', 'tarea')
   }
 
   leerTodasTareas(): Tarea[] {
-    return this.listarIdsTareas()
-      .map((id) => {
-        try {
-          return this.leerTarea(id)
-        } catch (error) {
-          console.warn(`No se pudo leer la tarea "${id}":`, error)
-          return null
-        }
-      })
+    lecturasFallidas.iniciarBarrido()
+    const ids = this.listarIdsTareas()
+    lecturasFallidas.conciliar('tarea', ids)
+    return ids
+      .map((id) => this.leerTolerante('tarea', id, () => this.leerTarea(id)))
       .filter((t): t is Tarea => t !== null)
   }
 
@@ -716,11 +742,25 @@ export class VaultFileSystemService {
   // ---------------------------------------------------------------------------
 
   /** Devuelve las subcarpetas de `dir` que contienen el archivo `marcador`. */
-  private subcarpetasCon(dir: string, marcador: string): string[] {
+  /**
+   * Subcarpetas de `dir` que contienen `marcador`.
+   *
+   * Si la carpeta entera no se deja listar —la nube no ha iniciado sesión y
+   * ni siquiera devuelve el directorio— se anota como incidencia y se
+   * devuelve una lista vacía: la app abre, pero puede decir que falta todo.
+   */
+  private subcarpetasCon(dir: string, marcador: string, tipo: TipoElementoLectura): string[] {
     if (!existsSync(dir)) return []
-    return readdirSync(dir, { withFileTypes: true })
-      .filter((e) => e.isDirectory() && existsSync(join(dir, e.name, marcador)))
-      .map((e) => e.name)
+    try {
+      const nombres = readdirSync(dir, { withFileTypes: true })
+        .filter((e) => e.isDirectory() && existsSync(join(dir, e.name, marcador)))
+        .map((e) => e.name)
+      lecturasFallidas.olvidar(tipo, CARPETA_COMPLETA)
+      return nombres
+    } catch (error) {
+      lecturasFallidas.registrar(tipo, CARPETA_COMPLETA, error)
+      return []
+    }
   }
 }
 
