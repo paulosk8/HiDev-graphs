@@ -3,6 +3,7 @@ import type { ConceptoDTO, FormatoInstrucciones, NotaDTO } from '@shared/dtos'
 import { Boton } from '../../components/Boton'
 import { ContenidoFormateado } from '../../components/ContenidoFormateado'
 import { HerramientasTexto } from '../../components/HerramientasTexto'
+import { DialogoConfirmacion } from '../../components/DialogoConfirmacion'
 import { DialogoMover } from '../../components/DialogoMover'
 import { MenuContextual, useMenuContextual } from '../../components/MenuContextual'
 import { api } from '../../lib/api'
@@ -36,6 +37,9 @@ export function NotasConcepto({
   const notificar = useUiStore((s) => s.notificar)
   const { menu, abrir: abrirMenu, cerrar: cerrarMenu } = useMenuContextual<NotaDTO>()
   const [moviendo, setMoviendo] = useState<NotaDTO | null>(null)
+  // Nota que se va a eliminar, a la espera de confirmación. Borrar una nota
+  // no tiene vuelta atrás y el botón está a un pixel de «Editar».
+  const [aEliminar, setAEliminar] = useState<NotaDTO | null>(null)
   // Id de la nota en edición, 'nuevo' para una nota nueva, o null (solo lista).
   const [editando, setEditando] = useState<string | 'nuevo' | null>(null)
   const [titulo, setTitulo] = useState('')
@@ -98,8 +102,9 @@ export function NotasConcepto({
     await persistir(notas)
   }
 
-  const eliminar = async (id: string): Promise<void> => {
-    await persistir(concepto.notas.filter((n) => n.id !== id))
+  const eliminar = async (nota: NotaDTO): Promise<void> => {
+    await persistir(concepto.notas.filter((n) => n.id !== nota.id))
+    setAEliminar(null)
   }
 
   return (
@@ -248,7 +253,7 @@ export function NotasConcepto({
                     Editar
                   </button>
                   <button
-                    onClick={() => void eliminar(n.id)}
+                    onClick={() => setAEliminar(n)}
                     className="rounded-md px-2 py-0.5 text-xs text-slate-400 transition hover:bg-red-50 hover:text-red-600"
                   >
                     Eliminar
@@ -282,9 +287,20 @@ export function NotasConcepto({
               etiqueta: 'Eliminar',
               icono: '✕',
               destructiva: true,
-              onElegir: () => void eliminar(menu.dato.id)
+              onElegir: () => setAEliminar(menu.dato)
             }
           ]}
+        />
+      )}
+
+      {aEliminar && (
+        <DialogoConfirmacion
+          titulo={
+            aEliminar.titulo ? `¿Eliminar «${aEliminar.titulo}»?` : '¿Eliminar esta nota?'
+          }
+          mensaje="Se borra el texto de la nota. El material del concepto y las demás notas no se tocan."
+          onConfirmar={() => eliminar(aEliminar)}
+          onCancelar={() => setAEliminar(null)}
         />
       )}
 
