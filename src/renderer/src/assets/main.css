@@ -193,6 +193,29 @@ body,
   font-size: 1.1rem;
   font-weight: 600;
   margin: 1rem 0 0.4rem;
+  color: #0f172a;
+}
+/* Los encabezados pequeños también se ven. Tailwind deja todos los h* con el
+   tamaño del texto normal, así que sin estas reglas un `#### Título` pegado
+   desde la web perdía la almohadilla al guardar y quedaba igual que un
+   párrafo: parecía que el formato no se hubiera aplicado. */
+.markdown-preview h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0.9rem 0 0.35rem;
+  color: #0f172a;
+}
+.markdown-preview h5 {
+  font-size: 0.925rem;
+  font-weight: 600;
+  margin: 0.8rem 0 0.3rem;
+  color: #0f172a;
+}
+.markdown-preview h6 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin: 0.8rem 0 0.3rem;
+  color: #475569;
 }
 .markdown-preview p {
   margin: 0.6rem 0;
@@ -249,6 +272,15 @@ body,
 .markdown-preview img {
   max-width: 100%;
 }
+.markdown-preview hr {
+  border: 0;
+  border-top: 1px solid #e2e8f0;
+  margin: 1.2rem 0;
+}
+.markdown-preview strong {
+  font-weight: 600;
+  color: #0f172a;
+}
 
 /* Imagen que no se puede pintar (nota pegada antes de traerlas al vault): se
    enseña su descripción, que al menos dice qué había ahí. */
@@ -270,7 +302,13 @@ body,
 /* Markdown previsualizado en modo oscuro */
 .dark .markdown-preview { color: #cbd5e1; }
 .dark .markdown-preview h1,
-.dark .markdown-preview h2 { color: #f1f5f9; }
+.dark .markdown-preview h2,
+.dark .markdown-preview h3,
+.dark .markdown-preview h4,
+.dark .markdown-preview h5,
+.dark .markdown-preview strong { color: #f1f5f9; }
+.dark .markdown-preview h6 { color: #94a3b8; }
+.dark .markdown-preview hr { border-color: #334155; }
 .dark .markdown-preview a { color: #a5b4fc; }
 .dark .markdown-preview code { background: #334155; }
 .dark .markdown-preview pre { background: #0f172a; }
